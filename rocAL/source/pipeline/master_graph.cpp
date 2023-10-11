@@ -1141,6 +1141,78 @@ void MasterGraph::stop_processing() {
         _output_thread.join();
 }
 
+ReaderConfig MasterGraph::get_reader(TensorList *input) {
+    return _readers_map.find(input)->second;
+}
+
+std::vector<rocalTensorList *> MasterGraph::create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output, bool shuffle, bool loop, bool ltrb_bbox, bool is_box_encoder) {
+    if (_meta_data_reader)
+        THROW("A metadata reader has already been created")
+    if (_augmented_meta_data)
+        THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
+
+    MetaDataConfig config(metadata_type, reader_type, json_path, std::map<std::string, std::string>(), std::string());
+    _meta_data_graph = create_meta_data_graph(config);
+    _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
+    
+    // Create the READER CONFIG
+    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
+    reader_cfg.set_meta_data_reader(_meta_data_reader);
+    
+    _meta_data_reader->read_all(json_path);
+    if (!ltrb_bbox) _augmented_meta_data->set_xywh_bbox();
+    std::vector<size_t> dims;
+    size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_NUM_ANCHORS : MAX_OBJECTS);
+
+    dims = {1000};
+    auto default_jpegs_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::UINT8);  // Create default jpegs Info
+    default_jpegs_info.set_metadata();
+    
+    dims = {max_objects};
+    auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
+    default_labels_info.set_metadata();
+    _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
+
+    dims = {max_objects, BBOX_COUNT};
+    auto default_bbox_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default Bbox Info
+    default_bbox_info.set_metadata();
+    _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
+
+    TensorInfo default_matches_info;
+    TensorInfo default_mask_info;
+    if (metadata_type == MetaDataType::PolygonMask) {
+        dims = {MAX_MASK_BUFFER, 1};
+        default_mask_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default mask Info
+        default_mask_info.set_metadata();
+        _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
+    }
+
+    for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
+        auto jpegs_info = default_jpegs_info;
+        auto labels_info = default_labels_info;
+        auto bbox_info = default_bbox_info;
+        _jpegs_tensor_list.push_back(new Tensor(jpegs_info));
+        _labels_tensor_list.push_back(new Tensor(labels_info));
+        _bbox_tensor_list.push_back(new Tensor(bbox_info));
+        if (metadata_type == MetaDataType::PolygonMask) {
+            auto mask_info = default_mask_info;
+            _mask_tensor_list.push_back(new Tensor(mask_info));
+        }
+    }
+    
+    
+    // Set the reader config and Jpegs tensor list in a map
+    _readers_map.insert(std::make_pair(&_jpegs_tensor_list, reader_cfg));
+
+    _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);
+    _metadata_output_tensor_list.emplace_back(&_jpegs_tensor_list);
+    _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);
+    _metadata_output_tensor_list.emplace_back(&_bbox_tensor_list);
+    if (metadata_type == MetaDataType::PolygonMask)
+        _metadata_output_tensor_list.emplace_back(&_mask_tensor_list);
+
+    return _metadata_output_tensor_list;
+}
 std::vector<rocalTensorList *> MasterGraph::create_coco_meta_data_reader(const char *source_path, bool is_output, MetaDataReaderType reader_type, MetaDataType metadata_type, bool ltrb_bbox, bool is_box_encoder, float sigma, unsigned pose_output_width, unsigned pose_output_height) {
     if (_meta_data_reader)
         THROW("A metadata reader has already been created")

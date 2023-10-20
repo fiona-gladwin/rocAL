@@ -1027,6 +1027,7 @@ void MasterGraph::output_routine_multiple_loaders() {
             _rb_block_if_full_time.start();
             // _ring_buffer.get_write_buffers() is blocking and blocks here until user uses processed image by calling run() and frees space in the ring_buffer
             auto write_buffers = _ring_buffer.get_write_buffers();
+            auto write_output_buffers = write_buffers.first;
             _rb_block_if_full_time.end();
 
             // Swap handles on the input tensor, so that new tensor is loaded to be processed
@@ -1056,7 +1057,7 @@ void MasterGraph::output_routine_multiple_loaders() {
 
             // Swap handles on the output tensor, so that new processed tensor will be written to the a new buffer
             for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
-                _internal_tensor_list[idx]->swap_handle(write_buffers[idx]);
+                _internal_tensor_list[idx]->swap_handle(write_output_buffers[idx]);
 
             if (!_processing)
                 break;
@@ -1196,7 +1197,7 @@ std::vector<rocalTensorList *> MasterGraph::create_coco_reader(const char *sourc
     }
 
     for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
-        auto jpegs_info = default_jpegs_info;
+auto jpegs_info = default_jpegs_info;
         auto labels_info = default_labels_info;
         auto bbox_info = default_bbox_info;
         _jpegs_tensor_list.push_back(new Tensor(jpegs_info));

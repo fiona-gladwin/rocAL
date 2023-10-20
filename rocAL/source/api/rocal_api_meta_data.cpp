@@ -81,7 +81,7 @@ RocalMetaData
     return context->master_graph->create_coco_meta_data_reader(source_path, is_output, MetaDataReaderType::COCO_META_DATA_READER, MetaDataType::BoundingBox, ltrb, is_box_encoder);
 }
 
-RocalMetaData
+RocalReaderMetaData
     ROCAL_API_CALL
     rocalCOCOReader(RocalContext p_context, const char* source_path, const char* json_path, bool is_output, bool shuffle, bool loop, bool mask, bool ltrb) {
     if (!p_context)

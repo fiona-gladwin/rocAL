@@ -84,9 +84,9 @@ extern "C" RocalMetaData ROCAL_API_CALL rocalCreateCOCOReader(RocalContext rocal
  * \ingroup group_rocal_meta_data
  * \param [in] rocal_context rocal context
  * \param [in] source_path path to the coco json file
- * \return RocalMetaData object, can be used to inquire about the rocal's output (processed) tensors
+ * \return RocalReaderMetaData object, can be used to inquire about the rocal's output (processed) tensors
  */
-extern "C" RocalMetaData ROCAL_API_CALL rocalCOCOReader(RocalContext rocal_context, const char* source_path, const char* json_path, bool is_output = false, bool shuffle = false, bool loop = false, bool mask = false, bool ltrb = true);
+extern "C" RocalReaderMetaData ROCAL_API_CALL rocalCOCOReader(RocalContext rocal_context, const char* source_path, const char* json_path, bool is_output = false, bool shuffle = false, bool loop = false, bool mask = false, bool ltrb = true);
 
 /*! \brief create coco reader key points
  * \ingroup group_rocal_meta_data

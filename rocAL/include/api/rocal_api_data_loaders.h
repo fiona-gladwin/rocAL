@@ -34,7 +34,7 @@ THE SOFTWARE.
 
 extern "C" RocalTensor ROCAL_API_CALL rocalImageDecoder(
     RocalContext p_context,
-    RocalTensorList p_jpegs,
+    RocalTensor p_jpegs,
     RocalImageColor rocal_color_format,
     unsigned internal_shard_count,
     bool is_output,

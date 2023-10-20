@@ -105,7 +105,7 @@ class MasterGraph {
     std::shared_ptr<T> meta_add_node(std::shared_ptr<M> node);
     Tensor *create_tensor(const TensorInfo &info, bool is_output);
     Tensor *create_loader_output_tensor(const TensorInfo &info);
-    std::vector<rocalTensorList *> create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output = false, bool shuffle = false, bool loop = false, bool ltrb_bbox = true, bool is_box_encoder = false);
+    std::tuple<rocalTensor *, std::vector<rocalTensorList *>> create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output = false, bool shuffle = false, bool loop = false, bool ltrb_bbox = true, bool is_box_encoder = false);
     
     std::vector<rocalTensorList *> create_label_reader(const char *source_path, MetaDataReaderType reader_type);
     std::vector<rocalTensorList *> create_video_label_reader(const char *source_path, MetaDataReaderType reader_type, unsigned sequence_length, unsigned frame_step, unsigned frame_stride, bool file_list_frame_num = true);
@@ -121,7 +121,7 @@ class MasterGraph {
     TensorList *labels_meta_data();
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
-    ReaderConfig get_reader(TensorList *input);
+    ReaderConfig get_reader(Tensor *input);
     void set_loop(bool val) { _loop = val; }
     void set_output(Tensor *output_tensor);
     size_t calculate_cpu_num_threads(size_t shard_count);
@@ -172,7 +172,7 @@ class MasterGraph {
     TensorList _bbox_tensor_list;
     TensorList _mask_tensor_list;
     std::vector<size_t> _meta_data_buffer_size;
-    std::map<TensorList *, ReaderConfig> _readers_map;                        //!< key: tensor, value : Parent node
+    std::map<Tensor *, ReaderConfig> _readers_map;                        //!< key: tensor, value : Parent node
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL

@@ -942,7 +942,7 @@ rocalMXNetRecordSourceSingleShard(
 RocalTensor ROCAL_API_CALL
 rocalImageDecoder(
     RocalContext p_context,
-    RocalTensorList p_jpegs,
+    RocalTensor p_jpegs,
     RocalImageColor rocal_color_format,
     unsigned internal_shard_count,
     bool is_output,
@@ -953,7 +953,7 @@ rocalImageDecoder(
     unsigned max_height,
     RocalDecoderType dec_type) {
     Tensor* output = nullptr;
-    TensorList *jpegs = static_cast<TensorList*>(p_jpegs);
+    Tensor *jpegs = static_cast<Tensor*>(p_jpegs);
     auto context = static_cast<Context*>(p_context);
     try {
         bool use_input_dimension = (decode_size_policy == ROCAL_USE_USER_GIVEN_SIZE) || (decode_size_policy == ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED);

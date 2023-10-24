@@ -90,8 +90,9 @@ void ImageLoader::de_init() {
     // Set running to 0 and wait for the internal thread to join
     stop_internal_thread();
     _output_mem_size = 0;
+    _read_output_mem_size = 0;
     _batch_size = 1;
-    _is_initialized = false;
+    _is_initialized = false;      
 }
 
 LoaderModuleStatus
@@ -102,6 +103,11 @@ ImageLoader::load_next() {
 void ImageLoader::set_output(Tensor *output_tensor) {
     _output_tensor = output_tensor;
     _output_mem_size = ((_output_tensor->info().data_size() + 8) & ~7);  // Making output size as a multiple of 8 to support vectorized load and store in RPP
+}
+
+void ImageLoader::set_reader_output(Tensor *output_tensor) {
+    _reader_output_tensor = output_tensor;
+    _read_output_mem_size = _reader_output_tensor->info().data_size();
 }
 
 void ImageLoader::set_random_bbox_data_reader(std::shared_ptr<RandomBBoxCrop_MetaDataReader> randombboxcrop_meta_data_reader) {

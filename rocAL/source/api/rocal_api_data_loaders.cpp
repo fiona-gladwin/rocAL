@@ -986,8 +986,11 @@ rocalImageDecoder(
                                tensor_layout,
                                color_format);
         output = context->master_graph->create_loader_output_tensor(info);
+        // Modify dims of Jpegs tensor
+        jpegs->set_dims({context->user_batch_size(), height, width, 1});
+
         auto cpu_num_threads = context->master_graph->calculate_cpu_num_threads(1);
-        context->master_graph->add_node<ImageLoaderNode>({}, {output})->init(internal_shard_count, cpu_num_threads, decType, reader_config, context->user_batch_size(), context->master_graph->mem_type(), decoder_keep_original);
+        context->master_graph->add_node<ImageLoaderNode>({}, {output})->init(jpegs, internal_shard_count, cpu_num_threads, decType, reader_config, context->user_batch_size(), context->master_graph->mem_type(), decoder_keep_original);
 
         context->master_graph->set_loop(loop);
 

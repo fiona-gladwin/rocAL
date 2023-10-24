@@ -52,13 +52,14 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     _loader_module->start_loading();
 }
 
-void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threads, DecoderType decoder_type, ReaderConfig reader_cfg,
+void ImageLoaderNode::init(Tensor *jpegs, unsigned internal_shard_count, unsigned cpu_num_threads, DecoderType decoder_type, ReaderConfig reader_cfg,
                            size_t load_batch_count, RocalMemType mem_type, bool decoder_keep_orig, const char *file_prefix) {
     if (!_loader_module)
         THROW("ERROR: loader module is not set for ImageLoaderNode, cannot initialize")
     if (internal_shard_count < 1)
         THROW("Shard count should be greater than or equal to one")
     _loader_module->set_output(_outputs[0]);
+    _loader_module->set_reader_output(jpegs);
     // Set reader and decoder config accordingly for the ImageLoaderNode
     // auto reader_cfg = ReaderConfig(storage_type, source_path, json_path, feature_key_map, shuffle, loop);
     reader_cfg.set_shard_count(internal_shard_count);

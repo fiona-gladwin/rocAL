@@ -67,7 +67,7 @@ class ImageLoader : public LoaderModule {
     Tensor* _output_tensor;
     Tensor* _reader_output_tensor;
     std::vector<std::string> _output_names;  //!< image name/ids that are stores in the _output_image
-    size_t _output_mem_size, _read_output_mem_size;
+    size_t _output_mem_size, _read_output_mem_size = 0;
     MetaDataBatch* _meta_data = nullptr;  //!< The output of the meta_data_graph,
     std::vector<std::vector<float>> _bbox_coords;
     bool _internal_thread_running;
@@ -89,4 +89,5 @@ class ImageLoader : public LoaderModule {
     bool _decoder_keep_original = false;
     int _device_id;
     size_t _max_tensor_width, _max_tensor_height;
+    std::vector<uint32_t> _read_buffer_size;
 };

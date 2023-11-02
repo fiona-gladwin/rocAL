@@ -313,6 +313,17 @@ MasterGraph::create_loader_output_tensor(const TensorInfo &info) {
     return output;
 }
 
+void
+MasterGraph::create_reader_output(Tensor *reader_tensor) {
+    /*
+     *   NOTE: Output tensor for a reader node needs to be created as a regular (non-virtual) tensor if required
+     */
+    if (reader_tensor->create_from_handle(_context) != 0)
+        THROW("Creating output tensor for loader failed");
+
+    _internal_tensors.push_back(reader_tensor);
+}
+
 Tensor *
 MasterGraph::create_tensor(const TensorInfo &info, bool is_output) {
     auto *output = new Tensor(info);
@@ -335,7 +346,7 @@ void MasterGraph::set_output(Tensor *output_tensor) {
         _internal_tensor_list.push_back(output_tensor);
         _output_tensor_list.push_back(new Tensor(output_tensor->info()));  // Creating a replica of the output tensor to be returned to the user
     } else {
-        // Decoder case only
+        // Decoder and Reader case only
         auto actual_output = create_tensor(output_tensor->info(), true);
         add_node<CopyNode>({output_tensor}, {actual_output});
     }

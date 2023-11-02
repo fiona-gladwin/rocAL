@@ -945,6 +945,7 @@ rocalImageDecoder(
     RocalTensor p_jpegs,
     RocalImageColor rocal_color_format,
     unsigned internal_shard_count,
+    bool enable_reader_output,
     bool is_output,
     bool shuffle,
     bool loop,
@@ -987,7 +988,12 @@ rocalImageDecoder(
                                color_format);
         output = context->master_graph->create_loader_output_tensor(info);
         // Modify dims of Jpegs tensor
-        jpegs->set_dims({context->user_batch_size(), height, width, 1});
+        if (enable_reader_output) {
+            jpegs->set_dims({context->user_batch_size() * height * width, 1});
+            context->master_graph->create_reader_output(jpegs);
+        } else {
+            jpegs = nullptr;
+        }
 
         auto cpu_num_threads = context->master_graph->calculate_cpu_num_threads(1);
         context->master_graph->add_node<ImageLoaderNode>({}, {output})->init(jpegs, internal_shard_count, cpu_num_threads, decType, reader_config, context->user_batch_size(), context->master_graph->mem_type(), decoder_keep_original);

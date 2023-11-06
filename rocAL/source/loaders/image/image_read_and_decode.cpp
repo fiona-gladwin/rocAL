@@ -65,6 +65,7 @@ void ImageReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
     // Can initialize it to any decoder types if needed
     _batch_size = batch_size;
     _compressed_buff.resize(batch_size);
+    _compressed_buff_ptr.resize(batch_size);
     _decoder.resize(batch_size);
     _actual_read_size.resize(batch_size);
     _image_names.resize(batch_size);
@@ -191,8 +192,10 @@ ImageReadAndDecode::load(unsigned char *buff,
             if (!write_contiguous_data) {
                 _compressed_buff[file_counter].reserve(fsize);
                 _actual_read_size[file_counter] = _reader->read_data(_compressed_buff[file_counter].data(), fsize);
+                _compressed_buff_ptr[file_counter] = _compressed_buff[file_counter].data();
             } else {
                 _actual_read_size[file_counter] = _reader->read_data(compressed_buff, fsize);
+                _compressed_buff_ptr[file_counter] = compressed_buff;
                 compressed_buff += _actual_read_size[file_counter];
             }
             _image_names[file_counter] = _reader->id();
@@ -222,15 +225,15 @@ ImageReadAndDecode::load(unsigned char *buff,
             _actual_decoded_width[i] = max_decoded_width;
             _actual_decoded_height[i] = max_decoded_height;
             int original_width, original_height, jpeg_sub_samp;
-            if (_decoder[i]->decode_info(_compressed_buff[i].data(), _actual_read_size[i], &original_width, &original_height,
+            if (_decoder[i]->decode_info(_compressed_buff_ptr[i], _actual_read_size[i], &original_width, &original_height,
                                          &jpeg_sub_samp) != Decoder::Status::OK) {
                 // Substituting the image which failed decoding with other image from the same batch
                 int j = ((i + 1) != _batch_size) ? _batch_size - 1 : _batch_size - 2;
                 while ((j >= 0)) {
-                    if (_decoder[i]->decode_info(_compressed_buff[j].data(), _actual_read_size[j], &original_width, &original_height,
+                    if (_decoder[i]->decode_info(_compressed_buff_ptr[j], _actual_read_size[j], &original_width, &original_height,
                                                  &jpeg_sub_samp) == Decoder::Status::OK) {
                         _image_names[i] = _image_names[j];
-                        _compressed_buff[i] = _compressed_buff[j];
+                        _compressed_buff_ptr[i] = _compressed_buff_ptr[j];  // TODO - Check how to handle this....
                         _actual_read_size[i] = _actual_read_size[j];
                         _compressed_image_size[i] = _compressed_image_size[j];
                         break;
@@ -255,7 +258,7 @@ ImageReadAndDecode::load(unsigned char *buff,
                     _decoder[i]->set_crop_window(crop_window);
                 }
             }
-            if (_decoder[i]->decode(_compressed_buff[i].data(), _compressed_image_size[i], _decompressed_buff_ptrs[i],
+            if (_decoder[i]->decode(_compressed_buff_ptr[i], _compressed_image_size[i], _decompressed_buff_ptrs[i],
                                     max_decoded_width, max_decoded_height,
                                     original_width, original_height,
                                     scaledw, scaledh,

@@ -95,6 +95,7 @@ class ImageReadAndDecode {
     std::vector<std::shared_ptr<Decoder>> _decoder;
     std::shared_ptr<Reader> _reader;
     std::vector<std::vector<unsigned char>> _compressed_buff;
+    std::vector<unsigned char *> _compressed_buff_ptr;
     std::vector<size_t> _actual_read_size;
     std::vector<std::string> _image_names;
     std::vector<size_t> _compressed_image_size;

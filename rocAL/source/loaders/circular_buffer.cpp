@@ -98,7 +98,7 @@ std::vector<void *> CircularBuffer::get_read_buffers_dev() {
 std::vector<unsigned char *> CircularBuffer::get_write_buffers() {
     if (!_initialized)
         THROW("Circular buffer not initialized")
-    block_if_empty();
+    block_if_full();
     return _host_sub_buffer_ptrs[_read_ptr];
 }
 
@@ -184,8 +184,8 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
     _output_mem_size = output_mem_size;
     _read_output_mem_size = read_output_mem_size;
 
-    _dev_sub_buffer_ptrs.reserve(_buff_depth);
-    _host_sub_buffer_ptrs.reserve(_buff_depth);
+    _dev_sub_buffer_ptrs.resize(_buff_depth);
+    _host_sub_buffer_ptrs.resize(_buff_depth);
 
     if (read_output_mem_size != 0) {
         for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {

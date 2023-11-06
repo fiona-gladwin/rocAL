@@ -149,11 +149,11 @@ ImageReadAndDecode::load(unsigned char *buff,
     // File read is done serially since I/O parallelization does not work very well.
     _file_load_time.start();  // Debug timing
     if (_decoder_config._type == DecoderType::SKIP_DECODE) {
-        auto read_ptr = read_buffers;
-        bool write_contiguous_data = true;
-        if (read_buffers == nullptr) {
-            read_ptr = buff;
-            write_contiguous_data = false;
+        auto read_ptr = buff;
+        bool write_contiguous_data = false;
+        if (read_buffers != nullptr) {
+            read_ptr = read_buffers;
+            write_contiguous_data = true;
         }        
         while ((file_counter != _batch_size) && _reader->count_items() > 0) {
             size_t fsize = _reader->open();
@@ -181,7 +181,7 @@ ImageReadAndDecode::load(unsigned char *buff,
         // return LoaderModuleStatus::OK;
     } else {
         auto compressed_buff = read_buffers;
-        bool write_contiguous_data = (read_buffers == nullptr) ? true : false;
+        bool write_contiguous_data = (read_buffers != nullptr) ? true : false;
         while ((file_counter != _batch_size) && _reader->count_items() > 0) {
             size_t fsize = _reader->open();
             if (fsize == 0) {

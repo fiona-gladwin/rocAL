@@ -989,7 +989,7 @@ rocalImageDecoder(
         output = context->master_graph->create_loader_output_tensor(info);
         // Modify dims of Jpegs tensor
         if (enable_reader_output) {
-            jpegs->set_dims({context->user_batch_size() * height * width, 1});
+            jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
             context->master_graph->create_reader_output(jpegs);
         } else {
             jpegs = nullptr;

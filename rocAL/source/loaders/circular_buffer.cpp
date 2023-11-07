@@ -193,12 +193,14 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
             _host_sub_buffer_ptrs[bufIdx].resize(2);    // To store both compressed and decoded buffers
             _dev_sub_buffer_ptrs[bufIdx][0] = _dev_sub_buffer_ptrs[bufIdx][1] = nullptr;
         }
+        _sub_buff_depth = 2;
     } else {
         for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {
             _dev_sub_buffer_ptrs[bufIdx].resize(1);     // To store only decoded buffers
             _host_sub_buffer_ptrs[bufIdx].resize(1);    // To store both decoded buffers
             _dev_sub_buffer_ptrs[bufIdx][0] = nullptr;
         }
+        _sub_buff_depth = 1;
     }
 
         // Allocating buffers
@@ -379,42 +381,81 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
 }
 
 void CircularBuffer::release() {
-    for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+    if (_host_buffer_ptrs.size() != 0 || _dev_buffer.size() != 0) {
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
 #if ENABLE_OPENCL
-        if (_output_mem_type == RocalMemType::OCL) {
-            if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0, NULL, NULL) != CL_SUCCESS)
-                ERR("Could not unmap ocl memory")
-            if (clReleaseMemObject((cl_mem)_dev_buffer[buffIdx]) != CL_SUCCESS)
-                ERR("Could not release ocl memory in the circular buffer")
-        } else {
-#elif ENABLE_HIP
-            if (_output_mem_type == RocalMemType::HIP) {
-                if (_host_buffer_ptrs[buffIdx]) {
-                    hipError_t err = hipHostFree((void *)_host_buffer_ptrs[buffIdx]);
-
-                    if (err != hipSuccess)
-                        ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
-                    _host_buffer_ptrs[buffIdx] = nullptr;
-                }
-                if (!_hip_canMapHostMemory && _dev_buffer[buffIdx]) {
-                    hipError_t err = hipFree((void *)_dev_buffer[buffIdx]);
-
-                    if (err != hipSuccess)
-                        ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
-                    _dev_buffer[buffIdx] = nullptr;
-                }
+            if (_output_mem_type == RocalMemType::OCL) {
+                if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0, NULL, NULL) != CL_SUCCESS)
+                    ERR("Could not unmap ocl memory")
+                if (clReleaseMemObject((cl_mem)_dev_buffer[buffIdx]) != CL_SUCCESS)
+                    ERR("Could not release ocl memory in the circular buffer")
             } else {
+#elif ENABLE_HIP
+                if (_output_mem_type == RocalMemType::HIP) {
+                    if (_host_buffer_ptrs[buffIdx]) {
+                        hipError_t err = hipHostFree((void *)_host_buffer_ptrs[buffIdx]);
+
+                        if (err != hipSuccess)
+                            ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
+                        _host_buffer_ptrs[buffIdx] = nullptr;
+                    }
+                    if (!_hip_canMapHostMemory && _dev_buffer[buffIdx]) {
+                        hipError_t err = hipFree((void *)_dev_buffer[buffIdx]);
+
+                        if (err != hipSuccess)
+                            ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
+                        _dev_buffer[buffIdx] = nullptr;
+                    }
+                } else {
 #else
-        free(_host_buffer_ptrs[buffIdx]);
+            free(_host_buffer_ptrs[buffIdx]);
 #endif
 #if ENABLE_HIP || ENABLE_OPENCL
-            free(_host_buffer_ptrs[buffIdx]);
-        }
+                free(_host_buffer_ptrs[buffIdx]);
+            }
 #endif
-    }
+        }
+    } else if (_host_sub_buffer_ptrs.size() != 0 || _dev_sub_buffer_ptrs.size() != 0) {
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+            for (size_t subIdx = 0; subIdx < _sub_buff_depth; subIdx++) {
+#if ENABLE_OPENCL
+                if (_output_mem_type == RocalMemType::OCL) {
+                    if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_sub_buffer_ptrs[buffIdx][subIdx], _host_sub_buffer_ptrs[buffIdx][subIdx], 0, NULL, NULL) != CL_SUCCESS)
+                        ERR("Could not unmap ocl memory")
+                    if (clReleaseMemObject((cl_mem)_dev_sub_buffer_ptrs[buffIdx][subIdx]) != CL_SUCCESS)
+                        ERR("Could not release ocl memory in the circular buffer")
+                } else {
+#elif ENABLE_HIP
+                    if (_output_mem_type == RocalMemType::HIP) {
+                        if (_host_sub_buffer_ptrs[buffIdx][subIdx]) {
+                            hipError_t err = hipHostFree((void *)_host_sub_buffer_ptrs[buffIdx][subIdx]);
 
+                            if (err != hipSuccess)
+                                ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
+                            _host_sub_buffer_ptrs[buffIdx][subIdx] = nullptr;
+                        }
+                        if (!_hip_canMapHostMemory && _dev_sub_buffer_ptrs[buffIdx][subIdx]) {
+                            hipError_t err = hipFree((void *)_dev_sub_buffer_ptrs[buffIdx][subIdx]);
+
+                            if (err != hipSuccess)
+                                ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
+                            _dev_sub_buffer_ptrs[buffIdx][subIdx] = nullptr;
+                        }
+                    } else {
+#else
+                free(_host_sub_buffer_ptrs[buffIdx][subIdx]);
+#endif
+#if ENABLE_HIP || ENABLE_OPENCL
+                    free(_host_sub_buffer_ptrs[buffIdx][subIdx]);
+                }
+#endif
+            }
+        }
+    }
     _dev_buffer.clear();
     _host_buffer_ptrs.clear();
+    _dev_sub_buffer_ptrs.clear();
+    _host_sub_buffer_ptrs.clear();
     _write_ptr = 0;
     _read_ptr = 0;
     _level = 0;

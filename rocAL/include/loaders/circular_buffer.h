@@ -77,7 +77,7 @@ class CircularBuffer {
     void increment_write_ptr();
     bool full();
     bool empty();
-    size_t _buff_depth;
+    size_t _buff_depth, _sub_buff_depth;
     decoded_image_info _last_image_info;
     std::queue<decoded_image_info> _circ_image_info;    //!< Stores the loaded images names, decoded_width and decoded_height(data is stored in the _circ_buff)
     crop_image_info _last_crop_image_info;              // for Random BBox crop coordinates

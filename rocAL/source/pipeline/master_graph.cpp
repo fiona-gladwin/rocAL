@@ -288,6 +288,7 @@ MasterGraph::build() {
 #else
     _ring_buffer.init(_mem_type, nullptr, _internal_tensor_list.data_size(), _internal_tensor_list.roi_size());
 #endif
+    // _ring_buffer.init_metadata_readers_output(RocalMemType::HOST, _metadata_outputs_buffer_size);
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
     if (_loader_modules.size() > 1) {
         create_multiple_graphs();
@@ -350,6 +351,16 @@ void MasterGraph::set_output(Tensor *output_tensor) {
         auto actual_output = create_tensor(output_tensor->info(), true);
         add_node<CopyNode>({output_tensor}, {actual_output});
     }
+}
+
+void MasterGraph::set_output(TensorList *tensor_list) {
+    tensor_list->set_output(); // set_is_output to true;
+    auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
+    auto metadata_id = static_cast<int>(tensor_list->type());
+    if (metadata_id != 4)
+        _metadata_outputs_buffer_size[reader_id][metadata_id] = _user_batch_size * tensor_list->at(0)->info().data_size();
+    else
+        THROW("The tensorList does not have metadata")
 }
 
 void MasterGraph::release() {
@@ -1172,8 +1183,8 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
         THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
 
     MetaDataConfig config(metadata_type, reader_type, json_path, std::map<std::string, std::string>(), std::string());
-    _meta_data_graph = create_meta_data_graph(config);
-    _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
+    auto meta_data_graph = create_meta_data_graph(config);
+    auto meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
     
     // Create the READER CONFIG
     auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
@@ -1192,12 +1203,12 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     dims = {max_objects};
     auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
     default_labels_info.set_metadata();
-    _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
+    // _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
 
     dims = {max_objects, BBOX_COUNT};
     auto default_bbox_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default Bbox Info
     default_bbox_info.set_metadata();
-    _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
+    // _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
 
     TensorInfo default_matches_info;
     TensorInfo default_mask_info;
@@ -1205,31 +1216,49 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
         dims = {MAX_MASK_BUFFER, 1};
         default_mask_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default mask Info
         default_mask_info.set_metadata();
-        _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
+        // _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
     }
+
+    TensorList *labels_tensor_list, *bbox_tensor_list, *mask_tensor_list;
+    labels_tensor_list = new TensorList(RocalTensorListType::LABELS);  // Can this be a shared ptr?
+    bbox_tensor_list = new TensorList(RocalTensorListType::BBOX);
+    if (metadata_type == MetaDataType::PolygonMask)
+        mask_tensor_list = new TensorList(RocalTensorListType::MASK);
 
     for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
         auto labels_info = default_labels_info;
         auto bbox_info = default_bbox_info;
-        _labels_tensor_list.push_back(new Tensor(labels_info));
-        _bbox_tensor_list.push_back(new Tensor(bbox_info));
+        labels_tensor_list->push_back(new Tensor(labels_info));
+        bbox_tensor_list->push_back(new Tensor(bbox_info));
         if (metadata_type == MetaDataType::PolygonMask) {
             auto mask_info = default_mask_info;
-            _mask_tensor_list.push_back(new Tensor(mask_info));
+            mask_tensor_list->push_back(new Tensor(mask_info));
         }
     }
-    
-    
+
     // Set the reader config and Jpegs tensor list in a map
     _readers_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+    std::vector<rocalTensorList *> metadata_output_tensor_list;
+    std::vector<size_t> metadata_buffer_size;
 
-    _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);
-    _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);
-    _metadata_output_tensor_list.emplace_back(&_bbox_tensor_list);
-    if (metadata_type == MetaDataType::PolygonMask)
-        _metadata_output_tensor_list.emplace_back(&_mask_tensor_list);
+    // _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);  Add init metadata in Build
+    metadata_output_tensor_list.emplace_back(labels_tensor_list);
+    metadata_buffer_size.push_back(0);
+    _metadata_outputs_map.insert(std::make_pair(labels_tensor_list, _metadatareader_output_tensor_list.size()));
 
-    return std::make_tuple(jpegs_tensor, _metadata_output_tensor_list);
+    metadata_output_tensor_list.emplace_back(bbox_tensor_list);
+    metadata_buffer_size.push_back(0);
+    _metadata_outputs_map.insert(std::make_pair(bbox_tensor_list, _metadatareader_output_tensor_list.size()));
+
+    if (metadata_type == MetaDataType::PolygonMask) {
+        metadata_output_tensor_list.emplace_back(mask_tensor_list);
+        metadata_buffer_size.push_back(0);
+        _metadata_outputs_map.insert(std::make_pair(mask_tensor_list, _metadatareader_output_tensor_list.size()));
+    }
+
+    _metadatareader_output_tensor_list.emplace_back(metadata_output_tensor_list);
+    _metadata_outputs_buffer_size.emplace_back(metadata_buffer_size);
+    return std::make_tuple(jpegs_tensor, metadata_output_tensor_list);
 }
 
 std::vector<rocalTensorList *> MasterGraph::create_coco_meta_data_reader(const char *source_path, bool is_output, MetaDataReaderType reader_type, MetaDataType metadata_type, bool ltrb_bbox, bool is_box_encoder, float sigma, unsigned pose_output_width, unsigned pose_output_height) {

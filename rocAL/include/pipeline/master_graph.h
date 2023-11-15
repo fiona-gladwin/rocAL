@@ -125,6 +125,7 @@ class MasterGraph {
     ReaderConfig get_reader(Tensor *input);
     void set_loop(bool val) { _loop = val; }
     void set_output(Tensor *output_tensor);
+    void set_output(TensorList *output_tensor_list);
     size_t calculate_cpu_num_threads(size_t shard_count);
     bool empty() { return (remaining_count() < (_is_sequence_reader_output ? _sequence_batch_size : _user_batch_size)); }
     size_t sequence_batch_size() { return _sequence_batch_size; }
@@ -168,12 +169,15 @@ class MasterGraph {
 
     // Output tensorList for metadata
     std::vector<rocalTensorList *> _metadata_output_tensor_list;
+    std::vector<std::vector<rocalTensorList *>> _metadatareader_output_tensor_list;
     TensorList _jpegs_tensor_list;
     TensorList _labels_tensor_list;
     TensorList _bbox_tensor_list;
     TensorList _mask_tensor_list;
     std::vector<size_t> _meta_data_buffer_size;
+    std::vector<std::vector<size_t>> _metadata_outputs_buffer_size;
     std::map<Tensor *, ReaderConfig> _readers_map;                        //!< key: tensor, value : Parent node
+    std::map<TensorList *, unsigned> _metadata_outputs_map;                        //!< key: tensor, value : Parent node
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL

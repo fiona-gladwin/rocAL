@@ -104,6 +104,16 @@ enum class RocalROIType {
     XYWH
 };
 
+/*! \brief Tensor list type
+ *
+ */
+enum class RocalTensorListType {
+    LABELS = 0,
+    BBOX,
+    MASK,
+    NONE
+};
+
 /*! \brief Tensor ROI in LTRB format
  *
  */

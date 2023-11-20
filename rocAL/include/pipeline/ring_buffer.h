@@ -49,6 +49,7 @@ class RingBuffer {
     void init(RocalMemType mem_type, void *dev, std::vector<size_t> &sub_buffer_size, std::vector<size_t> &roi_buffer_size);
     void initBoxEncoderMetaData(RocalMemType mem_type, size_t encoded_bbox_size, size_t encoded_labels_size);
     void init_metadata(RocalMemType mem_type, std::vector<size_t> &sub_buffer_size);
+    void init_metadata_output(RocalMemType mem_type, std::vector<std::vector<size_t>> &sub_buffer_size);
     void release_gpu_res();
     std::pair<std::vector<void *>, std::vector<unsigned *>> get_read_buffers();
     std::pair<std::vector<void *>, std::vector<unsigned *>> get_write_buffers();
@@ -58,6 +59,7 @@ class RingBuffer {
     std::vector<void *> get_meta_read_buffers();
     std::vector<void *> get_meta_write_buffers();
     void set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
+    void set_reader_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
     void rellocate_meta_data_buffer(void *buffer, size_t buffer_size, unsigned buff_idx);
     void reset();
     void pop();
@@ -80,6 +82,7 @@ class RingBuffer {
     std::vector<size_t> _sub_buffer_size;
     unsigned _sub_buffer_count;
     std::vector<std::vector<size_t>> _meta_data_sub_buffer_size;
+    std::vector<std::vector<std::vector<size_t>>> _meta_data_read_sub_buffer_size;
     unsigned _meta_data_sub_buffer_count;
     std::mutex _lock;
     std::condition_variable _wait_for_load;
@@ -89,6 +92,7 @@ class RingBuffer {
     std::vector<std::vector<unsigned *>> _dev_roi_buffers;
     std::vector<std::vector<unsigned *>> _host_roi_buffers;
     std::vector<std::vector<void *>> _host_meta_data_buffers;
+    std::vector<std::vector<std::vector<void *>>> _host_meta_data_read_buffers;
     std::vector<void *> _dev_bbox_buffer;
     std::vector<void *> _dev_labels_buffer;
     bool _dont_block = false;

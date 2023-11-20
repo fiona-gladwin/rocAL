@@ -263,6 +263,38 @@ void RingBuffer::init_metadata(RocalMemType mem_type, std::vector<size_t> &sub_b
     }
 }
 
+void RingBuffer::init_metadata_output(RocalMemType mem_type, std::vector<std::vector<size_t>> &sub_buffer_size) {
+    if (BUFF_DEPTH < 2)
+        THROW("Error internal buffer size for the ring buffer should be greater than one")
+
+    // Allocating buffers
+    auto meta_data_reader_count = sub_buffer_size.size();
+    if (mem_type == RocalMemType::OCL || mem_type == RocalMemType::HIP) {
+        THROW("Metadata is not supported with GPU backends")
+    } else {
+        _host_meta_data_read_buffers.resize(BUFF_DEPTH);    // Resize for Buf depth
+        _meta_data_read_sub_buffer_size.resize(BUFF_DEPTH);
+        for (size_t buffIdx = 0; buffIdx < BUFF_DEPTH; buffIdx++) {
+            _host_meta_data_read_buffers[buffIdx].resize(meta_data_reader_count);   
+            _meta_data_read_sub_buffer_size[buffIdx].resize(meta_data_reader_count);
+            
+            for (size_t reader_idx = 0; reader_idx < meta_data_reader_count; reader_idx++) {
+                _host_meta_data_read_buffers[buffIdx][reader_idx].resize(sub_buffer_size[reader_idx].size());
+                _meta_data_read_sub_buffer_size[buffIdx][reader_idx].resize(sub_buffer_size[reader_idx].size());
+                
+                for (size_t sub_buff_idx = 0; sub_buff_idx < sub_buffer_size[reader_idx].size(); sub_buff_idx++) {    // Iterate through each output for every reader
+                    _meta_data_read_sub_buffer_size[buffIdx][reader_idx].emplace_back(sub_buffer_size[reader_idx][sub_buff_idx]);
+                    if (sub_buffer_size[reader_idx][sub_buff_idx] != 0) {
+                        _host_meta_data_read_buffers[buffIdx][reader_idx][sub_buff_idx] = malloc(sub_buffer_size[reader_idx][sub_buff_idx]);
+                    } else {
+                        _host_meta_data_read_buffers[buffIdx][reader_idx][sub_buff_idx] = nullptr;
+                    }
+                }
+            }
+        }
+    }  
+}
+
 void RingBuffer::push() {
     // pushing and popping to and from image and metadata buffer should be atomic so that their level stays the same at all times
     std::unique_lock<std::mutex> lock(_names_buff_lock);
@@ -399,6 +431,25 @@ void RingBuffer::set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data) {
                     rellocate_meta_data_buffer(_host_meta_data_buffers[_write_ptr][i], actual_buffer_size[i], i);
             }
             meta_data->copy_data(_host_meta_data_buffers[_write_ptr]);
+        }
+    }
+}
+
+void RingBuffer::set_meta_data(std::vector<ImageNameBatch> names, std::vector<pMetaDataBatch> meta_data) {
+
+    for (auto &metadata : meta_data) {
+        if (metadata == nullptr)
+            _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), pMetaDataBatch()));
+        else {
+            _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), metadata));
+            if (!_box_encoder) {
+                auto actual_buffer_size = meta_data->get_buffer_size();
+                for (unsigned i = 0; i < actual_buffer_size.size(); i++) {
+                    if (actual_buffer_size[i] > _meta_data_sub_buffer_size[_write_ptr][i])
+                        rellocate_meta_data_buffer(_host_meta_data_buffers[_write_ptr][i], actual_buffer_size[i], i);
+                }
+                metadata->copy_data(_host_meta_data_buffers[_write_ptr]);
+            }
         }
     }
 }

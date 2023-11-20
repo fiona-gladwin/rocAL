@@ -71,6 +71,7 @@ struct ReaderConfig {
     void set_sequence_length(unsigned sequence_length) { _sequence_length = sequence_length; }
     void set_frame_step(unsigned step) { _sequence_frame_step = step; }
     void set_frame_stride(unsigned stride) { _sequence_frame_stride = stride; }
+    void set_reader_id(unsigned id) { _reader_id = id; }
     size_t get_shard_count() { return _shard_count; }
     size_t get_shard_id() { return _shard_id; }
     size_t get_cpu_num_threads() { return _cpu_num_threads; }
@@ -79,6 +80,7 @@ struct ReaderConfig {
     size_t get_frame_step() { return _sequence_frame_step; }
     size_t get_frame_stride() { return _sequence_frame_stride; }
     std::string path() { return _path; }
+    unsigned get_reader_id() { return _reader_id; }
 #ifdef ROCAL_VIDEO
     void set_video_properties(VideoProperties video_prop) { _video_prop = video_prop; }
     VideoProperties get_video_properties() { return _video_prop; }
@@ -90,6 +92,7 @@ struct ReaderConfig {
     std::shared_ptr<MetaDataReader> meta_data_reader() { return _meta_data_reader; }
 
    private:
+    unsigned _reader_id = 0;
     StorageType _type = StorageType::FILE_SYSTEM;
     std::string _path = "";
     std::string _json_path = "";

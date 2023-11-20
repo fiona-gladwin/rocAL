@@ -464,6 +464,8 @@ MasterGraph::reset() {
     _ring_buffer.reset();
     _sequence_start_framenum_vec.clear();
     _sequence_frame_timestamps_vec.clear();
+    _loader_image_names.clear();
+    _readers_output_meta_data.clear();
     // clearing meta ring buffer
     // if random_bbox meta reader is used: read again to get different crops
     if (_randombboxcrop_meta_data_reader != nullptr)
@@ -1057,23 +1059,22 @@ void MasterGraph::output_routine_multiple_loaders() {
                 auto load_ret = loader_module->load_next();
                 if (load_ret != LoaderModuleStatus::OK)
                     THROW("Loader module failed to load next batch of images, status " + TOSTR(load_ret))                
+
+                if (!_processing)
+                    break;
+                auto full_batch_image_names = loader_module->get_id(); // Temp change
+                auto decode_image_info = loader_module->get_decode_image_info();   // Temp change
+                auto crop_image_info = loader_module->get_crop_image_info();   // Temp change
+
+                if (full_batch_image_names.size() != _user_batch_size)
+                    WRN("Internal problem: names count " + TOSTR(full_batch_image_names.size()))
+                
+                // meta_data lookup is done before _meta_data_graph->process() is called to have the new meta_data ready for processing
+                auto meta_data_reader = loader_module->get_metadata_reader();
+                if (meta_data_reader)
+                    meta_data_reader->lookup(full_batch_image_names);
+                _loader_image_names.push_back(full_batch_image_names);
             }
-
-            if (!_processing)
-                break;
-            auto full_batch_image_names = _loader_modules[0]->get_id(); // Temp change
-            auto decode_image_info = _loader_modules[0]->get_decode_image_info();   // Temp change
-            auto crop_image_info = _loader_modules[0]->get_crop_image_info();   // Temp change
-
-            if (full_batch_image_names.size() != _user_batch_size)
-                WRN("Internal problem: names count " + TOSTR(full_batch_image_names.size()))
-            
-            /*
-            // meta_data lookup is done before _meta_data_graph->process() is called to have the new meta_data ready for processing
-            if (_meta_data_reader)
-                _meta_data_reader->lookup(full_batch_image_names);
-            */
-
             if (!_processing)
                 break;
 
@@ -1091,46 +1092,45 @@ void MasterGraph::output_routine_multiple_loaders() {
             }
 
             update_node_parameters();
-            pMetaDataBatch output_meta_data = nullptr;
-            /* if (_augmented_meta_data) {
-                output_meta_data = _augmented_meta_data->clone(!_augmentation_metanode);  // copy the data if metadata is not processed by the nodes, else create an empty instance
-                if (_meta_data_graph) {
-                    if (_is_random_bbox_crop) {
-                        _meta_data_graph->update_random_bbox_meta_data(_augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
-                    } else {
-                        _meta_data_graph->update_meta_data(_augmented_meta_data, decode_image_info);
+            for (auto reader_output : _metadata_reader_graph_outputs_map) {
+                auto meta_data_graph = reader_output.first;
+                auto augmented_meta_data = reader_output.second;
+                if (augmented_meta_data) {
+                    // Augmentation meta nodes part to be checked
+                    auto output_meta_data = augmented_meta_data->clone(!_augmentation_metanode);  // copy the data if metadata is not processed by the nodes, else create an empty instance
+                    if (meta_data_graph) {
+                        if (_is_random_bbox_crop) {
+                            meta_data_graph->update_random_bbox_meta_data(augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
+                        } else {
+                            meta_data_graph->update_meta_data(augmented_meta_data, decode_image_info);
+                        }
+                        meta_data_graph->process(augmented_meta_data, output_meta_data);
                     }
-                    _meta_data_graph->process(_augmented_meta_data, output_meta_data);
+                    _readers_output_meta_data.push_back(std::move(output_meta_data));
                 }
-            }*/
+            }
+
             _process_time.start();
             for (auto& graph : _graphs) {
                 graph->schedule();
             }
-            for (auto& graph : _graphs) {
-                graph->wait();
-            }
-            _process_time.end();
 
-            /*_bencode_time.start();
-            if (_is_box_encoder) {
-                auto bbox_encode_write_buffers = _ring_buffer.get_box_encode_write_buffers();
-#if ENABLE_HIP
-                if (_mem_type == RocalMemType::HIP) {
-                    // get bbox encoder read buffers
-                    if (_box_encoder_gpu) _box_encoder_gpu->Run(output_meta_data, (float *)bbox_encode_write_buffers.first, (int *)bbox_encode_write_buffers.second);
-                } else
-#endif
-                    _meta_data_graph->update_box_encoder_meta_data(&_anchors, output_meta_data, _criteria, _offset, _scale, _means, _stds, (float *)bbox_encode_write_buffers.first, (int *)bbox_encode_write_buffers.second);
-            }
-            _bencode_time.end();
+
+            /*
 #ifdef ROCAL_VIDEO
             // _sequence_start_framenum_vec.insert(_sequence_start_framenum_vec.begin(), _loader_module->get_sequence_start_frame_number());
             // _sequence_frame_timestamps_vec.insert(_sequence_frame_timestamps_vec.begin(), _loader_module->get_sequence_frame_timestamps());
 #endif
             */
-            _ring_buffer.set_meta_data(full_batch_image_names, output_meta_data);
+            _ring_buffer.set_meta_data(_loader_image_names, _readers_output_meta_data);
+
+            for (auto& graph : _graphs) {
+                graph->wait();
+            }
+            _process_time.end();
             _ring_buffer.push();  // Image data and metadata is now stored in output the ring_buffer, increases it's level by 1
+            _loader_image_names.clear();
+            _readers_output_meta_data.clear();
         }
     } catch (const std::exception &e) {
         ERR("Exception thrown in the process routine: " + STR(e.what()) + STR("\n"));
@@ -1177,21 +1177,27 @@ ReaderConfig MasterGraph::get_reader(Tensor *input) {
 }
 
 std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output, bool shuffle, bool loop, bool ltrb_bbox, bool is_box_encoder) {
-    if (_meta_data_reader)
-        THROW("A metadata reader has already been created")
-    if (_augmented_meta_data)
-        THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
+    // if (_meta_data_reader)
+    //     THROW("A metadata reader has already been created")
+    // if (_augmented_meta_data)
+    //     THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
 
     MetaDataConfig config(metadata_type, reader_type, json_path, std::map<std::string, std::string>(), std::string());
     auto meta_data_graph = create_meta_data_graph(config);
-    auto meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
+    auto meta_data = create_meta_data_reader(config);
+    auto meta_data_reader = meta_data.first;
     
     // Create the READER CONFIG
     auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
-    reader_cfg.set_meta_data_reader(_meta_data_reader);
+    reader_cfg.set_reader_id(_metadatareader_output_tensor_list.size());    // To be changed
+    reader_cfg.set_meta_data_reader(meta_data_reader);
     
-    _meta_data_reader->read_all(json_path);
-    if (!ltrb_bbox) _augmented_meta_data->set_xywh_bbox();
+    meta_data_reader->read_all(json_path);
+
+    // Insert Graph and output into the map
+    auto reader_id = _metadatareader_output_tensor_list.size();
+    _metadata_reader_graph_outputs_map.insert(reader_id, std::make_pair(meta_data_graph, meta_data.second));
+    if (!ltrb_bbox) meta_data.second->set_xywh_bbox();  // Set XYWH boxes in output metadata
     std::vector<size_t> dims;
     size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_NUM_ANCHORS : MAX_OBJECTS);
 

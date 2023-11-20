@@ -46,6 +46,7 @@ class ImageLoaderSharded : public LoaderModule {
     Timing timing() override;
     void set_prefetch_queue_depth(size_t prefetch_queue_depth) override;
     void shut_down() override;
+    std::shared_ptr<MetaDataReader> get_metadata_reader() override;
 
    private:
     void increment_loader_idx();
@@ -59,4 +60,5 @@ class ImageLoaderSharded : public LoaderModule {
 
     Tensor *_output_tensor, *_reader_output_tensor;
     std::shared_ptr<RandomBBoxCrop_MetaDataReader> _randombboxcrop_meta_data_reader = nullptr;
+    std::shared_ptr<MetaDataReader>_metadata_reader;
 };

@@ -71,6 +71,8 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
+using MetaDataGraphOutputePair = std::pair<std::shared_ptr<MetadataGraph>, pMetaDataBatch>;
+
 class MasterGraph {
    public:
     enum class Status { OK = 0,
@@ -178,6 +180,7 @@ class MasterGraph {
     std::vector<std::vector<size_t>> _metadata_outputs_buffer_size;
     std::map<Tensor *, ReaderConfig> _readers_map;                        //!< key: tensor, value : Parent node
     std::map<TensorList *, unsigned> _metadata_outputs_map;                        //!< key: tensor, value : Parent node
+    std::map<unsigned, MetaDataGraphOutputePair> _metadata_reader_graph_outputs_map;                        //!< key: tensor, value : Parent node
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL
@@ -219,6 +222,8 @@ class MasterGraph {
     bool _offset;                                                                 // Returns normalized offsets ((encoded_bboxes*scale - anchors*scale) - mean) / stds in EncodedBBoxes that use std and the mean and scale arguments if offset="True"
     std::vector<float> _means, _stds;                                             //_means:  [x y w h] mean values for normalization _stds: [x y w h] standard deviations for offset normalization.
     bool _augmentation_metanode = false;
+    std::vector<std::vector<std::string>> _loader_image_names;
+    std::vector<pMetaDataBatch> _readers_output_meta_data;
 #if ENABLE_HIP
     BoxEncoderGpu *_box_encoder_gpu = nullptr;
 #endif

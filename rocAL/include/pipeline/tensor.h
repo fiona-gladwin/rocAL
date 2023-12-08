@@ -380,9 +380,9 @@ class TensorList : public rocalTensorList {
             this->push_back(new_tensor);
         }
     }
-    TensorList(RocalTensorListType type) { _output_type = type; }
+    TensorList(std::string type) { _output_type = type; }
     TensorList() = default;
-    RocalTensorListType type() { return _output_type; }
+    std::string type() { return _output_type; }
     void set_output() { is_output = true; }
 
    private:
@@ -390,5 +390,5 @@ class TensorList : public rocalTensorList {
     std::vector<uint64_t> _tensor_data_size;
     std::vector<uint64_t> _tensor_roi_size;
     bool is_output = false;    // Set to true when tensorList is required as output from the pipeline
-    RocalTensorListType _output_type = RocalTensorListType::NONE;
+    std::string _output_type = "none";
 };

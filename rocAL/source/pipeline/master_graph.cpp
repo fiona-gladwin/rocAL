@@ -356,11 +356,18 @@ void MasterGraph::set_output(Tensor *output_tensor) {
 void MasterGraph::set_output(TensorList *tensor_list) {
     tensor_list->set_output(); // set_is_output to true;
     auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
-    auto metadata_id = static_cast<int>(tensor_list->type());
-    if (metadata_id != 4)
-        _metadata_outputs_buffer_size[reader_id][metadata_id] = _user_batch_size * tensor_list->at(0)->info().data_size();
-    else
+
+    int metadata_id;
+    if (tensor_list->type() == "labels") {
+        metadata_id = 0;
+    } else if (tensor_list->type() == "bbox") {
+        metadata_id = 1;
+    } else if (tensor_list->type() == "mask") {
+        metadata_id = 2;
+    } else {
         THROW("The tensorList does not have metadata")
+    }
+    _metadata_outputs_buffer_size[reader_id][metadata_id] = _user_batch_size * tensor_list->at(0)->info().data_size();
 }
 
 void MasterGraph::release() {
@@ -952,21 +959,21 @@ MasterGraph::get_output_tensors() {
 
 void MasterGraph::update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output) {
     unsigned char *meta_data_buffer = reinterpret_cast<unsigned char *>(buffer);
-    if (metadata_tensorlist->type() == RocalTensorListType::LABELS) {
+    if (metadata_tensorlist->type() == "labels") {
         auto labels = metadata_output->get_labels_batch();
         for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
             metadata_tensorlist->at(i)->set_dims({labels[i].size()});
             metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
             meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
         }
-    } else if (metadata_tensorlist->type() == RocalTensorListType::BBOX) {
+    } else if (metadata_tensorlist->type() == "bbox") {
         auto bbox_cords = metadata_output->get_bb_cords_batch();
         for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
             metadata_tensorlist->at(i)->set_dims({bbox_cords[i].size(), 4});
             metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
             meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
         }
-    } else if (metadata_tensorlist->type() == RocalTensorListType::MASK) {
+    } else if (metadata_tensorlist->type() == "mask") {
         auto mask_cords = metadata_output->get_mask_cords_batch();
         for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
             metadata_tensorlist->at(i)->set_dims({mask_cords[i].size(), 1});
@@ -1283,10 +1290,10 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     }
 
     TensorList *labels_tensor_list, *bbox_tensor_list, *mask_tensor_list;
-    labels_tensor_list = new TensorList(RocalTensorListType::LABELS);  // Can this be a shared ptr?
-    bbox_tensor_list = new TensorList(RocalTensorListType::BBOX);
+    labels_tensor_list = new TensorList("labels");  // Can this be a shared ptr?
+    bbox_tensor_list = new TensorList("bbox");
     if (metadata_type == MetaDataType::PolygonMask)
-        mask_tensor_list = new TensorList(RocalTensorListType::MASK);
+        mask_tensor_list = new TensorList("mask");
 
     for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
         auto labels_info = default_labels_info;

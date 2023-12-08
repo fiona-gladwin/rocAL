@@ -91,5 +91,5 @@ class ImageLoader : public LoaderModule {
     int _device_id;
     size_t _max_tensor_width, _max_tensor_height;
     std::vector<uint32_t> _read_buffer_size;
-    MetadataReaderOutputs _metadata_reader;
+    std::shared_ptr<MetaDataReader> _metadata_reader;
 };

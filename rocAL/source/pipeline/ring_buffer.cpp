@@ -299,6 +299,7 @@ void RingBuffer::push() {
     // pushing and popping to and from image and metadata buffer should be atomic so that their level stays the same at all times
     std::unique_lock<std::mutex> lock(_names_buff_lock);
     _meta_ring_buffer.push(_last_image_meta_data);
+    _meta_ring_buffer_vec.push(_last_image_meta_data_vec);
     increment_write_ptr();
 }
 
@@ -309,6 +310,7 @@ void RingBuffer::pop() {
     std::unique_lock<std::mutex> lock(_names_buff_lock);
     increment_read_ptr();
     _meta_ring_buffer.pop();
+    _meta_ring_buffer_vec.pop();
 }
 
 void RingBuffer::reset() {
@@ -437,19 +439,19 @@ void RingBuffer::set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data) {
 
 void RingBuffer::set_meta_data(std::vector<ImageNameBatch> names, std::vector<pMetaDataBatch> meta_data) {
 
-    for (auto &metadata : meta_data) {
-        if (metadata == nullptr)
-            _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), pMetaDataBatch()));
-        else {
-            _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), metadata));
-            if (!_box_encoder) {
-                auto actual_buffer_size = meta_data->get_buffer_size();
-                for (unsigned i = 0; i < actual_buffer_size.size(); i++) {
-                    if (actual_buffer_size[i] > _meta_data_sub_buffer_size[_write_ptr][i])
-                        rellocate_meta_data_buffer(_host_meta_data_buffers[_write_ptr][i], actual_buffer_size[i], i);
-                }
-                metadata->copy_data(_host_meta_data_buffers[_write_ptr]);
-            }
+    // TODO - Check if metadata reader outputs is same as metadata reader count initially set in the init
+    if (meta_data.size() == 0)
+        _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), empty_meta_data));
+    else {
+        _last_image_meta_data_vec = std::move(std::make_pair(std::move(names), meta_data));
+        // To be handled *********************************
+        // auto actual_buffer_size = meta_data->get_buffer_size();
+        // for (unsigned i = 0; i < actual_buffer_size.size(); i++) {
+        //     if (actual_buffer_size[i] > _meta_data_sub_buffer_size[_write_ptr][i])
+        //         rellocate_meta_data_buffer(_host_meta_data_buffers[_write_ptr][i], actual_buffer_size[i], i);
+        // }
+        for (unsigned reader_id = 0; reader_id < meta_data.size(); reader_id++) {
+            meta_data[reader_id]->copy_data(_host_meta_data_read_buffers[_write_ptr][reader_id]);
         }
     }
 }
@@ -468,4 +470,17 @@ MetaDataNamePair &RingBuffer::get_meta_data() {
     if (_level != _meta_ring_buffer.size())
         THROW("ring buffer internals error, image and metadata sizes not the same " + TOSTR(_level) + " != " + TOSTR(_meta_ring_buffer.size()))
     return _meta_ring_buffer.front();
+}
+
+MetaDataNameVecPair &RingBuffer::get_meta_data_vec() {
+    block_if_empty();
+    std::unique_lock<std::mutex> lock(_names_buff_lock);
+    if (_level != _meta_ring_buffer_vec.size())
+        THROW("ring buffer internals error, image and metadata sizes not the same " + TOSTR(_level) + " != " + TOSTR(_meta_ring_buffer.size()))
+    return _meta_ring_buffer_vec.front();
+}
+
+std::vector<std::vector<void *>> RingBuffer::get_meta_read_buffers_reader() {
+    block_if_empty();
+    return _host_meta_data_read_buffers[_read_ptr];
 }

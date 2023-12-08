@@ -71,7 +71,7 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
-using MetaDataGraphOutputePair = std::pair<std::shared_ptr<MetadataGraph>, pMetaDataBatch>;
+using MetaDataGraphOutputePair = std::pair<std::shared_ptr<MetaDataGraph>, pMetaDataBatch>;
 
 class MasterGraph {
    public:

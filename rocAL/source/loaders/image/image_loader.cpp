@@ -333,6 +333,6 @@ crop_image_info ImageLoader::get_crop_image_info() {
     return _output_cropped_img_info;
 }
 
-std::shared_ptr<MetaDataReader>ImageLoader::get_metadata_reader() {
+std::shared_ptr<MetaDataReader> ImageLoader::get_metadata_reader() {
     return _metadata_reader;
 }

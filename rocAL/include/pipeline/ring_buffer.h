@@ -36,6 +36,8 @@ THE SOFTWARE.
 #include "meta_data.h"
 
 using MetaDataNamePair = std::pair<ImageNameBatch, pMetaDataBatch>;
+using MetaDataNameVecPair = std::pair<std::vector<ImageNameBatch>, std::vector<pMetaDataBatch>>;
+
 class RingBuffer {
    public:
     explicit RingBuffer(unsigned buffer_depth);
@@ -56,9 +58,12 @@ class RingBuffer {
     std::pair<void *, void *> get_box_encode_write_buffers();
     std::pair<void *, void *> get_box_encode_read_buffers();
     MetaDataNamePair &get_meta_data();
+    MetaDataNameVecPair &get_meta_data_vec();
     std::vector<void *> get_meta_read_buffers();
     std::vector<void *> get_meta_write_buffers();
+    std::vector<std::vector<void *>> get_meta_read_buffers_reader();
     void set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
+    void set_meta_data(std::vector<ImageNameBatch> names, std::vector<pMetaDataBatch> meta_data);
     void set_reader_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
     void rellocate_meta_data_buffer(void *buffer, size_t buffer_size, unsigned buff_idx);
     void reset();
@@ -74,7 +79,9 @@ class RingBuffer {
 
    private:
     std::queue<MetaDataNamePair> _meta_ring_buffer;
+    std::queue<MetaDataNameVecPair> _meta_ring_buffer_vec;
     MetaDataNamePair _last_image_meta_data;
+    MetaDataNameVecPair _last_image_meta_data_vec;
     void increment_read_ptr();
     void increment_write_ptr();
     bool full();
@@ -104,4 +111,5 @@ class RingBuffer {
     std::mutex _names_buff_lock;
     const size_t MEM_ALIGNMENT = 256;
     bool _box_encoder = false;
+    std::vector<pMetaDataBatch> empty_meta_data;
 };

@@ -125,6 +125,7 @@ class MasterGraph {
     TensorList *labels_meta_data();
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
+    void update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output);
     ReaderConfig get_reader(Tensor *input);
     void set_loop(bool val) { _loop = val; }
     void set_output(Tensor *output_tensor);

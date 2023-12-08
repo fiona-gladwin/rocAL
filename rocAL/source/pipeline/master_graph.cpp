@@ -934,10 +934,49 @@ MasterGraph::get_output_tensors() {
         _output_tensor_list[i]->set_roi(roi_ptr[i]);
     }
 
-    // Get metadata buffers and update
-    // auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
-    // for (unsigned reader_id = 0; reader_id < )
+    if (_metadatareader_output_tensor_list.size() > 0) {    // Execute for multiple reader case
+        // Get metadata buffers and update
+        auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
+        auto meta_data_reader_output = _ring_buffer.get_meta_data_vec().second;
+        for (unsigned reader_id = 0; reader_id < _metadatareader_output_tensor_list.size(); reader_id++) {
+            auto metadata_buffer = meta_data_read_buffers[reader_id];
+            auto metadata_output_tensor_list = _metadatareader_output_tensor_list[reader_id];
+            // Size should be the same
+            for (unsigned output_idx = 0; output_idx < metadata_output_tensor_list.size(); output_idx++) {
+                update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output[reader_id]);
+            }
+        }
+    }
     return &_output_tensor_list;
+}
+
+void MasterGraph::update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output) {
+    unsigned char *meta_data_buffer = reinterpret_cast<unsigned char *>(buffer);
+    if (metadata_tensorlist->type() == RocalTensorListType::LABELS) {
+        auto labels = metadata_output->get_labels_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({labels[i].size()});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else if (metadata_tensorlist->type() == RocalTensorListType::BBOX) {
+        auto bbox_cords = metadata_output->get_bb_cords_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({bbox_cords[i].size(), 4});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else if (metadata_tensorlist->type() == RocalTensorListType::MASK) {
+        auto mask_cords = metadata_output->get_mask_cords_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({mask_cords[i].size(), 1});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else {
+        THROW("Unsupported TensorList type for metadata")
+    }
+
 }
 
 bool MasterGraph::is_out_of_data() {

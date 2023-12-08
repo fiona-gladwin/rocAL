@@ -255,10 +255,17 @@ std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, co
 template <typename T, typename M>
 std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     auto meta_node = std::make_shared<T>();
-    _meta_data_graph->_meta_nodes.push_back(meta_node);
+    if (_meta_data_graph) {
+        _meta_data_graph->_meta_nodes.push_back(meta_node);
+    } else {
+        auto loader_id = node->get_id();
+        auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
+        auto meta_data_graph = _metadata_reader_graph_outputs_map[reader_id].first;
+        meta_data_graph->_meta_nodes.push_back(meta_node);
+    }
     meta_node->_node = node;
     meta_node->_batch_size = _user_batch_size;
-    _augmentation_metanode = true;
+    _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
     return meta_node;
 }
 

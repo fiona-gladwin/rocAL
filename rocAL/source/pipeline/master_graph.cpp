@@ -1274,7 +1274,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     reader_cfg.set_meta_data_reader(meta_data_reader);
     
     meta_data_reader->read_all(json_path);
-    _meta_data_reader->set_reader_id(reader_id);
+    meta_data_reader->set_reader_id(reader_id);
 
     // Insert Graph and output into the map
     _metadata_reader_graph_outputs_map.emplace(reader_id, std::make_pair(meta_data_graph, meta_data_output));

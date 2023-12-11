@@ -1329,16 +1329,16 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     std::vector<size_t> metadata_buffer_size;
 
     metadata_output_tensor_list.emplace_back(labels_tensor_list);
-    metadata_buffer_size.push_back(0);
+    metadata_buffer_size.push_back(_user_batch_size * default_labels_info.data_size());
     _metadata_outputs_map.insert(std::make_pair(labels_tensor_list, reader_id));
 
     metadata_output_tensor_list.emplace_back(bbox_tensor_list);
-    metadata_buffer_size.push_back(0);
+    metadata_buffer_size.push_back(_user_batch_size * default_bbox_info.data_size());
     _metadata_outputs_map.insert(std::make_pair(bbox_tensor_list, reader_id));
 
     if (metadata_type == MetaDataType::PolygonMask) {
         metadata_output_tensor_list.emplace_back(mask_tensor_list);
-        metadata_buffer_size.push_back(0);
+        metadata_buffer_size.push_back(_user_batch_size * default_mask_info.data_size());
         _metadata_outputs_map.insert(std::make_pair(mask_tensor_list, reader_id));
     }
     _ring_buffer.init_metadata(RocalMemType::HOST, metadata_buffer_size);

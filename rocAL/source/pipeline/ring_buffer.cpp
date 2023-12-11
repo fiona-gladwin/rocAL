@@ -245,7 +245,10 @@ void RingBuffer::initBoxEncoderMetaData(RocalMemType mem_type, size_t encoded_bb
 void RingBuffer::init_metadata(RocalMemType mem_type, std::vector<size_t> &sub_buffer_size) {
     if (BUFF_DEPTH < 2)
         THROW("Error internal buffer size for the ring buffer should be greater than one")
-
+    if (_host_meta_data_buffers.size() > 0) {
+        std::cerr << "Metadata buffers already allocated\n";
+        return;
+    }
     // Allocating buffers
     _meta_data_sub_buffer_count = sub_buffer_size.size();
     if (mem_type == RocalMemType::OCL || mem_type == RocalMemType::HIP) {

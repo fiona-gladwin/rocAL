@@ -375,8 +375,10 @@ class TensorList : public rocalTensorList {
     void operator=(TensorList& other) {
         for (unsigned idx = 0; idx < other.size(); idx++) {
             auto* new_tensor = new Tensor(other[idx]->info());
-            if (new_tensor->create_from_handle(other[idx]->context()) != 0)
-                THROW("Cannot create the tensor from handle")
+            if (!new_tensor->info().is_metadata()) {
+                if (new_tensor->create_from_handle(other[idx]->context()) != 0)
+                    THROW("Cannot create the tensor from handle")
+            }
             this->push_back(new_tensor);
         }
     }

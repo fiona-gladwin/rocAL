@@ -55,6 +55,34 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
     _loader_module->start_loading();
 }
 
+void ImageLoaderSingleShardNode::init(Tensor *jpegs, unsigned shard_id, unsigned shard_count, unsigned cpu_num_threads, DecoderType decoder_type, ReaderConfig reader_cfg,
+                           size_t load_batch_count, RocalMemType mem_type, bool decoder_keep_orig, const char *file_prefix) {
+    if (!_loader_module)
+        THROW("ERROR: loader module is not set for ImageLoaderNode, cannot initialize")
+    if (shard_count < 1)
+        THROW("Shard count should be greater than or equal to one")
+    if (shard_id >= shard_count)
+        THROW("Shard is should be smaller than shard count")
+    _loader_module->set_output(_outputs[0]);
+    _loader_module->set_reader_output(jpegs);
+    // Set reader and decoder config accordingly for the ImageLoaderNode
+    // auto reader_cfg = ReaderConfig(storage_type, source_path, json_path, feature_key_map, shuffle, loop);
+    reader_cfg.set_shard_count(shard_count);
+    reader_cfg.set_shard_id(shard_id);
+    reader_cfg.set_cpu_num_threads(cpu_num_threads);
+    reader_cfg.set_batch_count(load_batch_count);
+    reader_cfg.set_file_prefix(file_prefix);
+    // reader_cfg.set_meta_data_reader(meta_data_reader);
+    //  sequence_length, step and stride parameters used only for SequenceReader
+    // reader_cfg.set_sequence_length(sequence_length);
+    // reader_cfg.set_frame_step(step);
+    // reader_cfg.set_frame_stride(stride);
+    _loader_module->initialize(reader_cfg, DecoderConfig(decoder_type),
+                               mem_type,
+                               _batch_size, decoder_keep_orig);
+    _loader_module->start_loading();
+}
+
 std::shared_ptr<LoaderModule> ImageLoaderSingleShardNode::get_loader_module() {
     if (!_loader_module)
         WRN("ImageLoaderSingleShardNode's loader module is null, not initialized")

@@ -45,6 +45,20 @@ extern "C" RocalTensor ROCAL_API_CALL rocalImageDecoder(
     unsigned max_width = 0, unsigned max_height = 0,
     RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG);
 
+extern "C" RocalTensor ROCAL_API_CALL rocalImageDecoderSingleShard(
+    RocalContext p_context,
+    RocalTensor p_jpegs,
+    RocalImageColor rocal_color_format,
+    unsigned shard_id,
+    unsigned shard_count,
+    bool enable_reader_output = false,
+    bool is_output = false,
+    bool shuffle = false,
+    bool loop = false,
+    RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
+    unsigned max_width = 0, unsigned max_height = 0,
+    RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG);
+
 /*! \brief Creates JPEG image reader and decoder. It allocates the resources and objects required to read and decode Jpeg images stored on the file systems. It has internal sharding capability to load/decode in parallel is user wants. If images are not Jpeg compressed they will be ignored.
  * \ingroup group_rocal_data_loaders
  * \param [in] context Rocal context

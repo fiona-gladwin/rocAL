@@ -381,6 +381,7 @@ PYBIND11_MODULE(rocal_pybind, m) {
     m.def("getTimingInfo", &rocalGetTimingInfo);
     m.def("labelReader", &rocalCreateLabelReader, py::return_value_policy::reference);
     m.def("cocoReader", &rocalCreateCOCOReader, py::return_value_policy::reference);
+    m.def("cocoReaderExperimental", &rocalCOCOReader, py::return_value_policy::reference);
     // rocal_api_meta_data.h
     m.def("randomBBoxCrop", &rocalRandomBBoxCrop);
     m.def("boxEncoder", &rocalBoxEncoder);
@@ -538,6 +539,8 @@ PYBIND11_MODULE(rocal_pybind, m) {
         return std::make_pair(labels_array, bboxes_array);
     });
     // rocal_api_data_loaders.h
+    m.def("imageDecoderExperimentalShard", &rocalImageDecoderSingleShard, "Reads file from the source given and decodes it according to the policy",
+          py::return_value_policy::reference);
     m.def("cocoImageDecoderSlice", &rocalJpegCOCOFileSourcePartial, "Reads file from the source given and decodes it according to the policy",
           py::return_value_policy::reference);
     m.def("cocoImageDecoderSliceShard", &rocalJpegCOCOFileSourcePartialSingleShard, "Reads file from the source given and decodes it according to the policy",

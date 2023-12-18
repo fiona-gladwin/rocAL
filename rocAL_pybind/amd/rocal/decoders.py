@@ -28,6 +28,31 @@ import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
 
 
+def image_decoder_experimental(input, user_feature_key_map=None, path='', file_root='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
+          output_type=types.RGB, decoder_type=types.DECODER_TJPEG, device=None,
+          decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000):
+    reader = Pipeline._current_pipeline._reader
+    if (device == "gpu"):
+        decoder_type = types.DECODER_HW_JEPG
+    else:
+        decoder_type = types.DECODER_TJPEG
+    kwargs_pybind = {
+        "p_jpegs": input,
+        "color_format": output_type,
+        "shard_id": shard_id,
+        "num_shards": num_shards,
+        "enable_reader_output":False,
+        'is_output': False,
+        "shuffle": random_shuffle,
+        "loop": False,
+        "decode_size_policy": decode_size_policy,
+        "max_width": max_decoded_width,
+        "max_height": max_decoded_height,
+        "dec_type": decoder_type}
+    decoded_image = b.imageDecoderExperimentalShard(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (decoded_image)
+
 def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
           output_type=types.RGB, decoder_type=types.DECODER_TJPEG, device=None,
           decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000):

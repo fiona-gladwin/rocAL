@@ -958,7 +958,7 @@ MasterGraph::get_output_tensors() {
         _output_tensor_list[i]->set_roi(roi_ptr[i]);
     }
 
-    if (_metadatareader_output_tensor_list.size() > 0) {    // Execute for multiple reader case
+    if (_metadatareader_output_tensor_list.size() > 0 && _loader_modules.size() > 1) {    // Execute for multiple reader case
         // Get metadata buffers and update
         auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
         auto meta_data_reader_output = _ring_buffer.get_meta_data_vec().second;
@@ -969,6 +969,15 @@ MasterGraph::get_output_tensors() {
             for (unsigned output_idx = 0; output_idx < metadata_output_tensor_list.size(); output_idx++) {
                 update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output[reader_id]);
             }
+        }
+    } else {
+        // Get metadata buffers and update
+        auto meta_data_reader_output = _ring_buffer.get_meta_data().second;
+        auto metadata_buffer = _ring_buffer.get_meta_read_buffers();
+        auto metadata_output_tensor_list = _metadatareader_output_tensor_list[0];
+        // Size should be the same
+        for (unsigned output_idx = 0; output_idx < metadata_output_tensor_list.size(); output_idx++) {
+            update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output);
         }
     }
     return &_output_tensor_list;
@@ -1224,7 +1233,7 @@ void MasterGraph::start_processing() {
         _remaining_count = std::min(_remaining_count, static_cast<int>(loader_module->remaining_count()));
     }
     if (_loader_modules.size() == 1) {
-    _output_thread = std::thread(&MasterGraph::output_routine, this);
+        _output_thread = std::thread(&MasterGraph::output_routine, this);
     } else {
         _output_thread = std::thread(&MasterGraph::output_routine_multiple_loaders, this);
     }

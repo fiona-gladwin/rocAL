@@ -165,6 +165,8 @@ def main():
         print(error)
     image_path = sys.argv[1]
     annotation_path = sys.argv[2]
+    image_path1 = "/dockerx/MIVisionX-data/rocal_data/coco/coco_10_img/val_10images_2017/"
+    annotation_path1 = "/dockerx/MIVisionX-data/rocal_data/coco/coco_10_img/annotations/instances_val2017.json"
     rocal_cpu = True if sys.argv[3] == "cpu" else False
     batch_size = int(sys.argv[4])
     num_threads = 1
@@ -177,20 +179,23 @@ def main():
         batch_size=batch_size, num_threads=num_threads, device_id=device_id, seed=random_seed, rocal_cpu=rocal_cpu)
 
     with single_reader_pipeline:
-        jpegs, labels, bbox = fn.readers.coco_experimental(path=image_path, annotations_file=annotation_path)
-        decode = fn.decoders.image_decoder_experimental(jpegs, output_type=types.RGB, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
-        res = fn.resize(decode, resize_width=224, resize_height=224,
-                        output_layout=types.NCHW, output_dtype=types.UINT8)
-        flip_coin = fn.random.coin_flip(probability=0.5)
-        cmnp = fn.crop_mirror_normalize(decode,
-                                        output_layout=types.NCHW,
-                                        output_dtype=types.FLOAT,
-                                        crop=(224, 224),
-                                        mirror=flip_coin,
-                                        mean=[0.485 * 255, 0.456 *
-                                              255, 0.406 * 255],
-                                        std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
-        single_reader_pipeline.set_outputs(cmnp, labels, bbox)
+        jpegs, labels, bbox = fn.readers.coco_experimental(path=image_path, annotations_file=annotation_path, random_shuffle=True)
+        decode = fn.decoders.image_decoder_experimental(jpegs, output_type=types.RGB, shard_id=local_rank, num_shards=world_size)
+
+        jpegs1, labels1, bbox1 = fn.readers.coco_experimental(path=image_path1, annotations_file=annotation_path1, random_shuffle=True)
+        decode1 = fn.decoders.image_decoder_experimental(jpegs1, output_type=types.RGB, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
+        # res = fn.resize(decode, resize_width=224, resize_height=224,
+        #                 output_layout=types.NCHW, output_dtype=types.UINT8)
+        # flip_coin = fn.random.coin_flip(probability=0.5)
+        # cmnp = fn.crop_mirror_normalize(decode,
+        #                                 output_layout=types.NCHW,
+        #                                 output_dtype=types.FLOAT,
+        #                                 crop=(224, 224),
+        #                                 mirror=flip_coin,
+        #                                 mean=[0.485 * 255, 0.456 *
+        #                                       255, 0.406 * 255],
+        #                                 std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
+        single_reader_pipeline.set_outputs(decode1, bbox1, decode, bbox)
 
 # There are 2 ways to get the outputs from the pipeline
 # 1. Use the iterator
@@ -208,7 +213,11 @@ def main():
         for i, img in enumerate(it[0]):
             print(img.shape)
             cnt += 1
-            draw_patches(img, cnt, device=rocal_cpu, dtype=types.FLOAT, layout=types.NCHW, bboxes=it[2][i])
+            draw_patches(img, cnt, device=rocal_cpu, dtype=types.UINT8, layout=types.NHWC, bboxes=it[1][i])
+        for i, img in enumerate(it[2]):
+            print(img.shape)
+            cnt += 1
+            draw_patches(img, cnt, device=rocal_cpu, dtype=types.UINT8, layout=types.NHWC, bboxes=it[3][i])
     imageIteratorPipeline.reset()
     print("END*********************************************************************")
 

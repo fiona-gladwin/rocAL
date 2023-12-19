@@ -69,13 +69,17 @@ rocalCopyToOutput(
 
 void
     ROCAL_API_CALL
-    rocalSetOutputs(RocalContext p_context, unsigned int num_of_outputs, std::vector<RocalTensor>& output_tensors) {
+    rocalSetOutputs(RocalContext p_context, unsigned int num_of_outputs, std::vector<RocalTensor>& output_tensors, std::vector<RocalTensorList>& output_metadata_tensorlist) {
     if (!p_context)
         THROW("Invalid rocal context passed to rocalSetOutputs")
     auto context = static_cast<Context*>(p_context);
     for (auto& it : output_tensors) {
         auto tensor = static_cast<Tensor*>(it);
         context->master_graph->set_output(tensor);
+    }
+    for (auto& it : output_metadata_tensorlist) {
+        auto tensor_list = static_cast<TensorList*>(it);
+        context->master_graph->set_output(tensor_list);
     }
 }
 

@@ -22,6 +22,7 @@ import random
 # from amd.rocal.plugin.pytorch import ROCALClassificationIterator
 
 from amd.rocal.pipeline import Pipeline
+from rocal_pybind import rocalTensor, rocalTensorList
 import torch
 import amd.rocal.fn as fn
 import amd.rocal.types as types
@@ -75,27 +76,33 @@ class ROCALCOCOIterator(object):
         if self.loader.rocal_run() != 0:
             raise StopIteration
         else:
-            self.output_tensor_list = self.loader.get_output_tensors()
+            self.output_tensor_list = self.loader.get_outputs()
 
         if self.output_list is None:
             self.output_list = []
             for i in range(len(self.output_tensor_list)):
-                self.dimensions = self.output_tensor_list[i].dimensions()
-                self.torch_dtype = self.output_tensor_list[i].dtype()
-                if self.device == "cpu":
-                    self.output = torch.empty(
-                        self.dimensions, dtype=getattr(torch, self.torch_dtype))
+                if  isinstance(self.output_tensor_list[i], rocalTensor):
+                    self.dimensions = self.output_tensor_list[i].dimensions()
+                    self.torch_dtype = self.output_tensor_list[i].dtype()
+                    if self.device == "cpu":
+                        self.output = torch.empty(
+                            self.dimensions, dtype=getattr(torch, self.torch_dtype))
+                    else:
+                        torch_gpu_device = torch.device('cuda', self.device_id)
+                        self.output = torch.empty(self.dimensions, dtype=getattr(
+                            torch, self.torch_dtype), device=torch_gpu_device)
+                    self.output_tensor_list[i].copy_data(ctypes.c_void_p(
+                        self.output.data_ptr()), self.output_memory_type)
+                    self.output_list.append(self.output)
                 else:
-                    torch_gpu_device = torch.device('cuda', self.device_id)
-                    self.output = torch.empty(self.dimensions, dtype=getattr(
-                        torch, self.torch_dtype), device=torch_gpu_device)
-                self.output_tensor_list[i].copy_data(ctypes.c_void_p(
-                    self.output.data_ptr()), self.output_memory_type)
-                self.output_list.append(self.output)
+                    self.output_list.append(self.output_tensor_list[i])
         else:
             for i in range(len(self.output_tensor_list)):
-                self.output_tensor_list[i].copy_data(ctypes.c_void_p(
-                    self.output_list[i].data_ptr()), self.output_memory_type)
+                if  isinstance(self.output_tensor_list[i], rocalTensor):
+                    self.output_tensor_list[i].copy_data(ctypes.c_void_p(
+                        self.output_list[i].data_ptr()), self.output_memory_type)
+                else:
+                    self.output_list[i] = self.output_tensor_list[i]
 
         # self.labels = self.loader.get_bounding_box_labels()
         # 1D bboxes array in a batch
@@ -110,7 +117,7 @@ class ROCALCOCOIterator(object):
             for i in range(self.bs):
                 img = self.output
                 draw_patches(img[i], self.image_id[i], self.device, self.tensor_dtype, self.tensor_format)
-        return (self.output)
+        return tuple(self.output_list)
 
     def reset(self):
         self.loader.rocal_reset_loaders()
@@ -119,29 +126,29 @@ class ROCALCOCOIterator(object):
         return self
 
 
-def draw_patches(img, idx, device, dtype, layout):
+def draw_patches(img, idx, device, dtype, layout, bboxes):
     # image is expected as a tensor, bboxes as numpy
     import cv2
     if device == "cpu":
         image = img.detach().numpy()
     else:
         image = img.cpu().numpy()
-    if dtype == types.FLOAT16:
+    if dtype != types.UINT8:
         image = (image).astype('uint8')
     if layout == types.NCHW:
         image = image.transpose([1, 2, 0])
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    # bboxes = np.reshape(bboxes, (-1, 4))
+    bboxes = np.reshape(bboxes, (-1, 4))
 
-    # for (l, t, r, b) in bboxes:
-    #     loc_ = [l, t, r, b]
-    #     color = (255, 0, 0)
-    #     thickness = 2
-    #     image = cv2.UMat(image).get()
-    #     image = cv2.rectangle(image, (int(loc_[0]), int(loc_[1])), (int(
-    #         (loc_[2])), int((loc_[3]))), color, thickness)
-    cv2.imwrite("OUTPUT_FOLDER/COCO_READER/" +
-                str(idx)+"_"+"train"+".png", image)
+    for (l, t, r, b) in bboxes:
+        loc_ = [l, t, r, b]
+        color = (255, 0, 0)
+        thickness = 2
+        image = cv2.UMat(image).get()
+        image = cv2.rectangle(image, (int(loc_[0]), int(loc_[1])), (int(
+            (loc_[2])), int((loc_[3]))), color, thickness)
+        cv2.imwrite("OUTPUT_FOLDER/COCO_READER/" +
+                    str(idx)+"_"+"train"+".png", image)
 
 
 
@@ -174,16 +181,16 @@ def main():
         decode = fn.decoders.image_decoder_experimental(jpegs, output_type=types.RGB, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
         res = fn.resize(decode, resize_width=224, resize_height=224,
                         output_layout=types.NCHW, output_dtype=types.UINT8)
-        # flip_coin = fn.random.coin_flip(probability=0.5)
-        # cmnp = fn.crop_mirror_normalize(res,
-        #                                 output_layout=types.NCHW,
-        #                                 output_dtype=types.FLOAT,
-        #                                 crop=(224, 224),
-        #                                 mirror=flip_coin,
-        #                                 mean=[0.485 * 255, 0.456 *
-        #                                       255, 0.406 * 255],
-        #                                 std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
-        single_reader_pipeline.set_outputs(res)
+        flip_coin = fn.random.coin_flip(probability=0.5)
+        cmnp = fn.crop_mirror_normalize(decode,
+                                        output_layout=types.NCHW,
+                                        output_dtype=types.FLOAT,
+                                        crop=(224, 224),
+                                        mirror=flip_coin,
+                                        mean=[0.485 * 255, 0.456 *
+                                              255, 0.406 * 255],
+                                        std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
+        single_reader_pipeline.set_outputs(cmnp, labels, bbox)
 
 # There are 2 ways to get the outputs from the pipeline
 # 1. Use the iterator
@@ -196,12 +203,12 @@ def main():
         single_reader_pipeline)
     cnt = 0
     for i, it in enumerate(imageIteratorPipeline):
-        print(it.shape)
+        print(it)
         print("************************************** i *************************************", i)
-        for img in it:
+        for i, img in enumerate(it[0]):
             print(img.shape)
             cnt += 1
-            draw_patches(img, cnt, device=rocal_cpu, dtype=types.UINT8, layout=types.NCHW)
+            draw_patches(img, cnt, device=rocal_cpu, dtype=types.FLOAT, layout=types.NCHW, bboxes=it[2][i])
     imageIteratorPipeline.reset()
     print("END*********************************************************************")
 

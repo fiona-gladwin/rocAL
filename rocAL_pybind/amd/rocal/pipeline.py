@@ -24,6 +24,7 @@
 # @brief File containing the Pipeline class containing the pybind API functions
 
 import rocal_pybind as b
+from rocal_pybind import rocalTensor, rocalTensorList
 import amd.rocal.types as types
 import numpy as np
 import cupy as cp
@@ -119,6 +120,7 @@ class Pipeline(object):
         self._current_pipeline = None
         self._reader = None
         self._define_graph_set = False
+        self._metadata_outputs = self._set_outputs_list = None
         self.set_seed(self._seed)
 
     def build(self):
@@ -165,7 +167,23 @@ class Pipeline(object):
                 return b.getOneHotEncodedLabels(self._handle, ctypes.c_void_p(array.data_ptr()), self._num_classes, 1)
 
     def set_outputs(self, *output_list):
-        b.setOutputs(self._handle, len(output_list), output_list)
+        data_list = []
+        metadata_list = []
+        outputs_list = {}
+
+        # Split the data and metadata into different lists
+        for i, output in enumerate(output_list):
+            if isinstance(output, rocalTensor):
+                data_list.append(output)
+                outputs_list["tensor_" + str(i)] = output
+            elif isinstance(output, rocalTensorList):
+                metadata_list.append(output)
+                outputs_list[output.type() + "_" + str(i)] = output
+        self._metadata_outputs = metadata_list
+        self._set_outputs_list = outputs_list
+        # print(self._set_outputs_list)
+        # print(self._metadata_outputs)
+        b.setOutputs(self._handle, len(output_list), data_list, metadata_list)
 
     def __enter__(self):
         Pipeline._current_pipeline = self
@@ -260,6 +278,28 @@ class Pipeline(object):
 
     def get_output_tensors(self):
         return b.getOutputTensors(self._handle)
+
+    def get_outputs(self):
+        # Get metadata pass to pybind
+        # convert to the numpy arrays
+        # get the output tensors from the C++ end
+        # Create a list with the list that is required, interchangeably with the metadata and the numpy arrays.
+        # return the tuple
+        outputs = []
+        data_outputs = b.getOutputTensors(self._handle)
+        metadata_outputs = b.getMetadataOutputArrays(self._metadata_outputs)
+        print("Metadata outputs : ", metadata_outputs)
+        data_idx = metadata_idx = 0
+
+        # Combine the data and metadata lists
+        for key in self._set_outputs_list:
+            if "tensor_" in key:
+                outputs.append(data_outputs[data_idx])
+                data_idx = data_idx + 1
+            else:
+                outputs.append(metadata_outputs[metadata_idx])
+                metadata_idx = metadata_idx + 1
+        return outputs
 
     def run(self):
         """

@@ -96,6 +96,58 @@ py::object wrapper_copy_to_tensor(RocalContext context, py::object p,
     return py::cast<py::none>(Py_None);
 }
 
+py::list get_metadata_outputs(std::vector<rocalTensorList *>& metadata_tensor_list) {
+    
+    py::list output_metadata_list;
+    for (size_t i = 0; i < metadata_tensor_list.size(); ++i) {
+        std::cerr << "PRINT TYPE OF TL : " << metadata_tensor_list[i]->type() << "\n";
+        if (metadata_tensor_list[i]->type() == "labels") {
+            rocalTensorList *labels = metadata_tensor_list[i];
+            // auto labels_array =  py::array(py::buffer_info(
+            //               static_cast<int *>(labels->at(0)->buffer()),
+            //               sizeof(int),
+            //               py::format_descriptor<int>::format(),
+            //               1,
+            //               {labels->size()},
+            //               {sizeof(int)}));
+            // output_metadata_list.append(labels_array);
+            py::list labels_list;
+            py::array_t<int> labels_array;
+            for (int i = 0; i < labels->size(); i++) {
+                int *labels_buffer = static_cast<int *>(labels->at(i)->buffer());
+                labels_array = py::array(py::buffer_info(
+                    static_cast<int *>(labels->at(i)->buffer()),
+                    sizeof(int),
+                    py::format_descriptor<int>::format(),
+                    1,
+                    {labels->at(i)->dims().at(0)},
+                    {sizeof(int)}));
+                labels_list.append(labels_array);
+            }
+            output_metadata_list.append(labels_list);
+        } else if (metadata_tensor_list[i]->type() == "bbox") {
+            rocalTensorList *boxes = metadata_tensor_list[i];
+            py::list boxes_list;
+            py::array_t<float> boxes_array;
+            for (int i = 0; i < boxes->size(); i++) {
+                float *box_buffer = static_cast<float *>(boxes->at(i)->buffer());
+                boxes_array = py::array(py::buffer_info(
+                    static_cast<float *>(boxes->at(i)->buffer()),
+                    sizeof(float),
+                    py::format_descriptor<float>::format(),
+                    1,
+                    {boxes->at(i)->dims().at(0) * 4},
+                    {sizeof(float)}));
+                boxes_list.append(boxes_array);
+            }
+             output_metadata_list.append(boxes_list);
+        } else if (metadata_tensor_list[i]->type() == "mask") {
+            std::cerr << "Mask DATA\n";
+        }
+    }
+    return output_metadata_list;
+}
+
 std::unordered_map<int, std::string> rocalToPybindLayout = {
     {0, "NHWC"},
     {1, "NCHW"},
@@ -253,7 +305,13 @@ PYBIND11_MODULE(rocal_pybind, m) {
             R"code(
                 Returns a tensor at given position in the list.
                 )code")
-
+        .def(
+            "type", [](rocalTensorList &output_tensor_list) {
+                return output_tensor_list.type();
+            },
+            R"code(
+                Returns the number of dims for ROI data
+                )code")
         .def(
             "at",
             [](rocalTensorList &output_tensor_list, uint idx) {
@@ -425,6 +483,7 @@ PYBIND11_MODULE(rocal_pybind, m) {
             list.append(output_tensor_list->at(i));
         return list;
     });
+    m.def("getMetadataOutputArrays", &get_metadata_outputs, "Return the metadata in py arrays");
     m.def("getBoundingBoxCount", &rocalGetBoundingBoxCount);
     m.def("getImageLabels", [](RocalContext context) {
         rocalTensorList *labels = rocalGetImageLabels(context);

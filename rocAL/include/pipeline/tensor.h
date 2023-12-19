@@ -384,7 +384,7 @@ class TensorList : public rocalTensorList {
     }
     TensorList(std::string type) { _output_type = type; }
     TensorList() = default;
-    std::string type() { return _output_type; }
+    std::string type() override { return _output_type; }
     void set_output() { is_output = true; }
 
    private:

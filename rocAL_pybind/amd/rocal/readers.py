@@ -61,7 +61,7 @@ def coco_experimental(path = '', annotations_file='', ltrb=True, masks=False, ra
     meta_data = b.cocoReaderExperimental(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     print("Metadata list in readers : ", meta_data)
-    return (meta_data[0], labels, bboxes)
+    return (meta_data[0], *meta_data[1])
 
 def coco(annotations_file='', ltrb=True, masks=False, ratio=False, avoid_class_remapping=False,
          pixelwise_masks=False, is_box_encoder=False, is_box_iou_matcher=False, aspect_ratio_grouping=False, stick_to_shard=False, pad_last_batch=False):

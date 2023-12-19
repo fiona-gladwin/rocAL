@@ -61,6 +61,7 @@ class rocalTensorList {
    public:
     virtual uint64_t size() = 0;
     virtual rocalTensor* at(size_t index) = 0;
+    virtual std::string type() = 0;
     // isDenseTensor
 };
 

@@ -1185,7 +1185,7 @@ void MasterGraph::output_routine_multiple_loaders() {
                 auto augmented_meta_data = reader_output.second.second;
                 if (augmented_meta_data) {
                     // Augmentation meta nodes part to be checked
-                    auto output_meta_data = augmented_meta_data->clone(!_augmentation_metanode);  // copy the data if metadata is not processed by the nodes, else create an empty instance
+                    auto output_meta_data = augmented_meta_data->clone(!meta_data_graph->has_meta_nodes());  // copy the data if metadata is not processed by the nodes, else create an empty instance
                     if (meta_data_graph) {
                         // if (_is_random_bbox_crop) {
                         //     meta_data_graph->update_random_bbox_meta_data(augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);

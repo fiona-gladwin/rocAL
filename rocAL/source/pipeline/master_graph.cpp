@@ -523,7 +523,6 @@ MasterGraph::timing() {
         t.copy_to_output += _convert_time.get_timing();
         t.bb_process_time += _bencode_time.get_timing();
     }
-
     return t;
 }
 
@@ -1350,9 +1349,10 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
         metadata_buffer_size.push_back(_user_batch_size * default_mask_info.data_size());
         _metadata_outputs_map.insert(std::make_pair(mask_tensor_list, reader_id));
     }
-    _ring_buffer.init_metadata(RocalMemType::HOST, metadata_buffer_size);
+    _ring_buffer.init_metadata(RocalMemType::HOST, metadata_buffer_size);   // Will be removed later
     _metadatareader_output_tensor_list.emplace_back(metadata_output_tensor_list);
-    _metadata_outputs_buffer_size.emplace_back(metadata_buffer_size);
+    std::vector<size_t> metadata_size(metadata_buffer_size.size(), 0);  // Will be removed later
+    _metadata_outputs_buffer_size.emplace_back(metadata_size);
     return std::make_tuple(jpegs_tensor, metadata_output_tensor_list);
 }
 

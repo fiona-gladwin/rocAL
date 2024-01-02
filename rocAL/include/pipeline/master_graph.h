@@ -82,6 +82,7 @@ struct MetadataInfo {
         graph = metadata_graph;
         metadata_batch = metadata;
     }
+    void enable_metadata_graph_process() { process_graph = true; }
 };
 class MasterGraph {
    public:

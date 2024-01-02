@@ -379,8 +379,10 @@ void MasterGraph::set_output(TensorList *tensor_list) {
         metadata_id = 0;
     } else if (tensor_list->type() == "bbox") {
         metadata_id = 1;
+        _metadata_reader_graph_outputs_map[reader_id].enable_metadata_graph_process();
     } else if (tensor_list->type() == "mask") {
         metadata_id = 2;
+        _metadata_reader_graph_outputs_map[reader_id].enable_metadata_graph_process();
     } else {
         THROW("The tensorList does not have metadata")
     }
@@ -1184,8 +1186,8 @@ void MasterGraph::output_routine_multiple_loaders() {
                 auto augmented_meta_data = reader_output.second.metadata_batch;
                 if (augmented_meta_data) {
                     // Augmentation meta nodes part to be checked
-                    auto output_meta_data = augmented_meta_data->clone(!meta_data_graph->has_meta_nodes());  // copy the data if metadata is not processed by the nodes, else create an empty instance
-                    if (meta_data_graph) {
+                    auto output_meta_data = augmented_meta_data->clone(!reader_output.second.process_graph);  // copy the data if metadata is not processed by the nodes, else create an empty instance
+                    if (meta_data_graph && reader_output.second.process_graph) {
                         // if (_is_random_bbox_crop) {
                         //     meta_data_graph->update_random_bbox_meta_data(augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
                         // } else {

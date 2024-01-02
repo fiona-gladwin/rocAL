@@ -73,6 +73,16 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
 
 using MetaDataGraphOutputePair = std::pair<std::shared_ptr<MetaDataGraph>, pMetaDataBatch>;
 
+struct MetadataInfo {
+    std::shared_ptr<MetaDataGraph> graph;
+    pMetaDataBatch metadata_batch;
+    bool process_graph = false;
+    MetadataInfo() = default;
+    MetadataInfo(std::shared_ptr<MetaDataGraph> &metadata_graph, pMetaDataBatch &metadata) {
+        graph = metadata_graph;
+        metadata_batch = metadata;
+    }
+};
 class MasterGraph {
    public:
     enum class Status { OK = 0,
@@ -182,7 +192,7 @@ class MasterGraph {
     std::vector<std::vector<size_t>> _metadata_outputs_buffer_size;
     std::map<Tensor *, ReaderConfig> _readers_map;                        //!< key: tensor, value : Parent node
     std::map<TensorList *, unsigned> _metadata_outputs_map;                        //!< key: tensor, value : Parent node
-    std::map<unsigned, MetaDataGraphOutputePair> _metadata_reader_graph_outputs_map;                        //!< key: tensor, value : Parent node
+    std::map<unsigned, MetadataInfo> _metadata_reader_graph_outputs_map;                        //!< key: tensor, value : Parent node
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL
@@ -260,7 +270,7 @@ std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     } else {
         auto loader_id = node->get_id();
         auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
-        auto meta_data_graph = _metadata_reader_graph_outputs_map[reader_id].first;
+        auto meta_data_graph = _metadata_reader_graph_outputs_map[reader_id].graph;
         meta_data_graph->_meta_nodes.push_back(meta_node);
     }
     meta_node->_node = node;

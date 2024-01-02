@@ -295,8 +295,8 @@ MasterGraph::build() {
     } else {
         _loader_module = _loader_modules[0];
         if (_metadata_reader_graph_outputs_map.size() == 1) {
-            _meta_data_graph = _metadata_reader_graph_outputs_map[0].first;
-            _augmented_meta_data = _metadata_reader_graph_outputs_map[0].second;
+            _meta_data_graph = _metadata_reader_graph_outputs_map[0].graph;
+            _augmented_meta_data = _metadata_reader_graph_outputs_map[0].metadata_batch;
             _meta_data_reader = _loader_module->get_metadata_reader();
             for (auto metadata_tensor_list : _metadatareader_output_tensor_list[0]) {
                 auto tensor_list = static_cast<TensorList *>(metadata_tensor_list);
@@ -1180,8 +1180,8 @@ void MasterGraph::output_routine_multiple_loaders() {
 
             update_node_parameters();
             for (auto reader_output : _metadata_reader_graph_outputs_map) {
-                auto meta_data_graph = reader_output.second.first;
-                auto augmented_meta_data = reader_output.second.second;
+                auto meta_data_graph = reader_output.second.graph;
+                auto augmented_meta_data = reader_output.second.metadata_batch;
                 if (augmented_meta_data) {
                     // Augmentation meta nodes part to be checked
                     auto output_meta_data = augmented_meta_data->clone(!meta_data_graph->has_meta_nodes());  // copy the data if metadata is not processed by the nodes, else create an empty instance
@@ -1285,7 +1285,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     meta_data_reader->set_reader_id(reader_id);
 
     // Insert Graph and output into the map
-    _metadata_reader_graph_outputs_map.emplace(reader_id, std::make_pair(meta_data_graph, meta_data_output));
+    _metadata_reader_graph_outputs_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
     if (!ltrb_bbox) meta_data.second->set_xywh_bbox();  // Set XYWH boxes in output metadata
     std::vector<size_t> dims;
     size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_NUM_ANCHORS : MAX_OBJECTS);

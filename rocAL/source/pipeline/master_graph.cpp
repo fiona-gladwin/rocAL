@@ -1190,7 +1190,7 @@ void MasterGraph::output_routine_multiple_loaders() {
                 auto augmented_meta_data = reader_output.second.metadata_batch;
                 if (augmented_meta_data) {
                     // Augmentation meta nodes part to be checked
-                    auto output_meta_data = augmented_meta_data->clone(!reader_output.second.process_graph);  // copy the data if metadata is not processed by the nodes, else create an empty instance
+                    auto output_meta_data = augmented_meta_data->clone(!meta_data_graph->has_meta_nodes());  // copy the data if metadata is not processed by the nodes, else create an empty instance
                     if (meta_data_graph && reader_output.second.process_graph) {
                         // if (_is_random_bbox_crop) {
                         //     meta_data_graph->update_random_bbox_meta_data(augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
@@ -1294,7 +1294,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     _metadata_reader_graph_outputs_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
     if (!ltrb_bbox) meta_data.second->set_xywh_bbox();  // Set XYWH boxes in output metadata
     std::vector<size_t> dims;
-    size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_NUM_ANCHORS : MAX_OBJECTS);
+    size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_SSD_ANCHORS : MAX_OBJECTS);
 
     dims = {_user_batch_size * 1000, 1};
     auto jpegs_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::UINT8);  // Create default jpegs Info

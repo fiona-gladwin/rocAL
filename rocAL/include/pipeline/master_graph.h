@@ -154,6 +154,10 @@ class MasterGraph {
     void set_sequence_reader_output() { _is_sequence_reader_output = true; }
     void set_sequence_batch_size(size_t sequence_length) { _sequence_batch_size = _user_batch_size * sequence_length; }
     std::vector<rocalTensorList *> get_bbox_encoded_buffers(size_t num_encoded_boxes);
+    void feed_external_input(const std::vector<std::string>& input_images_names, bool labels, const std::vector<unsigned char *>& input_buffer,
+                             const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels, ExternalSourceFileMode mode,
+                             RocalTensorlayout layout, bool eos);
+    void set_external_source_reader_flag() { _external_source_reader = true; }
     size_t bounding_box_batch_count(pMetaDataBatch meta_data_batch);
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
@@ -241,6 +245,8 @@ class MasterGraph {
     bool _augmentation_metanode = false;
     std::vector<std::vector<std::string>> _loader_image_names;
     std::vector<pMetaDataBatch> _readers_output_meta_data;
+    bool _external_source_eos = false;     // If last batch, _external_source_eos will true
+    bool _external_source_reader = false;  // Set to true if external source reader on
     // box IoU matcher variables
     bool _is_box_iou_matcher = false;                                             // bool variable to set the box iou matcher
     BoxIouMatcherInfo _iou_matcher_info;

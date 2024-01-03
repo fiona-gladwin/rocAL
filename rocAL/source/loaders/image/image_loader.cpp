@@ -64,6 +64,13 @@ void ImageLoader::set_gpu_device_id(int device_id) {
 
 size_t
 ImageLoader::remaining_count() {
+    if (_external_source_reader) {
+        if ((_image_loader->count() != 0) && !_external_input_eos)
+            return _batch_size;
+        else {
+            return 0;
+        }
+    }
     return _remaining_image_count;
 }
 
@@ -335,4 +342,10 @@ crop_image_info ImageLoader::get_crop_image_info() {
 
 std::shared_ptr<MetaDataReader> ImageLoader::get_metadata_reader() {
     return _metadata_reader;
+}
+
+void ImageLoader::feed_external_input(const std::vector<std::string>& input_images_names, const std::vector<unsigned char *>& input_buffer, const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels, ExternalSourceFileMode mode, bool eos) {
+    _external_source_reader = true;
+    _external_input_eos = eos;
+    _image_loader->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
 }

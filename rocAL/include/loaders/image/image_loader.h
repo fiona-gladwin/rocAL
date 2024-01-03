@@ -55,6 +55,8 @@ class ImageLoader : public LoaderModule {
     void set_prefetch_queue_depth(size_t prefetch_queue_depth) override;
     void shut_down() override;
     std::shared_ptr<MetaDataReader> get_metadata_reader() override;
+    void feed_external_input(const std::vector<std::string>& input_images_names, const std::vector<unsigned char*>& input_buffer,
+                             const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels, ExternalSourceFileMode mode, bool eos) override;
 
    private:
     bool is_out_of_data();
@@ -92,4 +94,6 @@ class ImageLoader : public LoaderModule {
     size_t _max_tensor_width, _max_tensor_height;
     std::vector<uint32_t> _read_buffer_size;
     std::shared_ptr<MetaDataReader> _metadata_reader;
+    bool _external_source_reader = false;  //!< Set to true if external source reader
+    bool _external_input_eos = false;      //!< Set to true for last batch for the sequence
 };

@@ -35,6 +35,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     if (internal_shard_count < 1)
         THROW("Shard count should be greater than or equal to one")
     _loader_module->set_output(_outputs[0]);
+    _loader_module->set_reader_output(nullptr); // To be removed when the init is removed
     // Set reader and decoder config accordingly for the ImageLoaderNode
     auto reader_cfg = ReaderConfig(storage_type, source_path, json_path, feature_key_map, shuffle, loop);
     reader_cfg.set_shard_count(internal_shard_count);

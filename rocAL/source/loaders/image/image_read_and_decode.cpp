@@ -247,6 +247,7 @@ ImageReadAndDecode::load(unsigned char *buff,
                 _compressed_buff[file_counter].reserve(fsize);
                 _actual_read_size[file_counter] = _reader->read_data(_compressed_buff[file_counter].data(), fsize);
                 _image_names[file_counter] = _reader->id();
+                _compressed_buff_ptr[file_counter] = _compressed_buff[file_counter].data();
                 _reader->close();
                 _compressed_image_size[file_counter] = fsize;
                 file_counter++;

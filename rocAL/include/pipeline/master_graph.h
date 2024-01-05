@@ -281,11 +281,11 @@ std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     auto meta_node = std::make_shared<T>();
     if (_meta_data_graph) {
         _meta_data_graph->_meta_nodes.push_back(meta_node);
-    } else {
+    } else if (!_external_source_reader) {  // Metadata Graph will not be present for external source reader
         auto loader_id = node->get_id();
         auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
         auto meta_data_graph = _metadata_reader_graph_outputs_map[reader_id].graph;
-        meta_data_graph->_meta_nodes.push_back(meta_node);
+        if (meta_data_graph) meta_data_graph->_meta_nodes.push_back(meta_node);
     }
     meta_node->_node = node;
     meta_node->_batch_size = _user_batch_size;

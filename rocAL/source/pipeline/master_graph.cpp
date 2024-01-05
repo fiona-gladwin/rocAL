@@ -294,7 +294,7 @@ MasterGraph::build() {
         create_multiple_graphs();
     } else {
         _loader_module = _loader_modules[0];
-        if (_metadata_reader_graph_outputs_map.size() == 1) {
+        if (_metadata_reader_graph_outputs_map.size() == 1 && !_external_source_reader) {   // Metadata updation not required for external source reader
             _meta_data_graph = _metadata_reader_graph_outputs_map[0].graph;
             _augmented_meta_data = _metadata_reader_graph_outputs_map[0].metadata_batch;
             _meta_data_reader = _loader_module->get_metadata_reader();
@@ -973,7 +973,7 @@ MasterGraph::get_output_tensors() {
                 update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output[reader_id]);
             }
         }
-    } else {
+    } else if (!_external_source_reader) {  // Metadata updation not done for external source reader
         // Get metadata buffers and update
         auto meta_data_reader_output = _ring_buffer.get_meta_data().second;
         auto metadata_buffer = _ring_buffer.get_meta_read_buffers();
@@ -1028,7 +1028,7 @@ void MasterGraph::output_routine() {
     INFO("Output routine started with " + TOSTR(_remaining_count) + " to load");
     try {
         while (_processing) {
-            if (_loader_module->remaining_count() < (_is_sequence_reader_output ? _sequence_batch_size : _user_batch_size)) {
+                        if (_loader_module->remaining_count() < (_is_sequence_reader_output ? _sequence_batch_size : _user_batch_size)) {
                 // If the internal process routine ,output_routine(), has finished processing all the images, and last
                 // processed images stored in the _ring_buffer will be consumed by the user when it calls the run() func
                 notify_user_thread();
@@ -1037,15 +1037,15 @@ void MasterGraph::output_routine() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;
             }
-            _rb_block_if_full_time.start();
+                        _rb_block_if_full_time.start();
             // _ring_buffer.get_write_buffers() is blocking and blocks here until user uses processed image by calling run() and frees space in the ring_buffer
             auto write_buffers = _ring_buffer.get_write_buffers();
             auto write_output_buffers = write_buffers.first;
             _rb_block_if_full_time.end();
-
+            
             // Swap handles on the input tensor, so that new tensor is loaded to be processed
             auto load_ret = _loader_module->load_next();
-            if (load_ret != LoaderModuleStatus::OK)
+                        if (load_ret != LoaderModuleStatus::OK)
                 THROW("Loader module failed to load next batch of images, status " + TOSTR(load_ret))
             if (!_processing)
                 break;
@@ -1059,14 +1059,14 @@ void MasterGraph::output_routine() {
             // meta_data lookup is done before _meta_data_graph->process() is called to have the new meta_data ready for processing
             if (_meta_data_reader)
                 _meta_data_reader->lookup(full_batch_image_names);
-
+            
             if (!_processing)
                 break;
 
             // Swap handles on the output tensor, so that new processed tensor will be written to the a new buffer
             for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
                 _internal_tensor_list[idx]->swap_handle(write_output_buffers[idx]);
-
+            
             if (!_processing)
                 break;
 
@@ -1077,7 +1077,7 @@ void MasterGraph::output_routine() {
             }
 
             update_node_parameters();
-            pMetaDataBatch output_meta_data = nullptr;
+                        pMetaDataBatch output_meta_data = nullptr;
             if (_augmented_meta_data) {
                 output_meta_data = _augmented_meta_data->clone(!_augmentation_metanode);  // copy the data if metadata is not processed by the nodes, else create an empty instance
                 if (_meta_data_graph) {
@@ -1089,10 +1089,10 @@ void MasterGraph::output_routine() {
                     _meta_data_graph->process(_augmented_meta_data, output_meta_data);
                 }
             }
-            _process_time.start();
+                        _process_time.start();
             _graph->process();
             _process_time.end();
-
+            
             auto write_roi_buffers = write_buffers.second;   // Obtain ROI buffers from ring buffer
             for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
                 _internal_tensor_list[idx]->copy_roi(write_roi_buffers[idx]);   // Copy ROI from internal tensor's buffer to ring buffer
@@ -1116,8 +1116,8 @@ void MasterGraph::output_routine() {
             _sequence_start_framenum_vec.insert(_sequence_start_framenum_vec.begin(), _loader_module->get_sequence_start_frame_number());
             _sequence_frame_timestamps_vec.insert(_sequence_frame_timestamps_vec.begin(), _loader_module->get_sequence_frame_timestamps());
 #endif
-            _ring_buffer.set_meta_data(full_batch_image_names, output_meta_data);
-            _ring_buffer.push();  // Image data and metadata is now stored in output the ring_buffer, increases it's level by 1
+                        _ring_buffer.set_meta_data(full_batch_image_names, output_meta_data);
+                        _ring_buffer.push();  // Image data and metadata is now stored in output the ring_buffer, increases it's level by 1
         }
     } catch (const std::exception &e) {
         ERR("Exception thrown in the process routine: " + STR(e.what()) + STR("\n"));
@@ -1984,7 +1984,7 @@ MasterGraph::get_bbox_encoded_buffers(size_t num_encoded_boxes) {
 void MasterGraph::feed_external_input(const std::vector<std::string>& input_images_names, bool is_labels, const std::vector<unsigned char *>& input_buffer,
                                       const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels,
                                       ExternalSourceFileMode mode, RocalTensorlayout layout, bool eos) {
-    _external_source_eos = eos;
+        _external_source_eos = eos;
     _loader_module->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
 
     if (is_labels) {

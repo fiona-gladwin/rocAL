@@ -32,6 +32,7 @@ from amd.rocal import reductions
 import amd.rocal.types as types
 import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
+from amd.rocal.external_source import ExternalSource
 
 
 def blend(*inputs, ratio=None, device=None, output_layout=types.NHWC, output_dtype=types.UINT8):
@@ -1067,4 +1068,6 @@ def external_source(*inputs, source, device=None, color_format=types.RGB, random
                      "max_width": max_width, "max_height": max_height, "dec_type": types.DECODER_TJPEG, "external_source_mode": mode}
     external_source_operator = b.externalFileSource(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    reader_id = b.getCurrentReaderID(Pipeline._current_pipeline._handle)
+    external_source_object = ExternalSource(source, mode, max_width, max_height, reader_id)
     return (external_source_operator, [])  # Labels is Empty

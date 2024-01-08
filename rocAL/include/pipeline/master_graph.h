@@ -156,9 +156,10 @@ class MasterGraph {
     std::vector<rocalTensorList *> get_bbox_encoded_buffers(size_t num_encoded_boxes);
     void feed_external_input(const std::vector<std::string>& input_images_names, bool labels, const std::vector<unsigned char *>& input_buffer,
                              const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels, ExternalSourceFileMode mode,
-                             RocalTensorlayout layout, bool eos);
+                             RocalTensorlayout layout, bool eos, unsigned loader_id);
     void set_external_source_reader_flag() { _external_source_reader = true; }
     size_t bounding_box_batch_count(pMetaDataBatch meta_data_batch);
+    unsigned get_current_loader_id() { return _current_loader_id; }
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif
@@ -250,6 +251,7 @@ class MasterGraph {
     // box IoU matcher variables
     bool _is_box_iou_matcher = false;                                             // bool variable to set the box iou matcher
     BoxIouMatcherInfo _iou_matcher_info;
+    unsigned _current_loader_id = 0;
 #if ENABLE_HIP
     BoxEncoderGpu *_box_encoder_gpu = nullptr;
 #endif
@@ -309,6 +311,7 @@ inline std::shared_ptr<ImageLoaderNode> MasterGraph::add_node(const std::vector<
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -329,6 +332,7 @@ inline std::shared_ptr<ImageLoaderSingleShardNode> MasterGraph::add_node(const s
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -350,6 +354,7 @@ inline std::shared_ptr<FusedJpegCropNode> MasterGraph::add_node(const std::vecto
     loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -371,6 +376,7 @@ inline std::shared_ptr<FusedJpegCropSingleShardNode> MasterGraph::add_node(const
     loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -394,6 +400,7 @@ inline std::shared_ptr<Cifar10LoaderNode> MasterGraph::add_node(const std::vecto
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -417,6 +424,7 @@ inline std::shared_ptr<VideoLoaderNode> MasterGraph::add_node(const std::vector<
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -437,6 +445,7 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
+    _current_loader_id = _loader_modules.size() - 1;
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));

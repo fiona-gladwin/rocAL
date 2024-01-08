@@ -129,4 +129,5 @@ extern "C" const char* ROCAL_API_CALL rocalGetErrorMessage(RocalContext rocal_co
  */
 extern "C" TimingInfo ROCAL_API_CALL rocalGetTimingInfo(RocalContext rocal_context);
 
+extern "C" unsigned ROCAL_API_CALL rocalGetCurrentLoaderID(RocalContext p_context);
 #endif  // MIVISIONX_ROCAL_API_INFO_H

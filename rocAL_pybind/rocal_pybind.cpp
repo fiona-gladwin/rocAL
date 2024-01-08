@@ -153,7 +153,7 @@ py::object wrapperRocalExternalSourceFeedInput(
     py::array &labels, py::list arrays,
     std::vector<ROIxywh> roi_xywh,
     unsigned int max_width, unsigned int max_height, int channels,
-    RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos) {
+    RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos, unsigned loader_id) {
     std::vector<unsigned char *> uchar_arrays;
     if (input_images_names.size() == 0) {  // Used for mode 1 and mode 2 for passing decoded buffers
         size_t numArrays = py::len(arrays);
@@ -167,7 +167,7 @@ py::object wrapperRocalExternalSourceFeedInput(
     if (labels.is_none()) {
         enable_labels = false;
     }
-    int status = rocalExternalSourceFeedInput(context, input_images_names, enable_labels, uchar_arrays, roi_xywh, max_width, max_height, channels, mode, layout, eos);
+    int status = rocalExternalSourceFeedInput(context, input_images_names, enable_labels, uchar_arrays, roi_xywh, max_width, max_height, channels, mode, layout, eos, loader_id);
 
     // Update labels in the tensorList
     if (enable_labels) {
@@ -485,6 +485,7 @@ PYBIND11_MODULE(rocal_pybind, m) {
     m.def("labelReader", &rocalCreateLabelReader, py::return_value_policy::reference);
     m.def("cocoReader", &rocalCreateCOCOReader, py::return_value_policy::reference);
     m.def("cocoReaderExperimental", &rocalCOCOReader, py::return_value_policy::reference);
+    m.def("getCurrentReaderID", &rocalGetCurrentLoaderID, py::return_value_policy::reference);
     // rocal_api_meta_data.h
     m.def("randomBBoxCrop", &rocalRandomBBoxCrop);
     m.def("boxEncoder", &rocalBoxEncoder);

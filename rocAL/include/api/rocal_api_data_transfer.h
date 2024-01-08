@@ -102,6 +102,6 @@ extern "C" RocalStatus ROCAL_API_CALL rocalExternalSourceFeedInput(RocalContext 
                                                                    bool is_labels, const std::vector<unsigned char *>& input_buffer,
                                                                    const std::vector<ROIxywh>& roi_xywh,
                                                                    unsigned int max_width, unsigned int max_height, int channels,
-                                                                   RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos);
+                                                                   RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos, unsigned loader_id);
 
 #endif  // MIVISIONX_ROCAL_API_DATA_TRANSFER_H

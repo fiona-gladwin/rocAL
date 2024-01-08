@@ -163,3 +163,17 @@ size_t ROCAL_API_CALL rocalIsEmpty(RocalContext p_context) {
     }
     return ret;
 }
+
+unsigned ROCAL_API_CALL rocalGetCurrentLoaderID(RocalContext p_context) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalIsEmpty")
+    auto context = static_cast<Context *>(p_context);
+    size_t ret = 0;
+    try {
+        ret = context->master_graph->get_current_loader_id();
+    } catch (const std::exception &e) {
+        context->capture_error(e.what());
+        ERR(e.what());
+    }
+    return ret;
+}

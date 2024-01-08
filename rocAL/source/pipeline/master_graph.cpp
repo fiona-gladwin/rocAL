@@ -1151,14 +1151,14 @@ void MasterGraph::output_routine_multiple_loaders() {
             // Swap handles on the input tensor, so that new tensor is loaded to be processed
             for (auto loader_module : _loader_modules) {
                 auto load_ret = loader_module->load_next();
-                if (load_ret != LoaderModuleStatus::OK)
+                                if (load_ret != LoaderModuleStatus::OK)
                     THROW("Loader module failed to load next batch of images, status " + TOSTR(load_ret))                
 
                 if (!_processing)
                     break;
-                auto meta_data_reader = loader_module->get_metadata_reader();
+                                auto meta_data_reader = loader_module->get_metadata_reader();
                 auto full_batch_image_names = loader_module->get_id(); // Temp change
-                decode_image_readers_info[meta_data_reader->get_reader_id()] = loader_module->get_decode_image_info();
+                if (meta_data_reader) decode_image_readers_info[meta_data_reader->get_reader_id()] = loader_module->get_decode_image_info();
                 auto crop_image_info = loader_module->get_crop_image_info();   // Temp change
 
                 if (full_batch_image_names.size() != _user_batch_size)
@@ -1169,7 +1169,7 @@ void MasterGraph::output_routine_multiple_loaders() {
                 if (meta_data_reader)
                     meta_data_reader->lookup(full_batch_image_names);
                 _loader_image_names.push_back(full_batch_image_names);
-            }
+                            }
             if (!_processing)
                 break;
 
@@ -1983,9 +1983,16 @@ MasterGraph::get_bbox_encoded_buffers(size_t num_encoded_boxes) {
 
 void MasterGraph::feed_external_input(const std::vector<std::string>& input_images_names, bool is_labels, const std::vector<unsigned char *>& input_buffer,
                                       const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, int channels,
-                                      ExternalSourceFileMode mode, RocalTensorlayout layout, bool eos) {
-        _external_source_eos = eos;
-    _loader_module->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
+                                      ExternalSourceFileMode mode, RocalTensorlayout layout, bool eos, unsigned loader_id) {
+    _external_source_eos = eos;
+    if (loader_id > _current_loader_id)
+        THROW("Invalid loader ID")
+    
+    if (_loader_module) {
+        _loader_module->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
+    } else if (_loader_modules.size() > 0) {
+        _loader_modules[loader_id]->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
+    }
 
     if (is_labels) {
         if (_labels_tensor_list.size() == 0) {  // Labels tensor list is initialized only once for the pipeline

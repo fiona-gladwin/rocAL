@@ -36,7 +36,7 @@ import rocal_pybind as b
 from random import shuffle
 
 data_dir = "/dockerx/MIVisionX-data/rocal_data/coco/coco_10_img/val_10images_2017/"
-
+data_dir2 = "/dockerx/MIVisionX-data/rocal_data/coco/coco_10_img/train_10images_2017/"
 class ROCALCustomIterator(object):
     """
     COCO ROCAL iterator for pyTorch.
@@ -73,7 +73,7 @@ class ROCALCustomIterator(object):
         # Image sizes of a batch
         # self.img_size = np.zeros((self.bs * 2), dtype="int32")
         self.output_memory_type = self.loader._output_memory_type
-        if self.loader._is_external_source_operator:
+        if self.loader._is_external_source_operator:        ## How to handle for multiple readers case
             self.eos = False
             self.index = 0
             self.num_batches = self.loader._external_source.n // self.batch_size if self.loader._external_source.n % self.batch_size == 0 else (
@@ -88,42 +88,44 @@ class ROCALCustomIterator(object):
             if (self.index + 1) == self.num_batches:
                 self.eos = True
             if (self.index + 1) <= self.num_batches:
-                data_loader_source = next(self.loader._external_source)
-                # Extract all data from the source
-                images_list = data_loader_source[0] if (self.loader._external_source_mode == types.EXTSOURCE_FNAME) else []
-                input_buffer = data_loader_source[0] if (self.loader._external_source_mode != types.EXTSOURCE_FNAME) else []
-                labels_data = data_loader_source[1] if (len(data_loader_source) > 1) else None
-                roi_height = data_loader_source[2] if (len(data_loader_source) > 2) else []
-                roi_width = data_loader_source[3] if (len(data_loader_source) > 3) else []
-                ROIxywh_list = []
-                for i in range(self.batch_size):
-                    ROIxywh = b.ROIxywh()
-                    ROIxywh.x =  0
-                    ROIxywh.y =  0
-                    ROIxywh.w = roi_width[i] if len(roi_width) > 0 else 0
-                    ROIxywh.h = roi_height[i] if len(roi_height) > 0 else 0
-                    ROIxywh_list.append(ROIxywh)
-                if (len(data_loader_source) == 6 and self.loader._external_source_mode == types.EXTSOURCE_RAW_UNCOMPRESSED):
-                    decoded_height = data_loader_source[4]
-                    decoded_width = data_loader_source[5]
-                else:
-                    decoded_height = self.loader._external_source_user_given_height
-                    decoded_width = self.loader._external_source_user_given_width
+                for external_source in self.loader._external_source_readers_list:
+                    data_loader_source = next(external_source.source())
+                    # Extract all data from the source
+                    images_list = data_loader_source[0] if (external_source.mode() == types.EXTSOURCE_FNAME) else []
+                    input_buffer = data_loader_source[0] if (external_source.mode() != types.EXTSOURCE_FNAME) else []
+                    labels_data = data_loader_source[1] if (len(data_loader_source) > 1) else None
+                    roi_height = data_loader_source[2] if (len(data_loader_source) > 2) else []
+                    roi_width = data_loader_source[3] if (len(data_loader_source) > 3) else []
+                    ROIxywh_list = []
+                    for i in range(self.batch_size):
+                        ROIxywh = b.ROIxywh()
+                        ROIxywh.x =  0
+                        ROIxywh.y =  0
+                        ROIxywh.w = roi_width[i] if len(roi_width) > 0 else 0
+                        ROIxywh.h = roi_height[i] if len(roi_height) > 0 else 0
+                        ROIxywh_list.append(ROIxywh)
+                    if (len(data_loader_source) == 6 and external_source.mode() == types.EXTSOURCE_RAW_UNCOMPRESSED):
+                        decoded_height = data_loader_source[4]
+                        decoded_width = data_loader_source[5]
+                    else:
+                        decoded_width, decoded_height = external_source.dims()
 
-                kwargs_pybind = {
-                    "handle": self.loader._handle,
-                    "source_input_images": images_list,
-                    "labels": labels_data,
-                    "input_batch_buffer": input_buffer,
-                    "roi_xywh": ROIxywh_list,
-                    "decoded_width": decoded_width,
-                    "decoded_height": decoded_height,
-                    "channels": 3,
-                    "external_source_mode": self.loader._external_source_mode,
-                    "rocal_tensor_layout": types.NCHW,
-                    "eos": self.eos}
-                print("ARGUMENTS : ", kwargs_pybind)
-                b.externalSourceFeedInput(*(kwargs_pybind.values()))
+                    kwargs_pybind = {
+                        "handle": self.loader._handle,
+                        "source_input_images": images_list,
+                        "labels": labels_data,
+                        "input_batch_buffer": input_buffer,
+                        "roi_xywh": ROIxywh_list,
+                        "decoded_width": decoded_width,
+                        "decoded_height": decoded_height,
+                        "channels": 3,
+                        "external_source_mode": external_source.mode(),
+                        "rocal_tensor_layout": types.NCHW,
+                        "eos": self.eos,
+                        "loader_id":external_source.id()}
+                    print("ARGUMENTS : ", kwargs_pybind)
+                    b.externalSourceFeedInput(*(kwargs_pybind.values()))
+
             self.index = self.index + 1
         if self.loader.rocal_run() != 0:
             raise StopIteration
@@ -210,7 +212,7 @@ class ExternalInputIteratorMode0(object):
 # Define the Data Source for all image samples
 class ExternalInputIteratorMode1(object):
     def __init__(self, batch_size):
-        self.images_dir = data_dir
+        self.images_dir = data_dir2
         self.batch_size = batch_size
         self.files = []
         import os
@@ -281,7 +283,8 @@ def main():
     world_size = 1
 
 # Mode 1
-    eii_1 = ExternalInputIteratorMode0(batch_size)
+    eii_1 = ExternalInputIteratorMode1(batch_size)
+    eii_0 = ExternalInputIteratorMode0(batch_size)
 
     # Create the pipeline
     external_source_pipeline_mode1 = Pipeline(batch_size=batch_size, num_threads=1, device_id=0, prefetch_queue_depth=4,
@@ -289,10 +292,16 @@ def main():
 
     with external_source_pipeline_mode1:
         jpegs, _ = fn.external_source(
-            source=eii_1, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000)
+            source=eii_1, mode=types.EXTSOURCE_RAW_COMPRESSED, max_width=2000, max_height=2000)
         output = fn.resize(jpegs, resize_width=200, resize_height=200,
                            output_layout=types.NCHW, output_dtype=types.UINT8)
-        external_source_pipeline_mode1.set_outputs(output)
+
+        jpegs2, _ = fn.external_source(
+            source=eii_0, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000)
+        output2 = fn.resize(jpegs2, resize_width=300, resize_height=300,
+                           output_layout=types.NCHW, output_dtype=types.UINT8)
+        
+        external_source_pipeline_mode1.set_outputs(output, output2)
 
     # build the external_source_pipeline_mode1
     external_source_pipeline_mode1.build()
@@ -311,6 +320,9 @@ def main():
         for img in output_list[0]:
             cnt = cnt + 1
             image_dump(img, cnt, device=device, mode=1)
+        for img in output_list[1]:
+            cnt = cnt + 1
+            image_dump(img, cnt, device=device, mode=0)
     ##################### MODE 1 #########################
     print("END*********************************************************************")
 

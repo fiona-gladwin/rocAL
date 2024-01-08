@@ -34,10 +34,12 @@ class ExternalSource(object):
         self._is_external_source_operator = True
         self._user_given_width = None
         self._user_given_height = None
+        self._reader_id = None
 
     def __init__(self, source, mode, width, height, reader_id):
         self._source = source
-        self._is_external_source_operator = mode
+        self._mode = mode
+        self._is_external_source_operator = True
         self._user_given_width = width
         self._user_given_height = height
         self._reader_id = reader_id
@@ -45,8 +47,14 @@ class ExternalSource(object):
     def source(self):
         return self._source
 
-    def external_source_mode(self):
+    def mode(self):
         return self._mode
+    
+    def dims(self):
+        return (self._user_given_width, self._user_given_height)
+
+    def id(self):
+        return self._reader_id
 
 
 

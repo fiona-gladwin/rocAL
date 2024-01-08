@@ -1070,4 +1070,5 @@ def external_source(*inputs, source, device=None, color_format=types.RGB, random
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     reader_id = b.getCurrentReaderID(Pipeline._current_pipeline._handle)
     external_source_object = ExternalSource(source, mode, max_width, max_height, reader_id)
+    Pipeline._current_pipeline._external_source_readers_list.append(external_source_object)
     return (external_source_operator, [])  # Labels is Empty

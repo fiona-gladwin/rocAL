@@ -125,6 +125,7 @@ class Pipeline(object):
         self._is_external_source_operator = False
         self._external_source = None
         self._external_source_mode = None
+        self._external_source_readers_list = []
 
     def build(self):
         """!Build the pipeline using rocalVerify call

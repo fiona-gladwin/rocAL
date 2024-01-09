@@ -90,41 +90,7 @@ class ROCALCustomIterator(object):
             if (self.index + 1) <= self.num_batches:
                 for external_source in self.loader._external_source_readers_list:
                     data_loader_source = next(external_source.source())
-                    # Extract all data from the source
-                    images_list = data_loader_source[0] if (external_source.mode() == types.EXTSOURCE_FNAME) else []
-                    input_buffer = data_loader_source[0] if (external_source.mode() != types.EXTSOURCE_FNAME) else []
-                    labels_data = data_loader_source[1] if (len(data_loader_source) > 1) else None
-                    roi_height = data_loader_source[2] if (len(data_loader_source) > 2) else []
-                    roi_width = data_loader_source[3] if (len(data_loader_source) > 3) else []
-                    ROIxywh_list = []
-                    for i in range(self.batch_size):
-                        ROIxywh = b.ROIxywh()
-                        ROIxywh.x =  0
-                        ROIxywh.y =  0
-                        ROIxywh.w = roi_width[i] if len(roi_width) > 0 else 0
-                        ROIxywh.h = roi_height[i] if len(roi_height) > 0 else 0
-                        ROIxywh_list.append(ROIxywh)
-                    if (len(data_loader_source) == 6 and external_source.mode() == types.EXTSOURCE_RAW_UNCOMPRESSED):
-                        decoded_height = data_loader_source[4]
-                        decoded_width = data_loader_source[5]
-                    else:
-                        decoded_width, decoded_height = external_source.dims()
-
-                    kwargs_pybind = {
-                        "handle": self.loader._handle,
-                        "source_input_images": images_list,
-                        "labels": labels_data,
-                        "input_batch_buffer": input_buffer,
-                        "roi_xywh": ROIxywh_list,
-                        "decoded_width": decoded_width,
-                        "decoded_height": decoded_height,
-                        "channels": 3,
-                        "external_source_mode": external_source.mode(),
-                        "rocal_tensor_layout": types.NCHW,
-                        "eos": self.eos,
-                        "loader_id":external_source.id()}
-                    print("ARGUMENTS : ", kwargs_pybind)
-                    b.externalSourceFeedInput(*(kwargs_pybind.values()))
+                    external_source.feed_input(data_loader_source, self.loader._handle, self.batch_size, self.eos)
 
             self.index = self.index + 1
         if self.loader.rocal_run() != 0:

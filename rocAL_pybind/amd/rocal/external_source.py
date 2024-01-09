@@ -25,7 +25,6 @@
 
 import amd.rocal.types as types
 import rocal_pybind as b
-from amd.rocal.pipeline import Pipeline
 
 class ExternalSource(object):
     def __init__(self):
@@ -55,6 +54,44 @@ class ExternalSource(object):
 
     def id(self):
         return self._reader_id
+
+    def feed_input(self, source_data, handle, batch_size, eos):
+        # Extract all data from the source
+        images_list = source_data[0] if (self._mode == types.EXTSOURCE_FNAME) else []
+        input_buffer = source_data[0] if (self._mode != types.EXTSOURCE_FNAME) else []
+        labels_data = source_data[1] if (len(source_data) > 1) else None
+        roi_height = source_data[2] if (len(source_data) > 2) else []
+        roi_width = source_data[3] if (len(source_data) > 3) else []
+        ROIxywh_list = []
+        for i in range(batch_size):
+            ROIxywh = b.ROIxywh()
+            ROIxywh.x =  0
+            ROIxywh.y =  0
+            ROIxywh.w = roi_width[i] if len(roi_width) > 0 else 0
+            ROIxywh.h = roi_height[i] if len(roi_height) > 0 else 0
+            ROIxywh_list.append(ROIxywh)
+        if (len(source_data) == 6 and self._mode == types.EXTSOURCE_RAW_UNCOMPRESSED):
+            decoded_height = source_data[4]
+            decoded_width = source_data[5]
+        else:
+            decoded_width, decoded_height = self._user_given_width, self._user_given_height
+
+        kwargs_pybind = {
+            "handle": handle,
+            "source_input_images": images_list,
+            "labels": labels_data,
+            "input_batch_buffer": input_buffer,
+            "roi_xywh": ROIxywh_list,
+            "decoded_width": decoded_width,
+            "decoded_height": decoded_height,
+            "channels": 3,
+            "external_source_mode": self._mode,
+            "rocal_tensor_layout": types.NCHW,
+            "eos": eos,
+            "loader_id":self._reader_id}
+        print("ARGUMENTS : ", kwargs_pybind)
+        b.externalSourceFeedInput(*(kwargs_pybind.values()))
+
 
 
 

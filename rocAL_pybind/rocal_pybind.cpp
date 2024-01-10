@@ -153,7 +153,7 @@ py::object wrapperRocalExternalSourceFeedInput(
     py::array &labels, py::list arrays,
     std::vector<ROIxywh> roi_xywh,
     unsigned int max_width, unsigned int max_height, int channels,
-    RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos, unsigned loader_id) {
+    RocalExternalSourceMode mode, RocalTensorLayout layout, bool eos, unsigned loader_id, py::object labels_tensorlist) {
     std::vector<unsigned char *> uchar_arrays;
     if (input_images_names.size() == 0) {  // Used for mode 1 and mode 2 for passing decoded buffers
         size_t numArrays = py::len(arrays);
@@ -163,15 +163,12 @@ py::object wrapperRocalExternalSourceFeedInput(
             uchar_arrays.push_back(static_cast<unsigned char *>(buf.ptr));
         }
     }
-    bool enable_labels = true;
-    if (labels.is_none()) {
-        enable_labels = false;
-}
+    bool enable_labels = false;
     int status = rocalExternalSourceFeedInput(context, input_images_names, enable_labels, uchar_arrays, roi_xywh, max_width, max_height, channels, mode, layout, eos, loader_id);
 
-    // Update labels in the tensorList
-    if (enable_labels) {
-        auto labels_tensor_list = rocalGetImageLabels(context);
+    if (!labels.is_none() && !labels_tensorlist.is_none()) {
+        enable_labels = true;
+        auto labels_tensor_list = labels_tensorlist.cast<rocalTensorList *>();
         int *labels_ptr = static_cast<int *>(labels.request().ptr);
         for (size_t i = 0; i < labels.size(); i++) {
             labels_tensor_list->at(i)->set_mem_handle(labels_ptr);

@@ -1057,7 +1057,7 @@ def box_iou_matcher(*inputs, anchors, high_threshold=0.5,
     return (box_iou_matcher, [])
 
 
-def external_source(*inputs, source, device=None, color_format=types.RGB, random_shuffle=False, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000):
+def external_source(*inputs, source, device=None, color_format=types.RGB, random_shuffle=False, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000, num_of_outputs=1):
     # pybind call arguments
     Pipeline._current_pipeline._is_external_source_operator = True
     Pipeline._current_pipeline._external_source = iter(source)
@@ -1069,6 +1069,17 @@ def external_source(*inputs, source, device=None, color_format=types.RGB, random
     external_source_operator = b.externalFileSource(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     reader_id = b.getCurrentReaderID(Pipeline._current_pipeline._handle)
-    external_source_object = ExternalSource(source, mode, max_width, max_height, reader_id)
+    external_source_object = ExternalSource(source, mode, max_width, max_height, num_of_outputs, reader_id)
+
+    if num_of_outputs > 1:
+        # create a labels tensor list and return it
+        external_source_labels = b.createLabelsTensorList(Pipeline._current_pipeline._handle)
+        external_source_object.set_labels(external_source_labels)
+    
+    # external_source_object -> set labels output
     Pipeline._current_pipeline._external_source_readers_list.append(external_source_object)
-    return (external_source_operator, [])  # Labels is Empty
+
+    if num_of_outputs == 1:
+        return (external_source_operator, [])  # Labels is Empty
+    elif num_of_outputs > 1:
+        return (external_source_operator, external_source_labels)  # Labels is returned

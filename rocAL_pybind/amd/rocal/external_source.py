@@ -34,14 +34,18 @@ class ExternalSource(object):
         self._user_given_width = None
         self._user_given_height = None
         self._reader_id = None
+        self._num_of_outputs = 1
+        self._labels = None
 
-    def __init__(self, source, mode, width, height, reader_id):
+    def __init__(self, source, mode, width, height, num_of_outputs, reader_id):
         self._source = source
         self._mode = mode
         self._is_external_source_operator = True
         self._user_given_width = width
         self._user_given_height = height
         self._reader_id = reader_id
+        self._num_of_outputs = num_of_outputs
+        self._labels = None
 
     def source(self):
         return self._source
@@ -54,6 +58,10 @@ class ExternalSource(object):
 
     def id(self):
         return self._reader_id
+
+    def set_labels(self, labels):
+        assert self._num_of_outputs > 1, "Number of outputs is only 1, Labels cannot be set"
+        self._labels = labels
 
     def feed_input(self, source_data, handle, batch_size, eos):
         # Extract all data from the source
@@ -88,7 +96,8 @@ class ExternalSource(object):
             "external_source_mode": self._mode,
             "rocal_tensor_layout": types.NCHW,
             "eos": eos,
-            "loader_id":self._reader_id}
+            "loader_id":self._reader_id,
+            "labels_tensorlist":self._labels}
         print("ARGUMENTS : ", kwargs_pybind)
         b.externalSourceFeedInput(*(kwargs_pybind.values()))
 

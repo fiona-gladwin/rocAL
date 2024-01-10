@@ -257,17 +257,17 @@ def main():
                                               seed=1, rocal_cpu=rocal_cpu, tensor_layout=types.NCHW)
 
     with external_source_pipeline_mode1:
-        jpegs, _ = fn.external_source(
-            source=eii_1, mode=types.EXTSOURCE_RAW_COMPRESSED, max_width=2000, max_height=2000)
+        jpegs, labels = fn.external_source(
+            source=eii_1, mode=types.EXTSOURCE_RAW_COMPRESSED, max_width=2000, max_height=2000, num_of_outputs=2)
         output = fn.resize(jpegs, resize_width=200, resize_height=200,
                            output_layout=types.NCHW, output_dtype=types.UINT8)
 
-        jpegs2, _ = fn.external_source(
-            source=eii_0, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000)
+        jpegs2, labels2 = fn.external_source(
+            source=eii_0, mode=types.EXTSOURCE_FNAME, max_width=2000, max_height=2000, num_of_outputs=2)
         output2 = fn.resize(jpegs2, resize_width=300, resize_height=300,
                            output_layout=types.NCHW, output_dtype=types.UINT8)
         
-        external_source_pipeline_mode1.set_outputs(output, output2)
+        external_source_pipeline_mode1.set_outputs(output, labels, output2, labels2)
 
     # build the external_source_pipeline_mode1
     external_source_pipeline_mode1.build()
@@ -286,9 +286,9 @@ def main():
         for img in output_list[0]:
             cnt = cnt + 1
             image_dump(img, cnt, device=device, mode=1)
-        for img in output_list[1]:
-            cnt = cnt + 1
-            image_dump(img, cnt, device=device, mode=0)
+        # for img in output_list[1]:
+        #     cnt = cnt + 1
+        #     image_dump(img, cnt, device=device, mode=0)
     ##################### MODE 1 #########################
     print("END*********************************************************************")
 

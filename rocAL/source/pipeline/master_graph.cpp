@@ -372,7 +372,8 @@ void MasterGraph::set_output(Tensor *output_tensor) {
 
 void MasterGraph::set_output(TensorList *tensor_list) {
     tensor_list->set_output(); // set_is_output to true;
-        auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
+    if (_external_source_reader) return;
+    auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
 
     int metadata_id;
     if (tensor_list->type() == "labels") {

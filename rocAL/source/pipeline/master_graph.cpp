@@ -372,7 +372,7 @@ void MasterGraph::set_output(Tensor *output_tensor) {
 
 void MasterGraph::set_output(TensorList *tensor_list) {
     tensor_list->set_output(); // set_is_output to true;
-    auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
+        auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
 
     int metadata_id;
     if (tensor_list->type() == "labels") {
@@ -1994,17 +1994,30 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
         _loader_modules[loader_id]->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
     }
 
-    if (is_labels) {
-        if (_labels_tensor_list.size() == 0) {  // Labels tensor list is initialized only once for the pipeline
-            std::vector<size_t> dims = {1};
-            auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);
-            default_labels_info.set_metadata();
+    // if (is_labels) {
+    //     if (_labels_tensor_list.size() == 0) {  // Labels tensor list is initialized only once for the pipeline
+    //         std::vector<size_t> dims = {1};
+    //         auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);
+    //         default_labels_info.set_metadata();
 
-            for (unsigned i = 0; i < _user_batch_size; i++) {
-                auto info = default_labels_info;
-                _labels_tensor_list.push_back(new Tensor(info));
-            }
-            _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);
-        }
+    //         for (unsigned i = 0; i < _user_batch_size; i++) {
+    //             auto info = default_labels_info;
+    //             _labels_tensor_list.push_back(new Tensor(info));
+    //         }
+    //         _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);
+    //     }
+    // }
+}
+
+TensorList * MasterGraph::create_labels_tensorlist() {
+    std::vector<size_t> dims = {1};
+    auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
+    default_labels_info.set_metadata();
+    TensorList *labels_tensor_list = new TensorList("labels");
+    for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
+        auto labels_info = default_labels_info;
+        labels_tensor_list->push_back(new Tensor(labels_info));
     }
+    _metadata_output_tensor_list.emplace_back(labels_tensor_list);
+    return labels_tensor_list;
 }

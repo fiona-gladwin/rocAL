@@ -323,4 +323,11 @@ extern "C" void ROCAL_API_CALL rocalBoxIouMatcher(RocalContext p_context, std::v
  */
 extern "C" RocalTensorList ROCAL_API_CALL rocalGetMatchedIndices(RocalContext p_context);
 
+/*! \brief API to create and return the Tensorlist for Labels
+ * \ingroup group_rocal_meta_data
+ * \param [in] p_context rocAL context
+ * \return RocalTensorList of labels
+ */
+extern "C" RocalTensorList ROCAL_API_CALL rocalCreateLabelsTensorList(RocalContext p_context);
+
 #endif  // MIVISIONX_ROCAL_API_META_DATA_H

@@ -166,7 +166,7 @@ py::object wrapperRocalExternalSourceFeedInput(
     bool enable_labels = true;
     if (labels.is_none()) {
         enable_labels = false;
-    }
+}
     int status = rocalExternalSourceFeedInput(context, input_images_names, enable_labels, uchar_arrays, roi_xywh, max_width, max_height, channels, mode, layout, eos, loader_id);
 
     // Update labels in the tensorList
@@ -644,6 +644,8 @@ PYBIND11_MODULE(rocal_pybind, m) {
             {sizeof(float)}));
         return std::make_pair(labels_array, bboxes_array);
     });
+    m.def("createLabelsTensorList", &rocalCreateLabelsTensorList,
+          py::return_value_policy::reference);
     // rocal_api_data_loaders.h
     m.def("imageDecoderExperimentalShard", &rocalImageDecoderSingleShard, "Reads file from the source given and decodes it according to the policy",
           py::return_value_policy::reference);

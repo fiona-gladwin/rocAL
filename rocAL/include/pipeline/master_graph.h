@@ -139,6 +139,7 @@ class MasterGraph {
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
     TensorList *matched_index_meta_data();
+    TensorList *create_labels_tensorlist();
     void update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output);
     ReaderConfig get_reader(Tensor *input);
     void set_loop(bool val) { _loop = val; }

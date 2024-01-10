@@ -525,3 +525,12 @@ RocalTensorList
     auto context = static_cast<Context*>(p_context);
     return context->master_graph->matched_index_meta_data();
 }
+
+RocalTensorList
+    ROCAL_API_CALL
+    rocalCreateLabelsTensorList(RocalContext p_context) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalCreateLabelsTensorList")
+    auto context = static_cast<Context*>(p_context);
+    return context->master_graph->create_labels_tensorlist();
+}

@@ -40,19 +40,18 @@ def trainPipeline(data_path, batch_size, num_classes, one_hot, local_rank, world
                 rocal_cpu=rocal_cpu, tensor_dtype = types.FLOAT16 if fp16 else types.FLOAT, tensor_layout=types.NCHW, 
                 prefetch_queue_depth = 7)
     with pipe:
-        jpegs, labels = fn.readers.file(file_root=data_path, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
+        jpegs, labels = fn.readers.file(file_root=data_path)
         rocal_device = 'cpu' if rocal_cpu else 'gpu'
         # decode = fn.decoders.image(jpegs, output_type=types.RGB,file_root=data_path, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
         decode = fn.decoders.image_slice(jpegs, output_type=types.RGB,
                                                     file_root=data_path, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
-        res = fn.resize(decode, resize_x=224, resize_y=224)
+        res = fn.resize(decode, resize_width=224, resize_height=224)
         flip_coin = fn.random.coin_flip(probability=0.5)
         cmnp = fn.crop_mirror_normalize(res, device="gpu",
                                             output_dtype=types.FLOAT,
                                             output_layout=types.NCHW,
                                             crop=(crop, crop),
                                             mirror=flip_coin,
-                                            image_type=types.RGB,
                                             mean=[0.485 * 255,0.456 * 255,0.406 * 255],
                                             std=[0.229 * 255,0.224 * 255,0.225 * 255])
         if(one_hot):
@@ -96,7 +95,7 @@ class PrefetchedWrapper_rocal(object):
         for next_input, next_target in loader:
             with torch.cuda.stream(stream):
                 if rocal_cpu:
-                    next_input = next_input.cuda(non_blocking=True)
+                    next_input = next_input[0].cuda(non_blocking=True)
                     next_target = next_target.cuda(non_blocking=True)
 
             if not first:
@@ -161,7 +160,7 @@ def main():
     crop_size = 224
     device="cpu" if rocal_cpu else "cuda"
     image_path = sys.argv[1]
-    dataset_train = image_path + '/train'
+    dataset_train = image_path + '/train_10images_2017/'
     num_classes = len(next(os.walk(image_path))[1])
     print("num_classes:: ",num_classes)
     

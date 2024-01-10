@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 
 
 seed = 1549361629
-image_dir = "../../../../data/images/AMD-tinyDataSet/"
+image_dir = "../../../data/images/AMD-tinyDataSet/"
 batch_size = 4
 gpu_id = 0
 
@@ -126,9 +126,9 @@ def main():
       img_folder = sys.argv[2]
 
     pipe = inference_pipeline(batch_size=bs, num_threads=1, device_id=gpu_id, rocal_cpu=True, tensor_layout=types.NHWC,
-                                  reverse_channels=True, multiplier = [0.00392,0.00392,0.00392], device=rocal_device, path=img_folder)
+                                  reverse_channels=True, mean = [0.00392,0.00392,0.00392], device=rocal_device, path=img_folder)
     pipe1 = inference_pipeline_cmn(batch_size=bs, num_threads=1, device_id=gpu_id, rocal_cpu=True, tensor_layout=types.NHWC,
-                                  reverse_channels=True, multiplier = [0.00392,0.00392,0.00392], device=rocal_device, path=img_folder)
+                                  reverse_channels=True, mean = [0.00392,0.00392,0.00392], device=rocal_device, path=img_folder)
     show_pipeline_outputs(pipe, pipe1, device=rocal_device)
 
 if __name__ == '__main__':

@@ -184,7 +184,10 @@ def main():
             sys.stdout.write("\r Mini-batch " + str(i))
             # print("Images",inputs)
             # print("Labels",labels)
-            inputs, labels = inputs[0].to(device), labels.to(device)
+            if rocal_cpu:
+                inputs, labels = inputs.to(device), labels.to(device)
+            else:
+                inputs, labels = inputs[0].to(device), labels.to(device)            
             optimizer.zero_grad()
 
             outputs = net(inputs)

@@ -85,6 +85,7 @@ void ImageLoaderSharded::initialize(ReaderConfig reader_cfg, DecoderConfig decod
     // Initialize loader modules
     for (size_t idx = 0; idx < _shard_count; idx++) {
         _loaders[idx]->set_output(_output_tensor);
+        _loaders[idx]->set_reader_output(_reader_output_tensor);
         _loaders[idx]->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
         _loaders[idx]->set_gpu_device_id(idx);
         reader_cfg.set_shard_count(_shard_count);
@@ -122,6 +123,10 @@ void ImageLoaderSharded::shut_down() {
 
 void ImageLoaderSharded::set_output(Tensor* output_tensor) {
     _output_tensor = output_tensor;
+}
+
+void ImageLoaderSharded::set_reader_output(Tensor* output_tensor) {
+    _reader_output_tensor = output_tensor;
 }
 
 void ImageLoaderSharded::set_random_bbox_data_reader(std::shared_ptr<RandomBBoxCrop_MetaDataReader> randombboxcrop_meta_data_reader) {

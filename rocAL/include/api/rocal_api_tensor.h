@@ -67,5 +67,6 @@ class rocalTensorList {
 typedef rocalTensor* RocalTensor;
 typedef rocalTensorList* RocalTensorList;
 typedef std::vector<rocalTensorList*> RocalMetaData;
+typedef std::tuple<rocalTensor*, std::vector<rocalTensorList*>> RocalReaderMetaData;
 
 #endif  // MIVISIONX_ROCAL_API_TENSOR_H

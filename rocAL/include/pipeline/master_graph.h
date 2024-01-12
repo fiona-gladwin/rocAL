@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include <map>
 #include <memory>
 #include <variant>
-#include <limits>
 
 #include "graph.h"
 #include "meta_data_graph.h"

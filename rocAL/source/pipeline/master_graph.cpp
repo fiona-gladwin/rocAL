@@ -1208,8 +1208,18 @@ void MasterGraph::output_routine_multiple_loaders() {
                 graph->schedule();
             }
 
-
-            /*
+            /*_bencode_time.start();
+            if (_is_box_encoder) {
+                auto bbox_encode_write_buffers = _ring_buffer.get_box_encode_write_buffers();
+#if ENABLE_HIP
+                if (_mem_type == RocalMemType::HIP) {
+                    // get bbox encoder read buffers
+                    if (_box_encoder_gpu) _box_encoder_gpu->Run(output_meta_data, (float *)bbox_encode_write_buffers.first, (int *)bbox_encode_write_buffers.second);
+                } else
+#endif
+                    _meta_data_graph->update_box_encoder_meta_data(&_anchors, output_meta_data, _criteria, _offset, _scale, _means, _stds, (float *)bbox_encode_write_buffers.first, (int *)bbox_encode_write_buffers.second);
+            }
+            _bencode_time.end();
 #ifdef ROCAL_VIDEO
             // _sequence_start_framenum_vec.insert(_sequence_start_framenum_vec.begin(), _loader_module->get_sequence_start_frame_number());
             // _sequence_frame_timestamps_vec.insert(_sequence_frame_timestamps_vec.begin(), _loader_module->get_sequence_frame_timestamps());
@@ -1221,6 +1231,11 @@ void MasterGraph::output_routine_multiple_loaders() {
                 graph->wait();
             }
             _process_time.end();
+
+            auto write_roi_buffers = write_buffers.second;   // Obtain ROI buffers from ring buffer
+            for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
+                _internal_tensor_list[idx]->copy_roi(write_roi_buffers[idx]);   // Copy ROI from internal tensor's buffer to ring buffer
+
             _ring_buffer.push();  // Image data and metadata is now stored in output the ring_buffer, increases it's level by 1
             _loader_image_names.clear();
             _readers_output_meta_data.clear();

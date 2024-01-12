@@ -175,37 +175,33 @@ def main():
     local_rank = 0
     world_size = 1
 
-    single_reader_pipeline = Pipeline(batch_size=batch_size, num_threads=num_threads, 
+    # Pipeline Creation
+    multiple_reader_pipeline = Pipeline(batch_size=batch_size, num_threads=num_threads, 
                                       device_id=device_id, seed=random_seed, rocal_cpu=rocal_cpu)
 
-    with single_reader_pipeline:
+    with multiple_reader_pipeline:
+        # 1st Reader decoder combination
         jpegs, labels, bbox = fn.readers.coco_experimental(path=image_path, annotations_file=annotation_path, random_shuffle=True)
         decode = fn.decoders.image_decoder_experimental(jpegs, output_type=types.RGB, shard_id=local_rank, num_shards=world_size)
-
+        # 2nd Reader decoder combination
         jpegs1, labels1, bbox1 = fn.readers.coco_experimental(path=image_path1, annotations_file=annotation_path1, random_shuffle=True)
         decode1 = fn.decoders.image_decoder_experimental(jpegs1, output_type=types.RGB, shard_id=local_rank, num_shards=world_size)
+        # Apply resize to 1st decoders output
         res = fn.resize(decode, resize_width=224, resize_height=224,
                         output_layout=types.NHWC, output_dtype=types.UINT8)
+        # Apply CMNP to 2nd deocders output
         flip_coin = fn.random.coin_flip(probability=0.5)
-        cmnp = fn.crop_mirror_normalize(decode1,
-                                        output_layout=types.NHWC,
-                                        output_dtype=types.FLOAT,
-                                        crop=(224, 224),
-                                        mirror=flip_coin,
-                                        mean=[0.485 * 255, 0.456 *
-                                              255, 0.406 * 255],
+        cmnp = fn.crop_mirror_normalize(decode1, output_layout=types.NHWC, output_dtype=types.FLOAT,
+                                        crop=(224, 224), mirror=flip_coin,
+                                        mean=[0.485 * 255, 0.456 * 255, 0.406 * 255],
                                         std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
-        single_reader_pipeline.set_outputs(cmnp, bbox1, res, bbox)
+        # Return the image outputs along with Bbox
+        multiple_reader_pipeline.set_outputs(cmnp, bbox1, res, bbox)
 
-# There are 2 ways to get the outputs from the pipeline
-# 1. Use the iterator
-# 2. use the pipe.run()
-
-# Method 1
     # use the iterator
-    single_reader_pipeline.build()
-    imageIteratorPipeline = ROCALCOCOIterator(
-        single_reader_pipeline)
+    multiple_reader_pipeline.build()
+    imageIteratorPipeline = ROCALCOCOIterator(multiple_reader_pipeline)
+    
     cnt = 0
     for i, it in enumerate(imageIteratorPipeline):
         print(it)

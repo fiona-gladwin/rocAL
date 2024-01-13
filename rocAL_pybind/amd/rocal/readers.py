@@ -189,7 +189,7 @@ def caffe2(path, bbox=False, stick_to_shard=False, pad_last_batch=False):
 def video(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
           random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
           enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
-          file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False):
+          file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, filenames=[], labels=[]):
     """!Creates a VideoDecoder node for loading video sequences.
 
         @param sequence_length                      Number of frames in video sequence.
@@ -220,7 +220,9 @@ def video(sequence_length, file_list_frame_num=False, file_root="", image_type=t
         "sequence_length": sequence_length,
         "frame_step": step,
         "frame_stride": stride,
-        "file_list_frame_num": file_list_frame_num}  # VideoMetaDataReader
+        "file_list_frame_num": file_list_frame_num,
+        "filenames": filenames,
+        "labels": labels}  # VideoMetaDataReader
     b.videoMetaDataReader(Pipeline._current_pipeline._handle,
                           *(kwargs_pybind_reader.values()))
 

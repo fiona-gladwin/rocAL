@@ -61,16 +61,10 @@ void ImageLoaderNode::init(Tensor *jpegs, unsigned internal_shard_count, unsigne
     _loader_module->set_output(_outputs[0]);
     _loader_module->set_reader_output(jpegs);
     // Set reader and decoder config accordingly for the ImageLoaderNode
-    // auto reader_cfg = ReaderConfig(storage_type, source_path, json_path, feature_key_map, shuffle, loop);
     reader_cfg.set_shard_count(internal_shard_count);
     reader_cfg.set_cpu_num_threads(cpu_num_threads);
     reader_cfg.set_batch_count(load_batch_count);
     reader_cfg.set_file_prefix(file_prefix);
-    // reader_cfg.set_meta_data_reader(meta_data_reader);
-    //  sequence_length, step and stride parameters used only for SequenceReader
-    // reader_cfg.set_sequence_length(sequence_length);
-    // reader_cfg.set_frame_step(step);
-    // reader_cfg.set_frame_stride(stride);
     _loader_module->initialize(reader_cfg, DecoderConfig(decoder_type),
                                mem_type,
                                _batch_size, decoder_keep_orig);

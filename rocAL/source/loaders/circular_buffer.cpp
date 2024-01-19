@@ -186,21 +186,10 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
 
     _dev_sub_buffer_ptrs.resize(_buff_depth);
     _host_sub_buffer_ptrs.resize(_buff_depth);
-
-    if (read_output_mem_size != 0) {
-        for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {
-            _dev_sub_buffer_ptrs[bufIdx].resize(2);     // To store both compressed and decoded buffers
-            _host_sub_buffer_ptrs[bufIdx].resize(2);    // To store both compressed and decoded buffers
-            _dev_sub_buffer_ptrs[bufIdx][0] = _dev_sub_buffer_ptrs[bufIdx][1] = nullptr;
-        }
-        _sub_buff_depth = 2;
-    } else {
-        for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {
-            _dev_sub_buffer_ptrs[bufIdx].resize(1);     // To store only decoded buffers
-            _host_sub_buffer_ptrs[bufIdx].resize(1);    // To store both decoded buffers
-            _dev_sub_buffer_ptrs[bufIdx][0] = nullptr;
-        }
-        _sub_buff_depth = 1;
+    _sub_buff_depth = (read_output_mem_size != 0) ? 2 : 1;
+    for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {
+        _dev_sub_buffer_ptrs[bufIdx].resize(_sub_buff_depth, nullptr);     // To store both compressed and decoded buffers
+        _host_sub_buffer_ptrs[bufIdx].resize(_sub_buff_depth, nullptr);    // To store both compressed and decoded buffers
     }
 
         // Allocating buffers

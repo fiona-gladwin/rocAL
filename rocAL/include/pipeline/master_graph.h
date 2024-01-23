@@ -119,7 +119,8 @@ class MasterGraph {
     Tensor *create_loader_output_tensor(const TensorInfo &info);
     void create_reader_output(Tensor *reader_tensor);
     std::tuple<rocalTensor *, std::vector<rocalTensorList *>> create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output = false, bool shuffle = false, bool loop = false, bool ltrb_bbox = true, bool is_box_encoder = false);
-    
+    std::tuple<rocalTensor *, std::vector<rocalTensorList *>> create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop);
+
     std::vector<rocalTensorList *> create_label_reader(const char *source_path, MetaDataReaderType reader_type);
     std::vector<rocalTensorList *> create_video_label_reader(const char *source_path, MetaDataReaderType reader_type, unsigned sequence_length, unsigned frame_step, unsigned frame_stride, bool file_list_frame_num = true);
     std::vector<rocalTensorList *> create_coco_meta_data_reader(const char *source_path, bool is_output, MetaDataReaderType reader_type, MetaDataType label_type, bool ltrb_bbox = true, bool is_box_encoder = false,

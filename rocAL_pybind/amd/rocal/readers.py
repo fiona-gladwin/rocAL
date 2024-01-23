@@ -118,6 +118,26 @@ def file(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_l
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (label_reader_meta_data, labels)
 
+def file_experimental(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_last_batch=False, random_shuffle=False):
+    """!Creates a labelReader node for reading files from folder or file_list.
+
+        @param file_root         Path to a directory that contains the data files.
+        @param file_filters      A list of glob strings to filter the list of files in the sub-directories of the file_root.
+        @param file_list         Path to a text file that contains one whitespace-separated filename label pair per line. The filenames are relative to the location of that file or to file_root, if specified.
+        @param stick_to_shard    Determines whether the reader should stick to a data shard instead of going through the entire dataset.
+        @param pad_last_batch    If set to True, pads the shard by repeating the last sample.
+
+        @return    label reader meta data and labels.
+    """
+    Pipeline._current_pipeline._reader = "labelReader"
+    # Output
+    labels = []
+    kwargs_pybind = {"source_path": file_root,
+                     "shuffle":random_shuffle,
+                     "loop":False}
+    label_reader_meta_data = b.labelReaderExperimental(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (label_reader_meta_data[0], *label_reader_meta_data[1])
 
 def tfrecord(path, user_feature_key_map, features, reader_type=0, stick_to_shard=False, pad_last_batch=False):
     """!Creates a TFRecordReader node for loading TFRecord dataset.

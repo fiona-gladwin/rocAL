@@ -93,6 +93,16 @@ RocalReaderMetaData
     return context->master_graph->create_coco_reader(source_path, json_path, MetaDataReaderType::COCO_META_DATA_READER, MetaDataType::BoundingBox, is_output, shuffle, loop, ltrb);
 }
 
+RocalReaderMetaData
+    ROCAL_API_CALL
+    rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalCreateLabelReader")
+    auto context = static_cast<Context*>(p_context);
+
+    return context->master_graph->create_label_metadata_reader(source_path, MetaDataReaderType::FOLDER_BASED_LABEL_READER, shuffle, loop);
+}
+
 RocalMetaData
     ROCAL_API_CALL
     rocalCreateCOCOReaderKeyPoints(RocalContext p_context, const char* source_path, bool is_output, float sigma, unsigned pose_output_width, unsigned pose_output_height) {

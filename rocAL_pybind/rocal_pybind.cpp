@@ -438,6 +438,7 @@ PYBIND11_MODULE(rocal_pybind, m) {
     m.def("rocalGetErrorMessage", &rocalGetErrorMessage);
     m.def("getTimingInfo", &rocalGetTimingInfo);
     m.def("labelReader", &rocalCreateLabelReader, py::return_value_policy::reference);
+    m.def("labelReaderExperimental", &rocalLabelReader, py::return_value_policy::reference);
     m.def("cocoReader", &rocalCreateCOCOReader, py::return_value_policy::reference);
     m.def("cocoReaderExperimental", &rocalCOCOReader, py::return_value_policy::reference);
     // rocal_api_meta_data.h

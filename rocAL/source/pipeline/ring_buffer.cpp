@@ -266,7 +266,7 @@ void RingBuffer::init_metadata(RocalMemType mem_type, std::vector<size_t> &sub_b
     }
 }
 
-void RingBuffer::init_metadata_output(RocalMemType mem_type, std::vector<std::vector<size_t>> &sub_buffer_size) {
+void RingBuffer::init_metadata(RocalMemType mem_type, std::vector<std::vector<size_t>> &sub_buffer_size) {
     if (BUFF_DEPTH < 2)
         THROW("Error internal buffer size for the ring buffer should be greater than one")
 

@@ -288,7 +288,7 @@ MasterGraph::build() {
 #else
     _ring_buffer.init(_mem_type, nullptr, _internal_tensor_list.data_size(), _internal_tensor_list.roi_size());
 #endif
-    _ring_buffer.init_metadata_output(RocalMemType::HOST, _metadata_outputs_buffer_size);
+    _ring_buffer.init_metadata(RocalMemType::HOST, _metadata_outputs_buffer_size);
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
     if (_loader_modules.size() > 1) {
         create_multiple_graphs();

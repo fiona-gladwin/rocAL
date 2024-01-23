@@ -71,7 +71,6 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
-using MetaDataGraphOutputePair = std::pair<std::shared_ptr<MetaDataGraph>, pMetaDataBatch>;
 
 struct MetadataInfo {
     std::shared_ptr<MetaDataGraph> graph;
@@ -274,6 +273,7 @@ std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     auto meta_node = std::make_shared<T>();
     if (_meta_data_graph) {
         _meta_data_graph->_meta_nodes.push_back(meta_node);
+        _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
     } else {
         auto loader_id = node->get_id();
         auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
@@ -282,7 +282,6 @@ std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     }
     meta_node->_node = node;
     meta_node->_batch_size = _user_batch_size;
-    _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
     return meta_node;
 }
 

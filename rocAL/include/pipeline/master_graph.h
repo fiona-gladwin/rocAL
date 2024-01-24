@@ -279,7 +279,10 @@ std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
         auto loader_id = node->get_id();
         auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
         auto meta_data_graph = _metadata_reader_graph_outputs_map[reader_id].graph;
-        meta_data_graph->_meta_nodes.push_back(meta_node);
+        if (meta_data_graph) {
+            meta_data_graph->_meta_nodes.push_back(meta_node);
+            _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
+        }
     }
     meta_node->_node = node;
     meta_node->_batch_size = _user_batch_size;

@@ -600,6 +600,8 @@ PYBIND11_MODULE(rocal_pybind, m) {
         return std::make_pair(labels_array, bboxes_array);
     });
     // rocal_api_data_loaders.h
+    m.def("imageDecoderSliceExperimentalShard", &rocalImageDecoderSliceSingleShard, "Reads file from the source given and decodes it according to the policy",
+          py::return_value_policy::reference);
     m.def("imageDecoderExperimentalShard", &rocalImageDecoderSingleShard, "Reads file from the source given and decodes it according to the policy",
           py::return_value_policy::reference);
     m.def("cocoImageDecoderSlice", &rocalJpegCOCOFileSourcePartial, "Reads file from the source given and decodes it according to the policy",

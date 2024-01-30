@@ -296,9 +296,9 @@ MasterGraph::build() {
         _loader_module = _loader_modules[0];
         _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size); // Will be removed later and replaced by line below
         // _ring_buffer.init_metadata(RocalMemType::HOST, _metadata_outputs_buffer_size[0]);
-        if (_metadata_reader_graph_outputs_map.size() == 1) {
-            _meta_data_graph = _metadata_reader_graph_outputs_map[0].graph;
-            _augmented_meta_data = _metadata_reader_graph_outputs_map[0].metadata_batch;
+        if (_metadata_reader_info_map.size() == 1) {
+            _meta_data_graph = _metadata_reader_info_map[0].graph;
+            _augmented_meta_data = _metadata_reader_info_map[0].metadata_batch;
             _meta_data_reader = _loader_module->get_metadata_reader();
 
             // This part can be omiited while running training
@@ -383,10 +383,10 @@ void MasterGraph::set_output(TensorList *tensor_list) {
         metadata_id = 0;
     } else if (tensor_list->type() == "bbox") {
         metadata_id = 1;
-        _metadata_reader_graph_outputs_map[reader_id].enable_metadata_graph_process();
+        _metadata_reader_info_map[reader_id].enable_metadata_graph_process();
     } else if (tensor_list->type() == "mask") {
         metadata_id = 2;
-        _metadata_reader_graph_outputs_map[reader_id].enable_metadata_graph_process();
+        _metadata_reader_info_map[reader_id].enable_metadata_graph_process();
     } else {
         THROW("The tensorList does not have metadata")
     }
@@ -1189,7 +1189,7 @@ void MasterGraph::output_routine_multiple_loaders() {
             }
 
             update_node_parameters();
-            for (auto reader_output : _metadata_reader_graph_outputs_map) {
+            for (auto reader_output : _metadata_reader_info_map) {
                 auto meta_data_graph = reader_output.second.graph;
                 auto augmented_meta_data = reader_output.second.metadata_batch;
                 if (augmented_meta_data) {
@@ -1285,7 +1285,7 @@ void MasterGraph::stop_processing() {
 }
 
 ReaderConfig MasterGraph::get_reader(Tensor *input) {
-    return _readers_map.find(input)->second;
+    return _reader_tensor_map.find(input)->second;
 }
 
 std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop) {
@@ -1313,7 +1313,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     // _meta_data_reader->read_all(source_path);
 
     // Insert Graph and output into the map
-    _metadata_reader_graph_outputs_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
+    _metadata_reader_info_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
 
     std::vector<size_t> dims;
     dims = {_user_batch_size * 1000, 1};
@@ -1334,7 +1334,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     }
 
     // Set the reader config and Jpegs tensor list in a map
-    _readers_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+    _reader_tensor_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
 
     std::vector<rocalTensorList *> metadata_output_tensor_list;
     // std::vector<size_t> metadata_buffer_size;
@@ -1372,7 +1372,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     meta_data_reader->set_reader_id(reader_id);
 
     // Insert Graph and output into the map
-    _metadata_reader_graph_outputs_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
+    _metadata_reader_info_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
     if (!ltrb_bbox) meta_data.second->set_xywh_bbox();  // Set XYWH boxes in output metadata
     std::vector<size_t> dims;
     size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_SSD_ANCHORS : MAX_OBJECTS);
@@ -1419,7 +1419,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     }
 
     // Set the reader config and Jpegs tensor list in a map
-    _readers_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+    _reader_tensor_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
     std::vector<rocalTensorList *> metadata_output_tensor_list;
     std::vector<size_t> metadata_buffer_size;
 

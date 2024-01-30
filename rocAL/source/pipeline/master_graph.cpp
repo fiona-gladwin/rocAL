@@ -304,7 +304,7 @@ MasterGraph::build() {
             // This part can be omiited while running training
             for (auto metadata_tensor_list : _metadatareader_output_tensor_list[0]) {
                 auto tensor_list = static_cast<TensorList *>(metadata_tensor_list);
-                if (tensor_list->type() == "labels") {
+                if (tensor_list->type() == "labels" || tensor_list->type() == "bb_labels") {
                     _labels_tensor_list = *tensor_list;
                 } else if (tensor_list->type() == "bbox") {
                     _bbox_tensor_list = *tensor_list;
@@ -379,7 +379,7 @@ void MasterGraph::set_output(TensorList *tensor_list) {
     auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
 
     int metadata_id;
-    if (tensor_list->type() == "labels") {
+    if (tensor_list->type() == "labels" || tensor_list->type() == "bb_labels") {
         metadata_id = 0;
     } else if (tensor_list->type() == "bbox") {
         metadata_id = 1;
@@ -990,7 +990,7 @@ MasterGraph::get_output_tensors() {
 
 void MasterGraph::update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output) {
     unsigned char *meta_data_buffer = reinterpret_cast<unsigned char *>(buffer);
-    if (metadata_tensorlist->type() == "labels") {
+    if (metadata_tensorlist->type() == "labels" || metadata_tensorlist->type() == "bb_labels") {
         auto labels = metadata_output->get_labels_batch();
         for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
             metadata_tensorlist->at(i)->set_dims({labels[i].size()});
@@ -1402,7 +1402,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     }
 
     TensorList *labels_tensor_list, *bbox_tensor_list, *mask_tensor_list;
-    labels_tensor_list = new TensorList("labels");  // Can this be a shared ptr?
+    labels_tensor_list = new TensorList("bb_labels");  // Can this be a shared ptr?
     bbox_tensor_list = new TensorList("bbox");
     if (metadata_type == MetaDataType::PolygonMask)
         mask_tensor_list = new TensorList("mask");

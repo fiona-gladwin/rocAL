@@ -103,14 +103,16 @@ py::list get_metadata_outputs(std::vector<rocalTensorList *>& metadata_tensor_li
         std::cerr << "PRINT TYPE OF TL : " << metadata_tensor_list[i]->type() << "\n";
         if (metadata_tensor_list[i]->type() == "labels") {
             rocalTensorList *labels = metadata_tensor_list[i];
-            // auto labels_array =  py::array(py::buffer_info(
-            //               static_cast<int *>(labels->at(0)->buffer()),
-            //               sizeof(int),
-            //               py::format_descriptor<int>::format(),
-            //               1,
-            //               {labels->size()},
-            //               {sizeof(int)}));
-            // output_metadata_list.append(labels_array);
+            auto labels_array =  py::array(py::buffer_info(
+                          static_cast<int *>(labels->at(0)->buffer()),
+                          sizeof(int),
+                          py::format_descriptor<int>::format(),
+                          1,
+                          {labels->size()},
+                          {sizeof(int)}));
+            output_metadata_list.append(labels_array);
+        } else if (metadata_tensor_list[i]->type() == "bb_labels") {
+            rocalTensorList *labels = metadata_tensor_list[i];
             py::list labels_list;
             py::array_t<int> labels_array;
             for (int i = 0; i < labels->size(); i++) {

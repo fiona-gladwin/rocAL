@@ -253,12 +253,9 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
                     }
                 }
 
+                // Allocate HOST memory for compressed buffers
                 if (read_output_mem_size != 0) {
-                    // Allocate device memory for compressed buffers
-                    err = hipMalloc((void **)&_dev_sub_buffer_ptrs[buffIdx][1], _read_output_mem_size);
-                    if (err != hipSuccess) {
-                        THROW("hipMalloc of size " + TOSTR(_read_output_mem_size) + " failed " + TOSTR(err));
-                    }
+                    _dev_sub_buffer_ptrs[buffIdx][1] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_read_output_mem_size / MEM_ALIGNMENT + 1));
                 }
             }
         } else {
@@ -416,6 +413,11 @@ void CircularBuffer::release() {
                 } else {
 #elif ENABLE_HIP
                     if (_output_mem_type == RocalMemType::HIP) {
+                        // For compressed buffers present in HOST
+                        if (subIdx == 1) {
+                            free(_dev_sub_buffer_ptrs[buffIdx][subIdx]);
+                            continue;
+                        }
                         if (_host_sub_buffer_ptrs[buffIdx][subIdx]) {
                             hipError_t err = hipHostFree((void *)_host_sub_buffer_ptrs[buffIdx][subIdx]);
 

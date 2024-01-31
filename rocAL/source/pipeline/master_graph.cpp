@@ -1202,17 +1202,17 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_SSD_ANCHORS : MAX_OBJECTS);
 
     dims = {_user_batch_size * 1000, 1};
-    auto jpegs_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::UINT8);  // Create default jpegs Info
+    auto jpegs_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::UINT8);  // Create default jpegs Info
     jpegs_info.set_max_shape();
     auto jpegs_tensor = new Tensor(jpegs_info);
     
     dims = {max_objects};
-    auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
+    auto default_labels_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::INT32);  // Create default labels Info
     default_labels_info.set_metadata();
     _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
 
     dims = {max_objects, BBOX_COUNT};
-    auto default_bbox_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default Bbox Info
+    auto default_bbox_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::FP32);  // Create default Bbox Info
     default_bbox_info.set_metadata();
     _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
 
@@ -1220,7 +1220,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     TensorInfo default_mask_info;
     if (metadata_type == MetaDataType::PolygonMask) {
         dims = {MAX_MASK_BUFFER, 1};
-        default_mask_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::FP32);  // Create default mask Info
+        default_mask_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::FP32);  // Create default mask Info
         default_mask_info.set_metadata();
         _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
     }

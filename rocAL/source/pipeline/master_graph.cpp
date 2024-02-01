@@ -377,20 +377,11 @@ void MasterGraph::set_output(Tensor *output_tensor) {
 void MasterGraph::set_output(TensorList *tensor_list) {
     tensor_list->set_output(); // set_is_output to true;
     auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
-
-    int metadata_id;
-    if (tensor_list->type() == "labels" || tensor_list->type() == "bb_labels") {
-        metadata_id = 0;
-    } else if (tensor_list->type() == "bbox") {
-        metadata_id = 1;
+    if (tensor_list->type() == "bb_labels" || tensor_list->type() == "bbox" || tensor_list->type() == "mask") {
         _metadata_reader_info_map[reader_id].enable_metadata_graph_process();
-    } else if (tensor_list->type() == "mask") {
-        metadata_id = 2;
-        _metadata_reader_info_map[reader_id].enable_metadata_graph_process();
-    } else {
-        THROW("The tensorList does not have metadata")
     }
-    _metadata_outputs_buffer_size[reader_id][metadata_id] = _user_batch_size * tensor_list->at(0)->info().data_size();
+
+    _metadata_outputs_buffer_size[reader_id][_metadata_name_map[tensor_list->type()]] = _user_batch_size * tensor_list->at(0)->info().data_size();
 }
 
 void MasterGraph::release() {

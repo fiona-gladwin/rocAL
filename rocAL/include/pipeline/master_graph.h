@@ -198,6 +198,7 @@ class MasterGraph {
     std::map<Tensor *, ReaderConfig> _reader_tensor_map;                          //!< key: tensor, value : Reader config
     std::map<TensorList *, unsigned> _metadata_outputs_map;                       //!< key: tensorList, value : Parent reader id
     std::map<unsigned, MetadataInfo> _metadata_reader_info_map;                   //!< key: reader id, value : Parent metadata info
+    std::unordered_map<std::string, unsigned> _metadata_name_map = {{"labels", 0}, {"bb_labels", 0}, {"bbox", 1}, {"mask", 2}};
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL

@@ -28,7 +28,7 @@ from amd.rocal.pipeline import Pipeline
 import amd.rocal.types as types
 
 
-def coco_experimental(path = '', annotations_file='', ltrb=True, masks=False, ratio=False, avoid_class_remapping=False, random_shuffle=False,
+def coco_experimental(path = '', annotations_file='', ltrb=True, masks=False, ratio=False, avoid_class_remapping=False, random_shuffle=False, enable_reader_output=False,
          pixelwise_masks=False, is_box_encoder=False, is_box_iou_matcher=False, aspect_ratio_grouping=False, stick_to_shard=False, pad_last_batch=False):
     """!Creates a COCOReader node.
 
@@ -53,7 +53,7 @@ def coco_experimental(path = '', annotations_file='', ltrb=True, masks=False, ra
     kwargs_pybind = {
         "source_path": path,
         "json_path": annotations_file,
-        "is_output": True,
+        "is_output": enable_reader_output,
         "shuffle": random_shuffle,
         "loop": False,
         "mask": masks,
@@ -118,7 +118,7 @@ def file(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_l
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (label_reader_meta_data, labels)
 
-def file_experimental(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_last_batch=False, random_shuffle=False):
+def file_experimental(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_last_batch=False, random_shuffle=False, enable_reader_output=False):
     """!Creates a labelReader node for reading files from folder or file_list.
 
         @param file_root         Path to a directory that contains the data files.
@@ -134,7 +134,8 @@ def file_experimental(file_root, file_filters=None, file_list='', stick_to_shard
     labels = []
     kwargs_pybind = {"source_path": file_root,
                      "shuffle":random_shuffle,
-                     "loop":False}
+                     "loop":False,
+                     "is_output":enable_reader_output}
     label_reader_meta_data = b.labelReaderExperimental(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (label_reader_meta_data[0], *label_reader_meta_data[1])

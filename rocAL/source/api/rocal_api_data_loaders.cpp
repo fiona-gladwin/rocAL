@@ -947,7 +947,6 @@ rocalImageDecoderSliceSingleShard(
     RocalImageColor rocal_color_format,
     unsigned shard_id,
     unsigned shard_count,
-    bool enable_reader_output,
     bool is_output,
     std::vector<float>& area_factor,
     std::vector<float>& aspect_ratio,
@@ -989,7 +988,7 @@ rocalImageDecoderSliceSingleShard(
                                color_format);
         output = context->master_graph->create_loader_output_tensor(info);
         // Modify dims of Jpegs tensor
-        if (enable_reader_output) {
+        if (reader_config.is_reader_output()) {
             jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
             context->master_graph->create_reader_output(jpegs);
         } else {
@@ -1017,7 +1016,6 @@ rocalImageDecoder(
     RocalTensor p_jpegs,
     RocalImageColor rocal_color_format,
     unsigned internal_shard_count,
-    bool enable_reader_output,
     bool is_output,
     bool shuffle,
     bool loop,
@@ -1060,7 +1058,7 @@ rocalImageDecoder(
                                color_format);
         output = context->master_graph->create_loader_output_tensor(info);
         // Modify dims of Jpegs tensor
-        if (enable_reader_output) {
+        if (reader_config.is_reader_output()) {
             jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
             context->master_graph->create_reader_output(jpegs);
         } else {
@@ -1091,7 +1089,6 @@ rocalImageDecoderSingleShard(
     RocalImageColor rocal_color_format,
     unsigned shard_id,
     unsigned shard_count,
-    bool enable_reader_output,
     bool is_output,
     bool shuffle,
     bool loop,
@@ -1137,7 +1134,7 @@ rocalImageDecoderSingleShard(
                                color_format);
         output = context->master_graph->create_loader_output_tensor(info);
         // Modify dims of Jpegs tensor
-        if (enable_reader_output) {
+        if (reader_config.is_reader_output()) {
             jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
             context->master_graph->create_reader_output(jpegs);
         } else {

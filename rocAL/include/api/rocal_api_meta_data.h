@@ -40,7 +40,7 @@ THE SOFTWARE.
  */
 extern "C" RocalMetaData ROCAL_API_CALL rocalCreateLabelReader(RocalContext rocal_context, const char* source_path);
 
-extern "C" RocalReaderMetaData ROCAL_API_CALL rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop);
+extern "C" RocalReaderMetaData ROCAL_API_CALL rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop, bool is_output = false);
 /*! \brief creates video label reader
  * \ingroup group_rocal_meta_data
  * \param [in] rocal_context rocal context

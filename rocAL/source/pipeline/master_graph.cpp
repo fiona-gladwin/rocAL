@@ -1288,7 +1288,7 @@ ReaderConfig MasterGraph::get_reader(Tensor *input) {
     return _reader_tensor_map.find(input)->second;
 }
 
-std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop) {
+std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop, bool is_output) {
     // if (_meta_data_reader)
     //     THROW("A metadata reader has already been created")
     // if (_augmented_meta_data)
@@ -1306,6 +1306,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     auto reader_cfg = ReaderConfig(StorageType::FILE_SYSTEM, source_path, "", std::map<std::string, std::string>(), shuffle, loop);
     reader_cfg.set_reader_id(reader_id);    // To be changed
     reader_cfg.set_meta_data_reader(meta_data_reader);
+    reader_cfg.set_reader_output(is_output);
     
     meta_data_reader->read_all(source_path);
     meta_data_reader->set_reader_id(reader_id);
@@ -1367,6 +1368,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
     reader_cfg.set_reader_id(reader_id);    // To be changed
     reader_cfg.set_meta_data_reader(meta_data_reader);
+    reader_cfg.set_reader_output(is_output);
     
     meta_data_reader->read_all(json_path);
     meta_data_reader->set_reader_id(reader_id);

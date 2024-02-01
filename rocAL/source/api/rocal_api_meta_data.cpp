@@ -95,12 +95,12 @@ RocalReaderMetaData
 
 RocalReaderMetaData
     ROCAL_API_CALL
-    rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop) {
+    rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop, bool is_output) {
     if (!p_context)
         THROW("Invalid rocal context passed to rocalCreateLabelReader")
     auto context = static_cast<Context*>(p_context);
 
-    return context->master_graph->create_label_metadata_reader(source_path, MetaDataReaderType::FOLDER_BASED_LABEL_READER, shuffle, loop);
+    return context->master_graph->create_label_metadata_reader(source_path, MetaDataReaderType::FOLDER_BASED_LABEL_READER, shuffle, loop, is_output);
 }
 
 RocalMetaData

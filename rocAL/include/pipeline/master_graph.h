@@ -213,6 +213,8 @@ class MasterGraph {
     std::vector<pLoaderModule> _loader_modules;                                   //!< Keeps the list of loader modules used to feed the input the tensors of the graph
     TimingDBG _convert_time, _process_time, _bencode_time;
     const size_t _user_batch_size;                                                //!< Batch size provided by the user
+    unsigned _readers_count = 0;
+    unsigned _loaders_count = 0;
     vx_context _context;
     const RocalMemType _mem_type;                                                 //!< Is set according to the _affinity, if GPU, is set to CL, otherwise host
     std::shared_ptr<MetaDataReader> _meta_data_reader = nullptr;
@@ -306,7 +308,7 @@ inline std::shared_ptr<ImageLoaderNode> MasterGraph::add_node(const std::vector<
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -326,7 +328,7 @@ inline std::shared_ptr<ImageLoaderSingleShardNode> MasterGraph::add_node(const s
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -347,7 +349,7 @@ inline std::shared_ptr<FusedJpegCropNode> MasterGraph::add_node(const std::vecto
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -368,7 +370,7 @@ inline std::shared_ptr<FusedJpegCropSingleShardNode> MasterGraph::add_node(const
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -391,7 +393,7 @@ inline std::shared_ptr<Cifar10LoaderNode> MasterGraph::add_node(const std::vecto
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -414,7 +416,7 @@ inline std::shared_ptr<VideoLoaderNode> MasterGraph::add_node(const std::vector<
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -434,7 +436,7 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_modules.emplace_back(loader_module);
-    node->set_id(_loader_modules.size() - 1);
+    node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
@@ -448,7 +450,7 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
 template <>
 inline std::shared_ptr<ReaderNode> MasterGraph::add_node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
     auto node = std::make_shared<ReaderNode>(outputs[0]);
-    node->set_id(_loader_modules.size());
+    node->set_id(_loaders_count);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 

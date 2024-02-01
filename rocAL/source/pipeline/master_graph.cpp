@@ -259,7 +259,7 @@ void MasterGraph::create_single_graph() {
 
 void MasterGraph::create_multiple_graphs() {
     // Actual graph creating and calls into adding nodes to graph is deferred and is happening here to enable potential future optimizations
-    int num_of_graphs = _loader_modules.size();
+    int num_of_graphs = _loaders_count;
     for (int n = 0; n < num_of_graphs; n++) {
         _graphs.emplace_back(std::make_shared<Graph>(_context, _affinity, 0, _cpu_num_threads, _gpu_id));
     }
@@ -289,7 +289,7 @@ MasterGraph::build() {
     _ring_buffer.init(_mem_type, nullptr, _internal_tensor_list.data_size(), _internal_tensor_list.roi_size());
 #endif
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
-    if (_loader_modules.size() > 1) {
+    if (_loaders_count > 1) {
         create_multiple_graphs();
         _ring_buffer.init_metadata(RocalMemType::HOST, _metadata_outputs_buffer_size);
     } else {
@@ -954,11 +954,11 @@ MasterGraph::get_output_tensors() {
         _output_tensor_list[i]->set_roi(roi_ptr[i]);
     }
 
-    if (_metadatareader_output_tensor_list.size() > 0 && _loader_modules.size() > 1) {    // Execute for multiple reader case
+    if (_readers_count > 0 && _loaders_count > 1) {    // Execute for multiple loader case
         // Get metadata buffers and update
         auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
         auto meta_data_reader_output = _ring_buffer.get_meta_data_vec().second;
-        for (unsigned reader_id = 0; reader_id < _metadatareader_output_tensor_list.size(); reader_id++) {
+        for (unsigned reader_id = 0; reader_id < _readers_count; reader_id++) {
             auto metadata_buffer = meta_data_read_buffers[reader_id];
             auto metadata_output_tensor_list = _metadatareader_output_tensor_list[reader_id];
             // Size should be the same
@@ -1140,7 +1140,7 @@ void MasterGraph::output_routine_multiple_loaders() {
             _rb_block_if_full_time.end();
 
             // Allocate decoded image info for each reader
-            std::vector<decoded_image_info> decode_image_readers_info(_metadatareader_output_tensor_list.size());
+            std::vector<decoded_image_info> decode_image_readers_info(_readers_count);
             // Swap handles on the input tensor, so that new tensor is loaded to be processed
             for (auto loader_module : _loader_modules) {
                 auto load_ret = loader_module->load_next();
@@ -1247,7 +1247,7 @@ void MasterGraph::start_processing() {
     for (auto loader_module : _loader_modules) {
         _remaining_count = std::min(_remaining_count, static_cast<int>(loader_module->remaining_count()));
     }
-    if (_loader_modules.size() == 1) {
+    if (_loaders_count == 1) {
         _output_thread = std::thread(&MasterGraph::output_routine, this);
     } else {
         _output_thread = std::thread(&MasterGraph::output_routine_multiple_loaders, this);
@@ -1291,7 +1291,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     auto meta_data = create_meta_data_reader(config);
     auto meta_data_reader = meta_data.first;
     auto meta_data_output = meta_data.second;
-    unsigned reader_id = _metadatareader_output_tensor_list.size();
+    unsigned reader_id = _readers_count++;
 
     // Create the READER CONFIG
     auto reader_cfg = ReaderConfig(StorageType::FILE_SYSTEM, source_path, "", std::map<std::string, std::string>(), shuffle, loop);
@@ -1354,7 +1354,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     auto meta_data = create_meta_data_reader(config);
     auto meta_data_reader = meta_data.first;
     auto meta_data_output = meta_data.second;
-    unsigned reader_id = _metadatareader_output_tensor_list.size();
+    unsigned reader_id = _readers_count++;
 
     // Create the READER CONFIG
     auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);

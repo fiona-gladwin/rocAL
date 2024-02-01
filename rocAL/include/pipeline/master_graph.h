@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "node_image_loader_single_shard.h"
 #include "node_video_loader.h"
 #include "node_video_loader_single_shard.h"
+#include "node_reader.h"
 #include "ring_buffer.h"
 #include "timing_debug.h"
 #if ENABLE_HIP
@@ -434,6 +435,19 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loader_modules.size() - 1);
     _root_nodes.push_back(node);
+    for (auto &output : outputs)
+        _tensor_map.insert(std::make_pair(output, node));
+
+    return node;
+}
+
+/*
+ * Explicit specialization for ReaderNode
+ */
+template <>
+inline std::shared_ptr<ReaderNode> MasterGraph::add_node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
+    auto node = std::make_shared<ReaderNode>(outputs[0]);
+    node->set_id(_loader_modules.size());
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 

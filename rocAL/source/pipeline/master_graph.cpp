@@ -1321,6 +1321,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     auto jpegs_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::UINT8);  // Create default jpegs Info
     jpegs_info.set_max_shape();
     auto jpegs_tensor = new Tensor(jpegs_info);
+    add_node<ReaderNode>({}, {jpegs_tensor});
 
     dims = {1};
     auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
@@ -1383,6 +1384,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     auto jpegs_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::UINT8);  // Create default jpegs Info
     jpegs_info.set_max_shape();
     auto jpegs_tensor = new Tensor(jpegs_info);
+    add_node<ReaderNode>({}, {jpegs_tensor});
     
     dims = {max_objects};
     auto default_labels_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::INT32);  // Create default labels Info

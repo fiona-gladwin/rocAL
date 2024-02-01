@@ -227,6 +227,7 @@ if(${BUILD_ROCAL})
                 include/meta_data/
                 include/parameters/
                 include/pipeline/
+                include/readers/
                 include/readers/image/
                 include/readers/video/
     )

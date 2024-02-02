@@ -259,7 +259,7 @@ void MasterGraph::create_single_graph() {
 
 void MasterGraph::create_multiple_graphs() {
     // Actual graph creating and calls into adding nodes to graph is deferred and is happening here to enable potential future optimizations
-    int num_of_graphs = _loader_modules.size();
+    int num_of_graphs = _loaders_count;
     for (int n = 0; n < num_of_graphs; n++) {
         _graphs.emplace_back(std::make_shared<Graph>(_context, _affinity, 0, _cpu_num_threads, _gpu_id));
     }
@@ -289,7 +289,7 @@ MasterGraph::build() {
     _ring_buffer.init(_mem_type, nullptr, _internal_tensor_list.data_size(), _internal_tensor_list.roi_size());
 #endif
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
-    if (_loader_modules.size() > 1) {
+    if (_loaders_count > 1) {
         create_multiple_graphs();
     } else {
         _loader_module = _loader_modules[0];
@@ -1150,7 +1150,7 @@ void MasterGraph::start_processing() {
     for (auto loader_module : _loader_modules) {
         _remaining_count = std::min(_remaining_count, static_cast<int>(loader_module->remaining_count()));
     }
-    if (_loader_modules.size() == 1) {
+    if (_loaders_count == 1) {
         _output_thread = std::thread(&MasterGraph::output_routine, this);
     } else {
         _output_thread = std::thread(&MasterGraph::output_routine_multiple_loaders, this);
@@ -1179,7 +1179,7 @@ void MasterGraph::stop_processing() {
 }
 
 ReaderConfig MasterGraph::get_reader(Tensor *input) {
-    return _readers_map.find(input)->second;
+    return _reader_tensor_map.find(input)->second;
 }
 
 std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output, bool shuffle, bool loop, bool ltrb_bbox, bool is_box_encoder) {
@@ -1195,7 +1195,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     // Create the READER CONFIG
     auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
     reader_cfg.set_meta_data_reader(_meta_data_reader);
-    
+    reader_cfg.set_reader_output(is_output);
     _meta_data_reader->read_all(json_path);
     if (!ltrb_bbox) _augmented_meta_data->set_xywh_bbox();
     std::vector<size_t> dims;
@@ -1238,7 +1238,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     
     
     // Set the reader config and Jpegs tensor list in a map
-    _readers_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+    _reader_tensor_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
 
     _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);
     _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);

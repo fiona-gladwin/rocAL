@@ -99,7 +99,7 @@ std::vector<unsigned char *> CircularBuffer::get_write_buffers() {
     if (!_initialized)
         THROW("Circular buffer not initialized")
     block_if_full();
-    return _host_sub_buffer_ptrs[_read_ptr];
+    return _host_sub_buffer_ptrs[_write_ptr];
 }
 
 void CircularBuffer::sync() {   // TODO - Sync for sub buffers

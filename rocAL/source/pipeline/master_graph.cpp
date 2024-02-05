@@ -314,7 +314,7 @@ MasterGraph::create_loader_output_tensor(const TensorInfo &info) {
 }
 
 void
-MasterGraph::create_reader_output(Tensor *reader_tensor) {
+MasterGraph::create_reader_output_tensor(Tensor *reader_tensor) {
     /*
      *   NOTE: Output tensor for a reader node needs to be created as a regular (non-virtual) tensor if required
      */
@@ -359,6 +359,7 @@ void MasterGraph::release() {
     _root_nodes.clear();
     _meta_data_nodes.clear();
     _tensor_map.clear();
+    _reader_tensor_map.clear();
     _ring_buffer.release_gpu_res();
     // shut_down loader:: required for releasing any allocated resourses
     for (auto loader_module : _loader_modules)
@@ -1178,7 +1179,7 @@ void MasterGraph::stop_processing() {
         _output_thread.join();
 }
 
-ReaderConfig MasterGraph::get_reader(Tensor *input) {
+ReaderConfig MasterGraph::get_reader_config(Tensor *input) {
     return _reader_tensor_map.find(input)->second;
 }
 

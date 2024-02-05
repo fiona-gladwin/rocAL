@@ -971,7 +971,7 @@ rocalImageDecoder(
             LOG("User input size " + TOSTR(max_width) + " x " + TOSTR(max_height))
         }
         
-        auto reader_config = context->master_graph->get_reader(jpegs);
+        auto reader_config = context->master_graph->get_reader_config(jpegs);
         auto source_path = reader_config.path();
         auto json_path = reader_config.json_path();
 
@@ -989,7 +989,7 @@ rocalImageDecoder(
         // Modify dims of Jpegs tensor
         if (reader_config.is_reader_output()) {
             jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
-            context->master_graph->create_reader_output(jpegs);
+            context->master_graph->create_reader_output_tensor(jpegs);
         } else {
             jpegs = nullptr;
         }
@@ -1047,7 +1047,7 @@ rocalImageDecoderSingleShard(
             LOG("User input size " + TOSTR(max_width) + " x " + TOSTR(max_height))
         }
         
-        auto reader_config = context->master_graph->get_reader(jpegs);
+        auto reader_config = context->master_graph->get_reader_config(jpegs);
         auto source_path = reader_config.path();
         auto json_path = reader_config.json_path();
 
@@ -1065,7 +1065,7 @@ rocalImageDecoderSingleShard(
         // Modify dims of Jpegs tensor
         if (reader_config.is_reader_output()) {
             jpegs->set_dims({context->user_batch_size() * height * width * num_of_planes, 1});
-            context->master_graph->create_reader_output(jpegs);
+            context->master_graph->create_reader_output_tensor(jpegs);
         } else {
             jpegs = nullptr;
         }

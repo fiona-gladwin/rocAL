@@ -159,6 +159,7 @@ void ImageLoader::initialize(ReaderConfig reader_cfg, DecoderConfig decoder_cfg,
     _decoded_img_info._original_width.resize(_batch_size);
     _crop_image_info._crop_image_coords.resize(_batch_size);
     _read_buffer_size.resize(_batch_size);
+    _unit_vector.resize(_batch_size, 1);
     _circ_buff.init(_mem_type, _output_mem_size, _prefetch_queue_depth, _read_output_mem_size);
     _is_initialized = true;
     _image_loader->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
@@ -278,10 +279,9 @@ ImageLoader::update_output_image() {
     }
     _output_names = _output_decoded_img_info._image_names;
     _output_tensor->update_tensor_roi(_output_decoded_img_info._roi_width, _output_decoded_img_info._roi_height);
-    if (_reader_output_tensor) {
-        std::vector<uint32_t> unit_vector(_batch_size, 1);
-        _reader_output_tensor->update_tensor_roi(_read_buffer_size, unit_vector);
-    }
+    if (_reader_output_tensor)
+        _reader_output_tensor->update_tensor_roi(_read_buffer_size, _unit_vector);
+
     _circ_buff.pop();
     if (!_loop)
         _remaining_image_count -= _batch_size;

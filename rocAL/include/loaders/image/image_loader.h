@@ -90,4 +90,5 @@ class ImageLoader : public LoaderModule {
     int _device_id;
     size_t _max_tensor_width, _max_tensor_height;
     std::vector<uint32_t> _read_buffer_size;
+    std::vector<uint32_t> _unit_vector;     //!<Used to pass unit value for Reader's ROI>
 };

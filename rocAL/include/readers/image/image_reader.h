@@ -53,6 +53,9 @@ struct ReaderConfig {
     explicit ReaderConfig(StorageType type, std::string path = "", std::string json_path = "",
                           const std::map<std::string, std::string> feature_key_map = std::map<std::string, std::string>(),
                           bool shuffle = false, bool loop = false) : _type(type), _path(path), _json_path(json_path), _feature_key_map(feature_key_map), _shuffle(shuffle), _loop(loop) {}
+    explicit ReaderConfig(StorageType type, std::shared_ptr<MetaDataReader> meta_data_reader, std::string path = "", std::string json_path = "",
+                          bool is_output = false, bool shuffle = false, bool loop = false
+                          ) : _type(type), _meta_data_reader(meta_data_reader), _path(path), _json_path(json_path), _enable_reader_output(is_output), _shuffle(shuffle), _loop(loop) {}
     virtual StorageType type() { return _type; };
     void set_path(const std::string &path) { _path = path; }
     void set_shard_id(size_t shard_id) { _shard_id = shard_id; }
@@ -71,6 +74,7 @@ struct ReaderConfig {
     void set_sequence_length(unsigned sequence_length) { _sequence_length = sequence_length; }
     void set_frame_step(unsigned step) { _sequence_frame_step = step; }
     void set_frame_stride(unsigned stride) { _sequence_frame_stride = stride; }
+    void set_reader_output(bool is_reader_output) { _enable_reader_output = is_reader_output; }
     size_t get_shard_count() { return _shard_count; }
     size_t get_shard_id() { return _shard_id; }
     size_t get_cpu_num_threads() { return _cpu_num_threads; }
@@ -78,6 +82,7 @@ struct ReaderConfig {
     size_t get_sequence_length() { return _sequence_length; }
     size_t get_frame_step() { return _sequence_frame_step; }
     size_t get_frame_stride() { return _sequence_frame_stride; }
+    bool is_reader_output() { return _enable_reader_output; }
     std::string path() { return _path; }
 #ifdef ROCAL_VIDEO
     void set_video_properties(VideoProperties video_prop) { _video_prop = video_prop; }
@@ -91,6 +96,7 @@ struct ReaderConfig {
 
    private:
     StorageType _type = StorageType::FILE_SYSTEM;
+    std::shared_ptr<MetaDataReader> _meta_data_reader = nullptr;
     std::string _path = "";
     std::string _json_path = "";
     std::map<std::string, std::string> _feature_key_map;
@@ -101,10 +107,10 @@ struct ReaderConfig {
     size_t _sequence_length = 1;  // Video reader module sequence length
     size_t _sequence_frame_step;
     size_t _sequence_frame_stride = 1;
+    bool _enable_reader_output = false;
     bool _shuffle = false;
     bool _loop = false;
     std::string _file_prefix = "";  //!< to read only files with prefix. supported only for cifar10_data_reader and tf_record_reader
-    std::shared_ptr<MetaDataReader> _meta_data_reader = nullptr;
 #ifdef ROCAL_VIDEO
     VideoProperties _video_prop;
 #endif

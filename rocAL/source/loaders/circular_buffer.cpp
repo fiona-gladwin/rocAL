@@ -81,7 +81,28 @@ unsigned char *CircularBuffer::get_write_buffer() {
     return (_host_buffer_ptrs[_write_ptr]);
 }
 
-void CircularBuffer::sync() {
+std::vector<unsigned char *> CircularBuffer::get_read_buffers_host() {
+    if (!_initialized)
+        THROW("Circular buffer not initialized")
+    block_if_empty();
+    return _host_sub_buffer_ptrs[_read_ptr];
+}
+
+std::vector<void *> CircularBuffer::get_read_buffers_dev() {
+    if (!_initialized)
+        THROW("Circular buffer not initialized")
+    block_if_empty();
+    return _dev_sub_buffer_ptrs[_read_ptr];
+}
+
+std::vector<unsigned char *> CircularBuffer::get_write_buffers() {
+    if (!_initialized)
+        THROW("Circular buffer not initialized")
+    block_if_full();
+    return _host_sub_buffer_ptrs[_write_ptr];
+}
+
+void CircularBuffer::sync() {   // TODO - Sync for sub buffers
     if (!_initialized)
         return;
 #if ENABLE_OPENCL
@@ -151,6 +172,113 @@ void CircularBuffer::pop() {
     if (random_bbox_crop_flag == true)
         _circ_crop_image_info.pop();
 }
+void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, size_t buffer_depth, size_t read_output_mem_size) {
+    _buff_depth = buffer_depth;
+    if (_initialized)
+        return;
+    
+    if (_buff_depth < 2)
+        THROW("Error internal buffer size for the circular buffer should be greater than one")
+    
+    _output_mem_type = output_mem_type;
+    _output_mem_size = output_mem_size;
+    _read_output_mem_size = read_output_mem_size;
+
+    _dev_sub_buffer_ptrs.resize(_buff_depth);
+    _host_sub_buffer_ptrs.resize(_buff_depth);
+    _sub_buff_depth = (read_output_mem_size != 0) ? 2 : 1;
+    for (size_t bufIdx = 0; bufIdx < _buff_depth; bufIdx++) {
+        _dev_sub_buffer_ptrs[bufIdx].resize(_sub_buff_depth, nullptr);     // To store both compressed and decoded buffers
+        _host_sub_buffer_ptrs[bufIdx].resize(_sub_buff_depth, nullptr);    // To store both compressed and decoded buffers
+    }
+
+        // Allocating buffers
+#if ENABLE_OPENCL
+        // if (_output_mem_type == RocalMemType::OCL) {
+        //     if (_cl_cmdq == nullptr || _device_id == nullptr || _cl_context == nullptr)
+        //         THROW("Error ocl structure needed since memory type is OCL");
+
+        //     cl_int err = CL_SUCCESS;
+
+        //     for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+        //         // NOTE: we don't need to use CL_MEM_ALLOC_HOST_PTR memory if this buffer is not going to be
+        //         //  used in the host. But we cannot ensure which Rocal's copy function is going to be called
+        //         //  (copy to host or OCL) by the user
+        //         _dev_buffer[buffIdx] = (void *)clCreateBuffer(_cl_context,
+        //                                                     CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+        //                                                     _output_mem_size, NULL, &err);  // Create pinned memory
+        //         if (!_dev_buffer[buffIdx] || err)
+        //             THROW("clCreateBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
+
+        //         // TODO: we don't need to map the buffers to host here if the output of the output of this
+        //         //   loader_module is not required by the user to be part of the augmented output
+        //         _host_buffer_ptrs[buffIdx] = (unsigned char *)clEnqueueMapBuffer(_cl_cmdq,
+        //                                                                         (cl_mem)_dev_buffer[buffIdx],
+        //                                                                         CL_TRUE, CL_MAP_WRITE,
+        //                                                                         0,
+        //                                                                         _output_mem_size,
+        //                                                                         0, NULL, NULL, &err);
+        //         if (err)
+        //             THROW("clEnqueueMapBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
+        //         clRetainMemObject((cl_mem)_dev_buffer[buffIdx]);
+        //     }
+        // } else {
+        //     for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+        //         // a minimum of extra MEM_ALIGNMENT is allocated
+        //         _host_buffer_ptrs[buffIdx] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
+        //     }
+        // }
+#elif ENABLE_HIP
+        if (_output_mem_type == RocalMemType::HIP) {
+            if (!_hip_stream || _hip_device_id == -1)
+                THROW("Error HIP device resource is not initialized");
+
+            for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+
+                // Allocate pinned memory for decoded buffers
+                hipError_t err = hipHostMalloc((void **)&_host_sub_buffer_ptrs[buffIdx][0], _output_mem_size, hipHostMallocDefault /*hipHostMallocMapped|hipHostMallocWriteCombined*/);
+                if (err != hipSuccess || !_host_sub_buffer_ptrs[buffIdx][0]) {
+                    THROW("hipHostMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                }
+                if (_hip_canMapHostMemory) {
+                    err = hipHostGetDevicePointer((void **)&_dev_sub_buffer_ptrs[buffIdx][0], _host_sub_buffer_ptrs[buffIdx][0], 0);
+                    if (err != hipSuccess) {
+                        THROW("hipHostGetDevicePointer of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                    }
+                } else {
+                    // no zero_copy memory available: allocate device memory
+                    hipError_t err = hipMalloc((void **)&_dev_sub_buffer_ptrs[buffIdx][0], _output_mem_size);
+                    if (err != hipSuccess) {
+                        THROW("hipMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                    }
+                }
+
+                // Allocate HOST memory for compressed buffers
+                if (read_output_mem_size != 0) {
+                    _dev_sub_buffer_ptrs[buffIdx][1] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_read_output_mem_size / MEM_ALIGNMENT + 1));
+                }
+            }
+        } else {
+            for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+                // a minimum of extra MEM_ALIGNMENT is allocated
+                _host_sub_buffer_ptrs[buffIdx][0] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
+                
+                if (read_output_mem_size != 0)
+                    _host_sub_buffer_ptrs[buffIdx][1] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_read_output_mem_size / MEM_ALIGNMENT + 1));
+            }
+        }
+#else
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+            // a minimum of extra MEM_ALIGNMENT is allocated
+            _host_sub_buffer_ptrs[buffIdx][0] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
+            
+            if (read_output_mem_size != 0)
+                _host_sub_buffer_ptrs[buffIdx][1] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_read_output_mem_size / MEM_ALIGNMENT + 1));
+        }
+#endif
+    _initialized = true;
+}
+
 void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, size_t buffer_depth) {
     _buff_depth = buffer_depth;
     _dev_buffer.reserve(_buff_depth);
@@ -166,62 +294,33 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
 
         // Allocating buffers
 #if ENABLE_OPENCL
-    if (_output_mem_type == RocalMemType::OCL) {
-        if (_cl_cmdq == nullptr || _device_id == nullptr || _cl_context == nullptr)
-            THROW("Error ocl structure needed since memory type is OCL");
+        if (_output_mem_type == RocalMemType::OCL) {
+            if (_cl_cmdq == nullptr || _device_id == nullptr || _cl_context == nullptr)
+                THROW("Error ocl structure needed since memory type is OCL");
 
-        cl_int err = CL_SUCCESS;
-
-        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
-            // NOTE: we don't need to use CL_MEM_ALLOC_HOST_PTR memory if this buffer is not going to be
-            //  used in the host. But we cannot ensure which Rocal's copy function is going to be called
-            //  (copy to host or OCL) by the user
-            _dev_buffer[buffIdx] = (void *)clCreateBuffer(_cl_context,
-                                                          CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-                                                          _output_mem_size, NULL, &err);  // Create pinned memory
-            if (!_dev_buffer[buffIdx] || err)
-                THROW("clCreateBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
-
-            // TODO: we don't need to map the buffers to host here if the output of the output of this
-            //   loader_module is not required by the user to be part of the augmented output
-            _host_buffer_ptrs[buffIdx] = (unsigned char *)clEnqueueMapBuffer(_cl_cmdq,
-                                                                             (cl_mem)_dev_buffer[buffIdx],
-                                                                             CL_TRUE, CL_MAP_WRITE,
-                                                                             0,
-                                                                             _output_mem_size,
-                                                                             0, NULL, NULL, &err);
-            if (err)
-                THROW("clEnqueueMapBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
-            clRetainMemObject((cl_mem)_dev_buffer[buffIdx]);
-        }
-    } else {
-        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
-            // a minimum of extra MEM_ALIGNMENT is allocated
-            _host_buffer_ptrs[buffIdx] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
-        }
-    }
-#elif ENABLE_HIP
-        if (_output_mem_type == RocalMemType::HIP) {
-            if (!_hip_stream || _hip_device_id == -1)
-                THROW("Error HIP device resource is not initialized");
+            cl_int err = CL_SUCCESS;
 
             for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
-                hipError_t err = hipHostMalloc((void **)&_host_buffer_ptrs[buffIdx], _output_mem_size, hipHostMallocDefault /*hipHostMallocMapped|hipHostMallocWriteCombined*/);
-                if (err != hipSuccess || !_host_buffer_ptrs[buffIdx]) {
-                    THROW("hipHostMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
-                }
-                if (_hip_canMapHostMemory) {
-                    err = hipHostGetDevicePointer((void **)&_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0);
-                    if (err != hipSuccess) {
-                        THROW("hipHostGetDevicePointer of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
-                    }
-                } else {
-                    // no zero_copy memory available: allocate device memory
-                    hipError_t err = hipMalloc((void **)&_dev_buffer[buffIdx], _output_mem_size);
-                    if (err != hipSuccess) {
-                        THROW("hipMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
-                    }
-                }
+                // NOTE: we don't need to use CL_MEM_ALLOC_HOST_PTR memory if this buffer is not going to be
+                //  used in the host. But we cannot ensure which Rocal's copy function is going to be called
+                //  (copy to host or OCL) by the user
+                _dev_buffer[buffIdx] = (void *)clCreateBuffer(_cl_context,
+                                                            CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                                                            _output_mem_size, NULL, &err);  // Create pinned memory
+                if (!_dev_buffer[buffIdx] || err)
+                    THROW("clCreateBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
+
+                // TODO: we don't need to map the buffers to host here if the output of the output of this
+                //   loader_module is not required by the user to be part of the augmented output
+                _host_buffer_ptrs[buffIdx] = (unsigned char *)clEnqueueMapBuffer(_cl_cmdq,
+                                                                                (cl_mem)_dev_buffer[buffIdx],
+                                                                                CL_TRUE, CL_MAP_WRITE,
+                                                                                0,
+                                                                                _output_mem_size,
+                                                                                0, NULL, NULL, &err);
+                if (err)
+                    THROW("clEnqueueMapBuffer of size" + TOSTR(_output_mem_size) + "failed " + TOSTR(err));
+                clRetainMemObject((cl_mem)_dev_buffer[buffIdx]);
             }
         } else {
             for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
@@ -229,52 +328,125 @@ void CircularBuffer::init(RocalMemType output_mem_type, size_t output_mem_size, 
                 _host_buffer_ptrs[buffIdx] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
             }
         }
+#elif ENABLE_HIP
+            if (_output_mem_type == RocalMemType::HIP) {
+                if (!_hip_stream || _hip_device_id == -1)
+                    THROW("Error HIP device resource is not initialized");
+
+                for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+                    hipError_t err = hipHostMalloc((void **)&_host_buffer_ptrs[buffIdx], _output_mem_size, hipHostMallocDefault /*hipHostMallocMapped|hipHostMallocWriteCombined*/);
+                    if (err != hipSuccess || !_host_buffer_ptrs[buffIdx]) {
+                        THROW("hipHostMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                    }
+                    if (_hip_canMapHostMemory) {
+                        err = hipHostGetDevicePointer((void **)&_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0);
+                        if (err != hipSuccess) {
+                            THROW("hipHostGetDevicePointer of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                        }
+                    } else {
+                        // no zero_copy memory available: allocate device memory
+                        hipError_t err = hipMalloc((void **)&_dev_buffer[buffIdx], _output_mem_size);
+                        if (err != hipSuccess) {
+                            THROW("hipMalloc of size " + TOSTR(_output_mem_size) + " failed " + TOSTR(err));
+                        }
+                    }
+                }
+            } else {
+                for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+                    // a minimum of extra MEM_ALIGNMENT is allocated
+                    _host_buffer_ptrs[buffIdx] = (unsigned char *)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
+                }
+            }
 #else
-    for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
-        // a minimum of extra MEM_ALIGNMENT is allocated
-        _host_buffer_ptrs[buffIdx] = (unsigned char*)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
-    }
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+            // a minimum of extra MEM_ALIGNMENT is allocated
+            _host_buffer_ptrs[buffIdx] = (unsigned char*)aligned_alloc(MEM_ALIGNMENT, MEM_ALIGNMENT * (_output_mem_size / MEM_ALIGNMENT + 1));
+        }
 #endif
     _initialized = true;
 }
 
 void CircularBuffer::release() {
-    for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+    if (_host_buffer_ptrs.size() != 0 || _dev_buffer.size() != 0) {
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
 #if ENABLE_OPENCL
-        if (_output_mem_type == RocalMemType::OCL) {
-            if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0, NULL, NULL) != CL_SUCCESS)
-                ERR("Could not unmap ocl memory")
-            if (clReleaseMemObject((cl_mem)_dev_buffer[buffIdx]) != CL_SUCCESS)
-                ERR("Could not release ocl memory in the circular buffer")
-        } else {
-#elif ENABLE_HIP
-            if (_output_mem_type == RocalMemType::HIP) {
-                if (_host_buffer_ptrs[buffIdx]) {
-                    hipError_t err = hipHostFree((void *)_host_buffer_ptrs[buffIdx]);
-
-                    if (err != hipSuccess)
-                        ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
-                    _host_buffer_ptrs[buffIdx] = nullptr;
-                }
-                if (!_hip_canMapHostMemory && _dev_buffer[buffIdx]) {
-                    hipError_t err = hipFree((void *)_dev_buffer[buffIdx]);
-
-                    if (err != hipSuccess)
-                        ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
-                    _dev_buffer[buffIdx] = nullptr;
-                }
+            if (_output_mem_type == RocalMemType::OCL) {
+                if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_buffer[buffIdx], _host_buffer_ptrs[buffIdx], 0, NULL, NULL) != CL_SUCCESS)
+                    ERR("Could not unmap ocl memory")
+                if (clReleaseMemObject((cl_mem)_dev_buffer[buffIdx]) != CL_SUCCESS)
+                    ERR("Could not release ocl memory in the circular buffer")
             } else {
+#elif ENABLE_HIP
+                if (_output_mem_type == RocalMemType::HIP) {
+                    if (_host_buffer_ptrs[buffIdx]) {
+                        hipError_t err = hipHostFree((void *)_host_buffer_ptrs[buffIdx]);
+
+                        if (err != hipSuccess)
+                            ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
+                        _host_buffer_ptrs[buffIdx] = nullptr;
+                    }
+                    if (!_hip_canMapHostMemory && _dev_buffer[buffIdx]) {
+                        hipError_t err = hipFree((void *)_dev_buffer[buffIdx]);
+
+                        if (err != hipSuccess)
+                            ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
+                        _dev_buffer[buffIdx] = nullptr;
+                    }
+                } else {
 #else
-        free(_host_buffer_ptrs[buffIdx]);
+            free(_host_buffer_ptrs[buffIdx]);
 #endif
 #if ENABLE_HIP || ENABLE_OPENCL
-            free(_host_buffer_ptrs[buffIdx]);
-        }
+                free(_host_buffer_ptrs[buffIdx]);
+            }
 #endif
-    }
+        }
+    } else if (_host_sub_buffer_ptrs.size() != 0 || _dev_sub_buffer_ptrs.size() != 0) {
+        for (size_t buffIdx = 0; buffIdx < _buff_depth; buffIdx++) {
+            for (size_t subIdx = 0; subIdx < _sub_buff_depth; subIdx++) {
+#if ENABLE_OPENCL
+                if (_output_mem_type == RocalMemType::OCL) {
+                    if (clEnqueueUnmapMemObject(_cl_cmdq, (cl_mem)_dev_sub_buffer_ptrs[buffIdx][subIdx], _host_sub_buffer_ptrs[buffIdx][subIdx], 0, NULL, NULL) != CL_SUCCESS)
+                        ERR("Could not unmap ocl memory")
+                    if (clReleaseMemObject((cl_mem)_dev_sub_buffer_ptrs[buffIdx][subIdx]) != CL_SUCCESS)
+                        ERR("Could not release ocl memory in the circular buffer")
+                } else {
+#elif ENABLE_HIP
+                    if (_output_mem_type == RocalMemType::HIP) {
+                        // For compressed buffers present in HOST
+                        if (subIdx == 1) {
+                            free(_dev_sub_buffer_ptrs[buffIdx][subIdx]);
+                            continue;
+                        }
+                        if (_host_sub_buffer_ptrs[buffIdx][subIdx]) {
+                            hipError_t err = hipHostFree((void *)_host_sub_buffer_ptrs[buffIdx][subIdx]);
 
+                            if (err != hipSuccess)
+                                ERR("Could not release hip host memory in the circular buffer " + TOSTR(err))
+                            _host_sub_buffer_ptrs[buffIdx][subIdx] = nullptr;
+                        }
+                        if (!_hip_canMapHostMemory && _dev_sub_buffer_ptrs[buffIdx][subIdx]) {
+                            hipError_t err = hipFree((void *)_dev_sub_buffer_ptrs[buffIdx][subIdx]);
+
+                            if (err != hipSuccess)
+                                ERR("Could not release hip memory in the circular buffer " + TOSTR(err))
+                            _dev_sub_buffer_ptrs[buffIdx][subIdx] = nullptr;
+                        }
+                    } else {
+#else
+                free(_host_sub_buffer_ptrs[buffIdx][subIdx]);
+#endif
+#if ENABLE_HIP || ENABLE_OPENCL
+                    free(_host_sub_buffer_ptrs[buffIdx][subIdx]);
+                }
+#endif
+            }
+        }
+    }
     _dev_buffer.clear();
     _host_buffer_ptrs.clear();
+    _dev_sub_buffer_ptrs.clear();
+    _host_sub_buffer_ptrs.clear();
     _write_ptr = 0;
     _read_ptr = 0;
     _level = 0;

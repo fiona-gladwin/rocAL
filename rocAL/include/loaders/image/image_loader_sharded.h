@@ -35,6 +35,7 @@ class ImageLoaderSharded : public LoaderModule {
     LoaderModuleStatus load_next() override;
     void initialize(ReaderConfig reader_cfg, DecoderConfig decoder_cfg, RocalMemType mem_type, unsigned batch_size, bool keep_orig_size = false) override;
     void set_output(Tensor *output_tensor) override;
+    void set_reader_output(Tensor* output_tensor) override;
     void set_random_bbox_data_reader(std::shared_ptr<RandomBBoxCrop_MetaDataReader> randombboxcrop_meta_data_reader) override;
     size_t remaining_count() override;
     void reset() override;
@@ -56,6 +57,6 @@ class ImageLoaderSharded : public LoaderModule {
     void fast_forward_through_empty_loaders();
     size_t _prefetch_queue_depth;
 
-    Tensor *_output_tensor;
+    Tensor *_output_tensor, *_reader_output_tensor;
     std::shared_ptr<RandomBBoxCrop_MetaDataReader> _randombboxcrop_meta_data_reader = nullptr;
 };

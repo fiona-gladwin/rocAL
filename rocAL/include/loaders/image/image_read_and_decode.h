@@ -74,6 +74,22 @@ class ImageReadAndDecode {
         RocalColorFormat output_color_format,
         bool decoder_keep_original = false);
 
+    // load function with reader arguments
+    // TODO - Will replace existing load function once all readers and decoders are changed
+    LoaderModuleStatus load(
+        unsigned char *buff,
+        std::vector<std::string> &names,
+        const size_t max_decoded_width,
+        const size_t max_decoded_height,
+        std::vector<uint32_t> &roi_width,
+        std::vector<uint32_t> &roi_height,
+        std::vector<uint32_t> &actual_width,
+        std::vector<uint32_t> &actual_height,
+        RocalColorFormat output_color_format,
+        unsigned char *read_buff,
+        std::vector<uint32_t> &read_buffer_size,
+        bool decoder_keep_original = false);
+
     //! returns timing info or other status information
     Timing timing();
 
@@ -81,6 +97,7 @@ class ImageReadAndDecode {
     std::vector<std::shared_ptr<Decoder>> _decoder;
     std::shared_ptr<Reader> _reader;
     std::vector<std::vector<unsigned char>> _compressed_buff;
+    std::vector<unsigned char *> _compressed_buff_ptr;
     std::vector<size_t> _actual_read_size;
     std::vector<std::string> _image_names;
     std::vector<size_t> _compressed_image_size;

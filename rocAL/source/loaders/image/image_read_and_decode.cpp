@@ -65,6 +65,7 @@ void ImageReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
     // Can initialize it to any decoder types if needed
     _batch_size = batch_size;
     _compressed_buff.resize(batch_size);
+    _compressed_buff_ptr.resize(batch_size);
     _decoder.resize(batch_size);
     _actual_read_size.resize(batch_size);
     _image_names.resize(batch_size);
@@ -128,6 +129,8 @@ ImageReadAndDecode::load(unsigned char *buff,
                          std::vector<uint32_t> &actual_width,
                          std::vector<uint32_t> &actual_height,
                          RocalColorFormat output_color_format,
+                         unsigned char *read_buffers,
+                         std::vector<uint32_t> &read_buffer_size,
                          bool decoder_keep_original) {
     if (max_decoded_width == 0 || max_decoded_height == 0)
         THROW("Zero image dimension is not valid")
@@ -147,8 +150,13 @@ ImageReadAndDecode::load(unsigned char *buff,
     // File read is done serially since I/O parallelization does not work very well.
     _file_load_time.start();  // Debug timing
     if (_decoder_config._type == DecoderType::SKIP_DECODE) {
+        auto read_ptr = buff;
+        bool write_contiguous_data = false;
+        if (read_buffers != nullptr) {
+            read_ptr = read_buffers;
+            write_contiguous_data = true;
+        }        
         while ((file_counter != _batch_size) && _reader->count_items() > 0) {
-            auto read_ptr = buff + image_size * file_counter;
             size_t fsize = _reader->open();
             if (fsize == 0) {
                 WRN("Opened file " + _reader->id() + " of size 0");
@@ -168,18 +176,28 @@ ImageReadAndDecode::load(unsigned char *buff,
             actual_width[file_counter] = max_decoded_width;
             actual_height[file_counter] = max_decoded_height;
             file_counter++;
+            read_ptr += (write_contiguous_data ? _actual_read_size[file_counter] : image_size);
         }
         //_file_load_time.end();// Debug timing
         // return LoaderModuleStatus::OK;
     } else {
+        auto compressed_buff = read_buffers;
+        bool write_contiguous_data = (read_buffers != nullptr) ? true : false;
         while ((file_counter != _batch_size) && _reader->count_items() > 0) {
             size_t fsize = _reader->open();
             if (fsize == 0) {
                 WRN("Opened file " + _reader->id() + " of size 0");
                 continue;
             }
-            _compressed_buff[file_counter].reserve(fsize);
-            _actual_read_size[file_counter] = _reader->read_data(_compressed_buff[file_counter].data(), fsize);
+            if (!write_contiguous_data) {
+                _compressed_buff[file_counter].reserve(fsize);
+                _actual_read_size[file_counter] = _reader->read_data(_compressed_buff[file_counter].data(), fsize);
+                _compressed_buff_ptr[file_counter] = _compressed_buff[file_counter].data();
+            } else {
+                _actual_read_size[file_counter] = _reader->read_data(compressed_buff, fsize);
+                _compressed_buff_ptr[file_counter] = compressed_buff;
+                compressed_buff += _actual_read_size[file_counter];
+            }
             _image_names[file_counter] = _reader->id();
             _reader->close();
             _compressed_image_size[file_counter] = fsize;
@@ -207,15 +225,15 @@ ImageReadAndDecode::load(unsigned char *buff,
             _actual_decoded_width[i] = max_decoded_width;
             _actual_decoded_height[i] = max_decoded_height;
             int original_width, original_height, jpeg_sub_samp;
-            if (_decoder[i]->decode_info(_compressed_buff[i].data(), _actual_read_size[i], &original_width, &original_height,
+            if (_decoder[i]->decode_info(_compressed_buff_ptr[i], _actual_read_size[i], &original_width, &original_height,
                                          &jpeg_sub_samp) != Decoder::Status::OK) {
                 // Substituting the image which failed decoding with other image from the same batch
                 int j = ((i + 1) != _batch_size) ? _batch_size - 1 : _batch_size - 2;
                 while ((j >= 0)) {
-                    if (_decoder[i]->decode_info(_compressed_buff[j].data(), _actual_read_size[j], &original_width, &original_height,
+                    if (_decoder[i]->decode_info(_compressed_buff_ptr[j], _actual_read_size[j], &original_width, &original_height,
                                                  &jpeg_sub_samp) == Decoder::Status::OK) {
                         _image_names[i] = _image_names[j];
-                        _compressed_buff[i] = _compressed_buff[j];
+                        _compressed_buff_ptr[i] = _compressed_buff_ptr[j];  // TODO - Check how to handle this....
                         _actual_read_size[i] = _actual_read_size[j];
                         _compressed_image_size[i] = _compressed_image_size[j];
                         break;
@@ -240,7 +258,7 @@ ImageReadAndDecode::load(unsigned char *buff,
                     _decoder[i]->set_crop_window(crop_window);
                 }
             }
-            if (_decoder[i]->decode(_compressed_buff[i].data(), _compressed_image_size[i], _decompressed_buff_ptrs[i],
+            if (_decoder[i]->decode(_compressed_buff_ptr[i], _compressed_image_size[i], _decompressed_buff_ptrs[i],
                                     max_decoded_width, max_decoded_height,
                                     original_width, original_height,
                                     scaledw, scaledh,
@@ -255,6 +273,7 @@ ImageReadAndDecode::load(unsigned char *buff,
             roi_height[i] = _actual_decoded_height[i];
             actual_width[i] = _original_width[i];
             actual_height[i] = _original_height[i];
+            read_buffer_size[i] = _actual_read_size[i];
         }
     }
     _bbox_coords.clear();

@@ -48,6 +48,7 @@ class CircularBuffer {
     CircularBuffer(void* devres);
     ~CircularBuffer();
     void init(RocalMemType output_mem_type, size_t output_mem_size, size_t buff_depth);
+    void init(RocalMemType output_mem_type, size_t output_mem_size, size_t buff_depth, size_t read_output_mem_size);
     void release();         // release resources
     void sync();            // Syncs device buffers with host
     void unblock_reader();  // Unblocks the thread currently waiting on a call to get_read_buffer
@@ -62,6 +63,10 @@ class CircularBuffer {
     void* get_read_buffer_dev();
     unsigned char* get_read_buffer_host();  // blocks the caller if the buffer is empty
     unsigned char* get_write_buffer();      // blocks the caller if the buffer is full
+
+    std::vector<unsigned char*> get_read_buffers_host();  // blocks the caller if the buffer is empty
+    std::vector<void*> get_read_buffers_dev();  // blocks the caller if the buffer is empty
+    std::vector<unsigned char*> get_write_buffers(); // blocks the caller if the buffer is full
     size_t level();                         // Returns the number of elements stored
     void reset();                           // sets the buffer level to 0
     void block_if_empty();                  // blocks the caller if the buffer is empty
@@ -72,7 +77,7 @@ class CircularBuffer {
     void increment_write_ptr();
     bool full();
     bool empty();
-    size_t _buff_depth;
+    size_t _buff_depth, _sub_buff_depth;
     decoded_image_info _last_image_info;
     std::queue<decoded_image_info> _circ_image_info;    //!< Stores the loaded images names, decoded_width and decoded_height(data is stored in the _circ_buff)
     crop_image_info _last_crop_image_info;              // for Random BBox crop coordinates
@@ -92,12 +97,15 @@ class CircularBuffer {
 #endif
     std::vector<void*> _dev_buffer;  // Actual memory allocated on the device (in the case of GPU affinity)
     std::vector<unsigned char*> _host_buffer_ptrs;
-    std::vector<std::vector<unsigned char>> _actual_host_buffers;
+    // Used for storing both read and decode buffers
+    std::vector<std::vector<void*>> _dev_sub_buffer_ptrs;  // Actual memory allocated on the device (in the case of GPU affinity)
+    std::vector<std::vector<unsigned char*>> _host_sub_buffer_ptrs;
     std::condition_variable _wait_for_load;
     std::condition_variable _wait_for_unload;
     std::mutex _lock;
     RocalMemType _output_mem_type;
     size_t _output_mem_size;
+    size_t _read_output_mem_size;
     bool _initialized = false;
     const size_t MEM_ALIGNMENT = 256;
     size_t _write_ptr;

@@ -90,8 +90,9 @@ void ImageLoader::de_init() {
     // Set running to 0 and wait for the internal thread to join
     stop_internal_thread();
     _output_mem_size = 0;
+    _read_output_mem_size = 0;
     _batch_size = 1;
-    _is_initialized = false;
+    _is_initialized = false;      
 }
 
 LoaderModuleStatus
@@ -102,6 +103,12 @@ ImageLoader::load_next() {
 void ImageLoader::set_output(Tensor *output_tensor) {
     _output_tensor = output_tensor;
     _output_mem_size = ((_output_tensor->info().data_size() + 8) & ~7);  // Making output size as a multiple of 8 to support vectorized load and store in RPP
+}
+
+void ImageLoader::set_reader_output(Tensor *output_tensor) {
+    _reader_output_tensor = output_tensor;
+    if (_reader_output_tensor != nullptr)
+        _read_output_mem_size = _reader_output_tensor->info().data_size();
 }
 
 void ImageLoader::set_random_bbox_data_reader(std::shared_ptr<RandomBBoxCrop_MetaDataReader> randombboxcrop_meta_data_reader) {
@@ -151,7 +158,9 @@ void ImageLoader::initialize(ReaderConfig reader_cfg, DecoderConfig decoder_cfg,
     _decoded_img_info._original_height.resize(_batch_size);
     _decoded_img_info._original_width.resize(_batch_size);
     _crop_image_info._crop_image_coords.resize(_batch_size);
-    _circ_buff.init(_mem_type, _output_mem_size, _prefetch_queue_depth);
+    _circ_buff.init(_mem_type, _output_mem_size, _prefetch_queue_depth, _read_output_mem_size);
+    _read_buffer_size.resize(_batch_size);
+    _unit_vector.resize(_batch_size, 1);
     _is_initialized = true;
     _image_loader->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
     LOG("Loader module initialized");
@@ -173,13 +182,16 @@ ImageLoader::load_routine() {
     // Initially record number of all the images that are going to be loaded, this is used to know how many still there
 
     while (_internal_thread_running) {
-        auto data = _circ_buff.get_write_buffer();
+        // auto data = _circ_buff.get_write_buffer();
+        auto data = _circ_buff.get_write_buffers();
+        auto decoded_buffer = data[0];
+        auto read_buffer = data.size() == 2 ? data[1] : nullptr;
         if (!_internal_thread_running)
             break;
 
         auto load_status = LoaderModuleStatus::NO_MORE_DATA_TO_READ;
         {
-            load_status = _image_loader->load(data,
+            load_status = _image_loader->load(decoded_buffer,
                                               _decoded_img_info._image_names,
                                               _max_tensor_width,
                                               _max_tensor_height,
@@ -187,7 +199,8 @@ ImageLoader::load_routine() {
                                               _decoded_img_info._roi_height,
                                               _decoded_img_info._original_width,
                                               _decoded_img_info._original_height,
-                                              _output_tensor->info().color_format(), _decoder_keep_original);
+                                              _output_tensor->info().color_format(),
+                                              read_buffer, _read_buffer_size, _decoder_keep_original);
 
             if (load_status == LoaderModuleStatus::OK) {
                 if (_randombboxcrop_meta_data_reader) {
@@ -237,16 +250,24 @@ ImageLoader::update_output_image() {
 
     // _circ_buff.get_read_buffer_x() is blocking and puts the caller on sleep until new images are written to the _circ_buff
     if ((_mem_type == RocalMemType::OCL) || (_mem_type == RocalMemType::HIP)) {
-        auto data_buffer = _circ_buff.get_read_buffer_dev();
+        auto data_buffer = _circ_buff.get_read_buffers_dev();
         _swap_handle_time.start();
-        if (_output_tensor->swap_handle(data_buffer) != 0)
+        if (_output_tensor->swap_handle(data_buffer[0]) != 0)
             return LoaderModuleStatus ::DEVICE_BUFFER_SWAP_FAILED;
+        if (_reader_output_tensor) {
+            if (_reader_output_tensor->swap_handle(data_buffer[1]) != 0)
+                return LoaderModuleStatus ::DEVICE_BUFFER_SWAP_FAILED;
+        }
         _swap_handle_time.end();
     } else {
-        auto data_buffer = _circ_buff.get_read_buffer_host();
+        auto data_buffer = _circ_buff.get_read_buffers_host();
         _swap_handle_time.start();
-        if (_output_tensor->swap_handle(data_buffer) != 0)
+        if (_output_tensor->swap_handle(data_buffer[0]) != 0)
             return LoaderModuleStatus::HOST_BUFFER_SWAP_FAILED;
+        if (_reader_output_tensor) {
+            if (_reader_output_tensor->swap_handle(data_buffer[1]) != 0)
+                return LoaderModuleStatus ::HOST_BUFFER_SWAP_FAILED;
+        }
         _swap_handle_time.end();
     }
     if (_stopped)
@@ -258,6 +279,9 @@ ImageLoader::update_output_image() {
     }
     _output_names = _output_decoded_img_info._image_names;
     _output_tensor->update_tensor_roi(_output_decoded_img_info._roi_width, _output_decoded_img_info._roi_height);
+    if (_reader_output_tensor)
+        _reader_output_tensor->update_tensor_roi(_read_buffer_size, _unit_vector);
+
     _circ_buff.pop();
     if (!_loop)
         _remaining_image_count -= _batch_size;

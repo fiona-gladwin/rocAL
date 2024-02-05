@@ -1193,9 +1193,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
     
     // Create the READER CONFIG
-    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
-    reader_cfg.set_meta_data_reader(_meta_data_reader);
-    reader_cfg.set_reader_output(is_output);
+    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, _meta_data_reader, source_path, json_path, is_output, shuffle, loop);
     _meta_data_reader->read_all(json_path);
     if (!ltrb_bbox) _augmented_meta_data->set_xywh_bbox();
     std::vector<size_t> dims;

@@ -74,6 +74,8 @@ class ImageReadAndDecode {
         RocalColorFormat output_color_format,
         bool decoder_keep_original = false);
 
+    // load function with reader arguments
+    // TODO - Will replace existing load function once all readers and decoders are changed
     LoaderModuleStatus load(
         unsigned char *buff,
         std::vector<std::string> &names,

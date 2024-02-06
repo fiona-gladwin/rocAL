@@ -92,4 +92,5 @@ class ImageLoader : public LoaderModule {
     size_t _max_tensor_width, _max_tensor_height;
     std::vector<uint32_t> _read_buffer_size;
     std::shared_ptr<MetaDataReader> _metadata_reader;
+    std::vector<uint32_t> _unit_vector;     //!<Used to pass unit value for Reader's ROI>
 };

@@ -90,8 +90,14 @@ extern "C" RocalMetaData ROCAL_API_CALL rocalCreateCOCOReader(RocalContext rocal
 /*! \brief create coco reader
  * \ingroup group_rocal_meta_data
  * \param [in] rocal_context rocal context
- * \param [in] source_path path to the coco json file
- * \return RocalReaderMetaData object, can be used to inquire about the rocal's output (processed) tensors
+ * \param [in] source_path path to the location of images on the disk
+ * \param [in] json_path path to the json file in COCO format
+ * \param [in] is_output Determines if the user wants the loaded tensors to be part of the output or not.
+ * \param [in] shuffle Determines if the user wants to shuffle the dataset or not.
+ * \param [in] loop Determines if the user wants to indefinitely loops through images or not.
+ * \param [in] mask enable polygon masks
+ * \param [in] ltrb If set to True, bboxes are returned as [left, top, right, bottom]. If set to False, the bboxes are returned as [x, y, width, height]
+ * \return RocalReaderMetaData object, can be used to inquire about the rocal's output (processed) tensors and tensorList
  */
 extern "C" RocalReaderMetaData ROCAL_API_CALL rocalCOCOReader(RocalContext rocal_context, const char* source_path, const char* json_path, bool is_output = false, bool shuffle = false, bool loop = false, bool mask = false, bool ltrb = true);
 

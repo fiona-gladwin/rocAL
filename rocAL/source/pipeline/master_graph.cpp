@@ -336,7 +336,7 @@ MasterGraph::create_loader_output_tensor(const TensorInfo &info) {
 }
 
 void
-MasterGraph::create_reader_output(Tensor *reader_tensor) {
+MasterGraph::create_reader_output_tensor(Tensor *reader_tensor) {
     /*
      *   NOTE: Output tensor for a reader node needs to be created as a regular (non-virtual) tensor if required
      */
@@ -391,6 +391,7 @@ void MasterGraph::release() {
     _root_nodes.clear();
     _meta_data_nodes.clear();
     _tensor_map.clear();
+    _reader_tensor_map.clear();
     _ring_buffer.release_gpu_res();
     // shut_down loader:: required for releasing any allocated resourses
     for (auto loader_module : _loader_modules)
@@ -1275,7 +1276,7 @@ void MasterGraph::stop_processing() {
         _output_thread.join();
 }
 
-ReaderConfig MasterGraph::get_reader(Tensor *input) {
+ReaderConfig MasterGraph::get_reader_config(Tensor *input) {
     return _reader_tensor_map.find(input)->second;
 }
 
@@ -1294,11 +1295,8 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_la
     unsigned reader_id = _readers_count++;
 
     // Create the READER CONFIG
-    auto reader_cfg = ReaderConfig(StorageType::FILE_SYSTEM, source_path, "", std::map<std::string, std::string>(), shuffle, loop);
-    reader_cfg.set_reader_id(reader_id);    // To be changed
-    reader_cfg.set_meta_data_reader(meta_data_reader);
-    reader_cfg.set_reader_output(is_output);
-    
+    auto reader_cfg = ReaderConfig(StorageType::FILE_SYSTEM, meta_data_reader, source_path, "", is_output, shuffle, loop);
+    reader_cfg.set_reader_id(reader_id);    // To be changed    
     meta_data_reader->read_all(source_path);
     meta_data_reader->set_reader_id(reader_id);
     // _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
@@ -1357,11 +1355,8 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     unsigned reader_id = _readers_count++;
 
     // Create the READER CONFIG
-    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, source_path, json_path, std::map<std::string, std::string>(), shuffle, loop);
-    reader_cfg.set_reader_id(reader_id);    // To be changed
-    reader_cfg.set_meta_data_reader(meta_data_reader);
-    reader_cfg.set_reader_output(is_output);
-    
+    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, _meta_data_reader, source_path, json_path, is_output, shuffle, loop);
+    reader_cfg.set_reader_id(reader_id);    // To be changed    
     meta_data_reader->read_all(json_path);
     meta_data_reader->set_reader_id(reader_id);
 

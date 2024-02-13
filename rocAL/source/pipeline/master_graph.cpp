@@ -1355,7 +1355,7 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     unsigned reader_id = _readers_count++;
 
     // Create the READER CONFIG
-    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, _meta_data_reader, source_path, json_path, is_output, shuffle, loop);
+    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, meta_data_reader, source_path, json_path, is_output, shuffle, loop);
     reader_cfg.set_reader_id(reader_id);    // To be changed    
     meta_data_reader->read_all(json_path);
     meta_data_reader->set_reader_id(reader_id);

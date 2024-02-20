@@ -959,6 +959,7 @@ MasterGraph::get_output_tensors() {
         // Get metadata buffers and update
         auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
         auto meta_data_reader_output = _ring_buffer.get_meta_data_vec().second;
+        _current_metadata_batch_list = meta_data_reader_output;
         for (unsigned reader_id = 0; reader_id < _readers_count; reader_id++) {
             auto metadata_buffer = meta_data_read_buffers[reader_id];
             auto metadata_output_tensor_list = _metadatareader_output_tensor_list[reader_id];
@@ -1859,6 +1860,22 @@ TensorList *MasterGraph::matched_index_meta_data() {
         meta_data_buffers += _matches_tensor_list[i]->info().data_size();
     }
     return &_matches_tensor_list;
+}
+
+std::vector<std::vector<int>>& MasterGraph::get_mask_polygons_count(TensorList *mask_tensor_list) {
+    if (mask_tensor_list->type() != "mask")
+        THROW("Invalid tensorList")
+
+    auto reader_id = _metadata_outputs_map.find(mask_tensor_list)->second;   // TODO - Add condition to check if it is present.
+    return _current_metadata_batch_list[reader_id]->get_mask_polygons_count_batch();
+}
+
+std::vector<std::vector<std::vector<int>>>& MasterGraph::get_mask_vertices_count(TensorList *mask_tensor_list) {
+    if (mask_tensor_list->type() != "mask")
+        THROW("Invalid tensorList")
+
+    auto reader_id = _metadata_outputs_map.find(mask_tensor_list)->second;   // TODO - Add condition to check if it is present.
+    return _current_metadata_batch_list[reader_id]->get_mask_vertices_count_batch();
 }
 
 void MasterGraph::notify_user_thread() {

@@ -139,6 +139,8 @@ class MasterGraph {
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
     TensorList *matched_index_meta_data();
+    std::vector<std::vector<int>>& get_mask_polygons_count(TensorList *mask_tensor_list);
+    std::vector<std::vector<std::vector<int>>>& get_mask_vertices_count(TensorList *mask_tensor_list);
     void update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output);
     ReaderConfig get_reader_config(Tensor *input);
     void set_loop(bool val) { _loop = val; }
@@ -232,6 +234,7 @@ class MasterGraph {
     std::vector<std::vector<std::vector<float>>> _sequence_frame_timestamps_vec;  //!< Stores the timestamps of the frames in a sequences.
     size_t _sequence_batch_size = 0;                                              //!< Indicates the _user_batch_size when sequence reader outputs are required
     bool _is_sequence_reader_output = false;                                      //!< Set to true if Sequence Reader is invoked.
+    std::vector<pMetaDataBatch> _current_metadata_batch_list;
     // box encoder variables
     bool _is_box_encoder = false;                                                 // bool variable to set the box encoder
     std::vector<float> _anchors;                                                  // Anchors to be used for encoding, as the array of floats is in the ltrb format of size 8732x4

@@ -535,3 +535,23 @@ RocalTensorList
     auto context = static_cast<Context*>(p_context);
     return context->master_graph->matched_index_meta_data();
 }
+
+std::vector<std::vector<int>>& 
+    ROCAL_API_CALL 
+    rocalGetMaskPolygonsCount(RocalContext p_context, RocalTensorList p_tensor_list) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalGetMatchedIndices")
+    auto context = static_cast<Context*>(p_context);
+    auto tensor_list = static_cast<TensorList*>(p_tensor_list);
+    return context->master_graph->get_mask_polygons_count(tensor_list);
+}
+
+std::vector<std::vector<std::vector<int>>>&
+    ROCAL_API_CALL
+    rocalGetMaskVerticesCount(RocalContext p_context, RocalTensorList p_tensor_list) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalGetMatchedIndices")
+    auto context = static_cast<Context*>(p_context);
+    auto tensor_list = static_cast<TensorList*>(p_tensor_list);
+    return context->master_graph->get_mask_vertices_count(tensor_list);
+}

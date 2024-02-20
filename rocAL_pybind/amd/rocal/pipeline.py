@@ -287,7 +287,7 @@ class Pipeline(object):
         # return the tuple
         outputs = []
         data_outputs = b.getOutputTensors(self._handle)
-        metadata_outputs = b.getMetadataOutputArrays(self._metadata_outputs)
+        metadata_outputs = b.getMetadataOutputArrays(self._handle, self._metadata_outputs)
         print("Metadata outputs : ", metadata_outputs)
         data_idx = metadata_idx = 0
 

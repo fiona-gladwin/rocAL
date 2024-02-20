@@ -96,7 +96,7 @@ py::object wrapper_copy_to_tensor(RocalContext context, py::object p,
     return py::cast<py::none>(Py_None);
 }
 
-py::list get_metadata_outputs(std::vector<rocalTensorList *>& metadata_tensor_list) {
+py::list get_metadata_outputs(RocalContext context, std::vector<rocalTensorList *>& metadata_tensor_list) {
     
     py::list output_metadata_list;
     for (size_t i = 0; i < metadata_tensor_list.size(); ++i) {
@@ -144,7 +144,29 @@ py::list get_metadata_outputs(std::vector<rocalTensorList *>& metadata_tensor_li
             }
              output_metadata_list.append(boxes_list);
         } else if (metadata_tensor_list[i]->type() == "mask") {
-            std::cerr << "Mask DATA\n";
+            rocalTensorList *mask_data = metadata_tensor_list[i];          
+            auto polygon_count = rocalGetMaskPolygonsCount(context, mask_data);
+            auto vertices_count = rocalGetMaskVerticesCount(context, mask_data);
+            py::list complete_list;
+            int poly_cnt = 0;
+            int prev_object_cnt = 0;
+            for (int i = 0; i < polygon_count.size(); i++) {  // For each image in a batch, parse through the mask metadata buffers and convert them to polygons format
+                float *mask_buffer = static_cast<float *>(mask_data->at(i)->buffer());
+                py::list poly_batch_list;
+                for (unsigned j = 0; j < polygon_count[i].size(); j++) {
+                    py::list polygons_buffer;
+                    for (int k = 0; k < polygon_count[i][j]; k++) {
+                        py::list coords_buffer;
+                        for (int l = 0; l < vertices_count[i][j][k]; l++)
+                            coords_buffer.append(mask_buffer[l]);
+                        mask_buffer += vertices_count[i][j][k];
+                        polygons_buffer.append(coords_buffer);
+                    }
+                    poly_batch_list.append(polygons_buffer);
+                }
+                complete_list.append(poly_batch_list);
+            }
+            output_metadata_list.append(complete_list);
         }
     }
     return output_metadata_list;

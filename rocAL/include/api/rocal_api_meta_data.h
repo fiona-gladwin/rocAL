@@ -330,4 +330,8 @@ extern "C" void ROCAL_API_CALL rocalBoxIouMatcher(RocalContext p_context, std::v
  */
 extern "C" RocalTensorList ROCAL_API_CALL rocalGetMatchedIndices(RocalContext p_context);
 
+extern "C"  std::vector<std::vector<int>>& ROCAL_API_CALL rocalGetMaskPolygonsCount(RocalContext p_context, RocalTensorList tensor_list);
+
+extern "C"  std::vector<std::vector<std::vector<int>>>& ROCAL_API_CALL rocalGetMaskVerticesCount(RocalContext p_context, RocalTensorList tensor_list);
+
 #endif  // MIVISIONX_ROCAL_API_META_DATA_H

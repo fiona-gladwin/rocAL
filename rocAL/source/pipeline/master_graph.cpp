@@ -372,7 +372,7 @@ void MasterGraph::set_output(Tensor *output_tensor) {
 
 void MasterGraph::set_output(TensorList *tensor_list) {
     tensor_list->set_output(); // set_is_output to true;
-    if (_external_source_reader) return;
+    if (tensor_list->is_external_source()) return;
     auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
 
     int metadata_id;
@@ -2015,6 +2015,7 @@ TensorList * MasterGraph::create_labels_tensorlist() {
     auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
     default_labels_info.set_metadata();
     TensorList *labels_tensor_list = new TensorList("labels");
+    labels_tensor_list->set_external_source(); // To indicate that this TL is externally generated
     for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
         auto labels_info = default_labels_info;
         labels_tensor_list->push_back(new Tensor(labels_info));

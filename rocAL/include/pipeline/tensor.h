@@ -386,6 +386,8 @@ class TensorList : public rocalTensorList {
     TensorList() = default;
     std::string type() override { return _output_type; }
     void set_output() { is_output = true; }
+    void set_external_source() { _is_external_source = true; }
+    bool is_external_source() { return _is_external_source; }
 
    private:
     std::vector<Tensor*> _tensor_list;
@@ -393,4 +395,5 @@ class TensorList : public rocalTensorList {
     std::vector<uint64_t> _tensor_roi_size;
     bool is_output = false;    // Set to true when tensorList is required as output from the pipeline
     std::string _output_type = "none";
+    bool _is_external_source = false;
 };

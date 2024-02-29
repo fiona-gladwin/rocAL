@@ -84,6 +84,7 @@ struct MetaDataConfig {
 class MetaDataReader {
    protected:
     bool _aspect_ratio_grouping;
+    unsigned _reader_id = 0;
 
    public:
     enum class Status {
@@ -100,4 +101,6 @@ class MetaDataReader {
     virtual ImgSize lookup_image_size(const std::string& image_name) { return {}; }
     virtual void set_aspect_ratio_grouping(bool aspect_ratio_grouping) { return; }
     virtual bool get_aspect_ratio_grouping() const { return {}; }
+    virtual void set_reader_id(unsigned id) { _reader_id = id; }
+    virtual unsigned get_reader_id() { return _reader_id; }
 };

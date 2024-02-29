@@ -140,6 +140,7 @@ void ImageLoader::initialize(ReaderConfig reader_cfg, DecoderConfig decoder_cfg,
     _image_loader = std::make_shared<ImageReadAndDecode>();
     size_t shard_count = reader_cfg.get_shard_count();
     int device_id = reader_cfg.get_shard_id();
+    _metadata_reader = reader_cfg.meta_data_reader();
     try {
         // set the device_id for decoder same as shard_id for number of shards > 1
         if (shard_count > 1)
@@ -330,4 +331,8 @@ decoded_image_info ImageLoader::get_decode_image_info() {
 
 crop_image_info ImageLoader::get_crop_image_info() {
     return _output_cropped_img_info;
+}
+
+std::shared_ptr<MetaDataReader> ImageLoader::get_metadata_reader() {
+    return _metadata_reader;
 }

@@ -62,6 +62,7 @@ class LoaderModule {
     virtual void shut_down() = 0;
     virtual std::vector<size_t> get_sequence_start_frame_number() { return {}; }
     virtual std::vector<std::vector<float>> get_sequence_frame_timestamps() { return {}; }
+    virtual std::shared_ptr<MetaDataReader> get_metadata_reader() { THROW("Not supported") }
 };
 
 using pLoaderModule = std::shared_ptr<LoaderModule>;

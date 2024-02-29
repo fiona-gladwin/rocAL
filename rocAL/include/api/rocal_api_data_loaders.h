@@ -528,6 +528,21 @@ extern "C" RocalTensor ROCAL_API_CALL rocalFusedJpegCropSingleShard(RocalContext
                                                                     RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                                     unsigned max_width = 0, unsigned max_height = 0);
 
+extern "C" RocalTensor ROCAL_API_CALL rocalImageDecoderSliceSingleShard(RocalContext context,
+                                                                    RocalTensor p_jpegs,
+                                                                    const char* source_path,
+                                                                    RocalImageColor color_format,
+                                                                    unsigned shard_id,
+                                                                    unsigned shard_count,
+                                                                    bool is_output,
+                                                                    std::vector<float>& area_factor,
+                                                                    std::vector<float>& aspect_ratio,
+                                                                    unsigned num_attempts,
+                                                                    bool shuffle = false,
+                                                                    bool loop = false,
+                                                                    RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
+                                                                    unsigned max_width = 0, unsigned max_height = 0);
+
 /*! \brief Creates TensorFlow records JPEG image reader and decoder. It allocates the resources and objects required to read and decode Jpeg images stored on the file systems. It has internal sharding capability to load/decode in parallel is user wants. If images are not Jpeg compressed they will be ignored.
  * \ingroup group_rocal_data_loaders
  * \param [in] context Rocal context

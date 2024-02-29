@@ -40,7 +40,8 @@ class FusedJpegCropSingleShardNode : public Node {
     void init(unsigned shard_id, unsigned shard_count, unsigned cpu_num_threads, const std::string &source_path, const std::string &json_path, StorageType storage_type,
               DecoderType decoder_type, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type, std::shared_ptr<MetaDataReader> meta_data_reader,
               unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio);
-
+    void init(Tensor *jpegs, unsigned shard_id, unsigned shard_count, unsigned cpu_num_threads, DecoderType decoder_type, ReaderConfig reader_cfg,
+              size_t load_batch_count, RocalMemType mem_type, unsigned num_attempts, std::vector<float> &area_factor, std::vector<float> &aspect_ratio);
     std::shared_ptr<LoaderModule> get_loader_module();
 
    protected:

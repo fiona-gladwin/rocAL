@@ -40,6 +40,7 @@ THE SOFTWARE.
  */
 extern "C" RocalMetaData ROCAL_API_CALL rocalCreateLabelReader(RocalContext rocal_context, const char* source_path);
 
+extern "C" RocalReaderMetaData ROCAL_API_CALL rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop, bool is_output = false);
 /*! \brief creates video label reader
  * \ingroup group_rocal_meta_data
  * \param [in] rocal_context rocal context
@@ -328,5 +329,9 @@ extern "C" void ROCAL_API_CALL rocalBoxIouMatcher(RocalContext p_context, std::v
  * \return RocalTensorList of matched indices
  */
 extern "C" RocalTensorList ROCAL_API_CALL rocalGetMatchedIndices(RocalContext p_context);
+
+extern "C"  std::vector<std::vector<int>>& ROCAL_API_CALL rocalGetMaskPolygonsCount(RocalContext p_context, RocalTensorList tensor_list);
+
+extern "C"  std::vector<std::vector<std::vector<int>>>& ROCAL_API_CALL rocalGetMaskVerticesCount(RocalContext p_context, RocalTensorList tensor_list);
 
 #endif  // MIVISIONX_ROCAL_API_META_DATA_H

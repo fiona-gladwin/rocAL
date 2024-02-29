@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,19 @@ THE SOFTWARE.
 */
 
 #pragma once
-#include "meta_data_reader.h"
-std::shared_ptr<MetaDataReader> create_meta_data_reader(const MetaDataConfig& config, pMetaDataBatch& meta_data_batch);
-std::pair<std::shared_ptr<MetaDataReader>, pMetaDataBatch> create_meta_data_reader(const MetaDataConfig& config);
+#include "graph.h"
+#include "node.h"
 
+class ReaderNode : public Node {
+   public:
+    ReaderNode(Tensor *output);
+   //  ~ReaderNode() override;
+    ReaderNode() = delete;
+
+
+   protected:
+    void create_node() override{};
+    void update_node() override{};
+
+   private:
+};

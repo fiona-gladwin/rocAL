@@ -28,6 +28,41 @@ from amd.rocal.pipeline import Pipeline
 import amd.rocal.types as types
 
 
+def coco_experimental(path = '', annotations_file='', ltrb=True, masks=False, ratio=False, avoid_class_remapping=False, random_shuffle=False, enable_reader_output=False,
+         pixelwise_masks=False, is_box_encoder=False, is_box_iou_matcher=False, aspect_ratio_grouping=False, stick_to_shard=False, pad_last_batch=False):
+    """!Creates a COCOReader node.
+
+        @param annotations_file         Path to the COCO annotations file.
+        @param ltrb                     Whether bounding box coordinates are provided in (left, top, right, bottom) format.
+        @param masks                    Whether to read polygon masks from COCO annotations.
+        @param ratio                    Whether bounding box coordinates are provided in normalized format.
+        @param avoid_class_remapping    Specifies if class remapping should be avoided.
+        @param pixelwise_masks          Whether to read mask data and generate pixel-wise masks.
+        @param is_box_encoder           Whether to enable box encoder in the pipeline.
+        @param is_box_iou_matcher       Whether to enable box IOU matcher in the pipeline.
+        @param aspect_ratio_grouping    Whether to enable aspect ratio grouping in the pipeline.
+        @param stick_to_shard           Determines whether the reader should stick to a data shard instead of going through the entire dataset.
+        @param pad_last_batch           If set to True, pads the shard by repeating the last sample.
+
+        @return    meta data, labels, and bounding boxes.
+    """
+    Pipeline._current_pipeline._reader = "COCOReader"
+    # Output
+    labels = []
+    bboxes = []
+    kwargs_pybind = {
+        "source_path": path,
+        "json_path": annotations_file,
+        "is_output": enable_reader_output,
+        "shuffle": random_shuffle,
+        "loop": False,
+        "mask": masks,
+        "ltrb": ltrb}
+    meta_data = b.cocoReaderExperimental(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    print("Metadata list in readers : ", meta_data)
+    return (meta_data[0], *meta_data[1])
+
 def coco(annotations_file='', ltrb=True, masks=False, ratio=False, avoid_class_remapping=False,
          pixelwise_masks=False, is_box_encoder=False, is_box_iou_matcher=False, aspect_ratio_grouping=False, stick_to_shard=False, pad_last_batch=False):
     """!Creates a COCOReader node.
@@ -83,6 +118,27 @@ def file(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_l
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (label_reader_meta_data, labels)
 
+def file_experimental(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_last_batch=False, random_shuffle=False, enable_reader_output=False):
+    """!Creates a labelReader node for reading files from folder or file_list.
+
+        @param file_root         Path to a directory that contains the data files.
+        @param file_filters      A list of glob strings to filter the list of files in the sub-directories of the file_root.
+        @param file_list         Path to a text file that contains one whitespace-separated filename label pair per line. The filenames are relative to the location of that file or to file_root, if specified.
+        @param stick_to_shard    Determines whether the reader should stick to a data shard instead of going through the entire dataset.
+        @param pad_last_batch    If set to True, pads the shard by repeating the last sample.
+
+        @return    label reader meta data and labels.
+    """
+    Pipeline._current_pipeline._reader = "labelReader"
+    # Output
+    labels = []
+    kwargs_pybind = {"source_path": file_root,
+                     "shuffle":random_shuffle,
+                     "loop":False,
+                     "is_output":enable_reader_output}
+    label_reader_meta_data = b.labelReaderExperimental(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (label_reader_meta_data[0], *label_reader_meta_data[1])
 
 def tfrecord(path, user_feature_key_map, features, reader_type=0, stick_to_shard=False, pad_last_batch=False):
     """!Creates a TFRecordReader node for loading TFRecord dataset.

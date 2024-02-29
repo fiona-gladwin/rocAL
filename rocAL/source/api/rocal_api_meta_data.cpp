@@ -93,6 +93,16 @@ RocalReaderMetaData
     return context->master_graph->create_coco_reader(source_path, json_path, MetaDataReaderType::COCO_META_DATA_READER, MetaDataType::BoundingBox, is_output, shuffle, loop, ltrb);
 }
 
+RocalReaderMetaData
+    ROCAL_API_CALL
+    rocalLabelReader(RocalContext p_context, const char* source_path, bool shuffle, bool loop, bool is_output) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalCreateLabelReader")
+    auto context = static_cast<Context*>(p_context);
+
+    return context->master_graph->create_label_metadata_reader(source_path, MetaDataReaderType::FOLDER_BASED_LABEL_READER, shuffle, loop, is_output);
+}
+
 RocalMetaData
     ROCAL_API_CALL
     rocalCreateCOCOReaderKeyPoints(RocalContext p_context, const char* source_path, bool is_output, float sigma, unsigned pose_output_width, unsigned pose_output_height) {
@@ -524,4 +534,24 @@ RocalTensorList
         THROW("Invalid rocal context passed to rocalGetMatchedIndices")
     auto context = static_cast<Context*>(p_context);
     return context->master_graph->matched_index_meta_data();
+}
+
+std::vector<std::vector<int>>& 
+    ROCAL_API_CALL 
+    rocalGetMaskPolygonsCount(RocalContext p_context, RocalTensorList p_tensor_list) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalGetMatchedIndices")
+    auto context = static_cast<Context*>(p_context);
+    auto tensor_list = static_cast<TensorList*>(p_tensor_list);
+    return context->master_graph->get_mask_polygons_count(tensor_list);
+}
+
+std::vector<std::vector<std::vector<int>>>&
+    ROCAL_API_CALL
+    rocalGetMaskVerticesCount(RocalContext p_context, RocalTensorList p_tensor_list) {
+    if (!p_context)
+        THROW("Invalid rocal context passed to rocalGetMatchedIndices")
+    auto context = static_cast<Context*>(p_context);
+    auto tensor_list = static_cast<TensorList*>(p_tensor_list);
+    return context->master_graph->get_mask_vertices_count(tensor_list);
 }

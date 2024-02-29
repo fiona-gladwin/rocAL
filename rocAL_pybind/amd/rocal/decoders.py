@@ -28,6 +28,30 @@ import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
 
 
+def image_decoder_experimental(input, user_feature_key_map=None, path='', file_root='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
+          output_type=types.RGB, decoder_type=types.DECODER_TJPEG, device=None,
+          decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000):
+    reader = Pipeline._current_pipeline._reader
+    if (device == "gpu"):
+        decoder_type = types.DECODER_HW_JEPG
+    else:
+        decoder_type = types.DECODER_TJPEG
+    kwargs_pybind = {
+        "p_jpegs": input,
+        "color_format": output_type,
+        "shard_id": shard_id,
+        "num_shards": num_shards,
+        'is_output': False,
+        "shuffle": random_shuffle,
+        "loop": False,
+        "decode_size_policy": decode_size_policy,
+        "max_width": max_decoded_width,
+        "max_height": max_decoded_height,
+        "dec_type": decoder_type}
+    decoded_image = b.imageDecoderExperimentalShard(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (decoded_image)
+
 def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
           output_type=types.RGB, decoder_type=types.DECODER_TJPEG, device=None,
           decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000):
@@ -401,4 +425,26 @@ def image_slice(*inputs, file_root='', path='', annotations_file='', shard_id=0,
             "max_height": max_decoded_height}
         image_decoder_slice = b.fusedDecoderCropShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (image_decoder_slice)
+
+def image_slice_experimental(input, file_root='', path='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
+                random_aspect_ratio=[0.75, 1.33333], random_area=[0.08, 1.0], num_attempts=100, output_type=types.RGB,
+                decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000):
+    kwargs_pybind = {
+            "p_jpegs":input,
+            "source_path": file_root,
+            "color_format": output_type,
+            "shard_id": shard_id,
+            "num_shards": num_shards,
+            'is_output': False,
+            "area_factor": random_area,
+            "aspect_ratio": random_aspect_ratio,
+            "num_attempts": num_attempts,
+            "shuffle": random_shuffle,
+            "loop": False,
+            "decode_size_policy": decode_size_policy,
+            "max_width": max_decoded_width,
+            "max_height": max_decoded_height}
+    image_decoder_slice = b.imageDecoderSliceExperimentalShard(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (image_decoder_slice)

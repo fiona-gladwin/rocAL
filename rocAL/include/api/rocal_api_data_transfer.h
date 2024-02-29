@@ -72,7 +72,7 @@ extern "C" RocalStatus ROCAL_API_CALL rocalToTensor(RocalContext rocal_context, 
  * \param [in] num_of_outputs number of output images
  * \param [in] output_images output images
  */
-extern "C" void ROCAL_API_CALL rocalSetOutputs(RocalContext p_context, unsigned int num_of_outputs, std::vector<RocalTensor> &output_images);
+extern "C" void ROCAL_API_CALL rocalSetOutputs(RocalContext p_context, unsigned int num_of_outputs, std::vector<RocalTensor> &output_images, std::vector<RocalTensorList>& output_metadata_tensorlist);
 
 /*!
  * \brief gives the list of output tensors from rocal context

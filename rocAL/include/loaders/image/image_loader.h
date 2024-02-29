@@ -54,6 +54,7 @@ class ImageLoader : public LoaderModule {
     crop_image_info get_crop_image_info() override;
     void set_prefetch_queue_depth(size_t prefetch_queue_depth) override;
     void shut_down() override;
+    std::shared_ptr<MetaDataReader> get_metadata_reader() override;
 
    private:
     bool is_out_of_data();
@@ -90,5 +91,6 @@ class ImageLoader : public LoaderModule {
     int _device_id;
     size_t _max_tensor_width, _max_tensor_height;
     std::vector<uint32_t> _read_buffer_size;
+    std::shared_ptr<MetaDataReader> _metadata_reader;
     std::vector<uint32_t> _unit_vector;     //!<Used to pass unit value for Reader's ROI>
 };

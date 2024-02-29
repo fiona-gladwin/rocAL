@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "node_image_loader_single_shard.h"
 #include "node_video_loader.h"
 #include "node_video_loader_single_shard.h"
+#include "node_reader.h"
 #include "ring_buffer.h"
 #include "timing_debug.h"
 #if ENABLE_HIP
@@ -71,6 +72,18 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
+
+struct MetadataInfo {
+    std::shared_ptr<MetaDataGraph> graph;
+    pMetaDataBatch metadata_batch;
+    bool process_graph = false;
+    MetadataInfo() = default;
+    MetadataInfo(std::shared_ptr<MetaDataGraph> &metadata_graph, pMetaDataBatch &metadata) {
+        graph = metadata_graph;
+        metadata_batch = metadata;
+    }
+    void enable_metadata_graph_process() { process_graph = true; }
+};
 class MasterGraph {
    public:
     enum class Status { OK = 0,
@@ -107,7 +120,8 @@ class MasterGraph {
     Tensor *create_loader_output_tensor(const TensorInfo &info);
     void create_reader_output_tensor(Tensor *reader_tensor);
     std::tuple<rocalTensor *, std::vector<rocalTensorList *>> create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output = false, bool shuffle = false, bool loop = false, bool ltrb_bbox = true, bool is_box_encoder = false);
-    
+    std::tuple<rocalTensor *, std::vector<rocalTensorList *>> create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop, bool is_output = false);
+
     std::vector<rocalTensorList *> create_label_reader(const char *source_path, MetaDataReaderType reader_type);
     std::vector<rocalTensorList *> create_video_label_reader(const char *source_path, MetaDataReaderType reader_type, unsigned sequence_length, unsigned frame_step, unsigned frame_stride, bool file_list_frame_num = true);
     std::vector<rocalTensorList *> create_coco_meta_data_reader(const char *source_path, bool is_output, MetaDataReaderType reader_type, MetaDataType label_type, bool ltrb_bbox = true, bool is_box_encoder = false,
@@ -125,9 +139,13 @@ class MasterGraph {
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
     TensorList *matched_index_meta_data();
+    std::vector<std::vector<int>>& get_mask_polygons_count(TensorList *mask_tensor_list);
+    std::vector<std::vector<std::vector<int>>>& get_mask_vertices_count(TensorList *mask_tensor_list);
+    void update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output);
     ReaderConfig get_reader_config(Tensor *input);
     void set_loop(bool val) { _loop = val; }
     void set_output(Tensor *output_tensor);
+    void set_output(TensorList *output_tensor_list);
     size_t calculate_cpu_num_threads(size_t shard_count);
     bool empty() { return (remaining_count() < (_is_sequence_reader_output ? _sequence_batch_size : _user_batch_size)); }
     size_t sequence_batch_size() { return _sequence_batch_size; }
@@ -171,12 +189,17 @@ class MasterGraph {
 
     // Output tensorList for metadata
     std::vector<rocalTensorList *> _metadata_output_tensor_list;
+    std::vector<std::vector<rocalTensorList *>> _metadatareader_output_tensor_list;
     TensorList _labels_tensor_list;
     TensorList _bbox_tensor_list;
     TensorList _mask_tensor_list;
     TensorList _matches_tensor_list;
     std::vector<size_t> _meta_data_buffer_size;
-    std::map<Tensor *, ReaderConfig> _reader_tensor_map;                          //!< key: tensor, value : Parent node
+    std::vector<std::vector<size_t>> _metadata_outputs_buffer_size;
+    std::map<Tensor *, ReaderConfig> _reader_tensor_map;                          //!< key: tensor, value : Reader config
+    std::map<TensorList *, unsigned> _metadata_outputs_map;                       //!< key: tensorList, value : Parent reader id
+    std::map<unsigned, MetadataInfo> _metadata_reader_info_map;                   //!< key: reader id, value : Parent metadata info
+    std::unordered_map<std::string, unsigned> _metadata_name_map = {{"labels", 0}, {"bb_labels", 0}, {"bbox", 1}, {"mask", 2}};
 #if ENABLE_HIP
     DeviceManagerHip _device;                                                     //!< Keeps the device related constructs needed for running on GPU
 #elif ENABLE_OPENCL
@@ -191,6 +214,7 @@ class MasterGraph {
     std::vector<pLoaderModule> _loader_modules;                                   //!< Keeps the list of loader modules used to feed the input the tensors of the graph
     TimingDBG _convert_time, _process_time, _bencode_time;
     const size_t _user_batch_size;                                                //!< Batch size provided by the user
+    unsigned _readers_count = 0;
     unsigned _loaders_count = 0;
     vx_context _context;
     const RocalMemType _mem_type;                                                 //!< Is set according to the _affinity, if GPU, is set to CL, otherwise host
@@ -210,6 +234,7 @@ class MasterGraph {
     std::vector<std::vector<std::vector<float>>> _sequence_frame_timestamps_vec;  //!< Stores the timestamps of the frames in a sequences.
     size_t _sequence_batch_size = 0;                                              //!< Indicates the _user_batch_size when sequence reader outputs are required
     bool _is_sequence_reader_output = false;                                      //!< Set to true if Sequence Reader is invoked.
+    std::vector<pMetaDataBatch> _current_metadata_batch_list;
     // box encoder variables
     bool _is_box_encoder = false;                                                 // bool variable to set the box encoder
     std::vector<float> _anchors;                                                  // Anchors to be used for encoding, as the array of floats is in the ltrb format of size 8732x4
@@ -219,6 +244,8 @@ class MasterGraph {
     bool _offset;                                                                 // Returns normalized offsets ((encoded_bboxes*scale - anchors*scale) - mean) / stds in EncodedBBoxes that use std and the mean and scale arguments if offset="True"
     std::vector<float> _means, _stds;                                             //_means:  [x y w h] mean values for normalization _stds: [x y w h] standard deviations for offset normalization.
     bool _augmentation_metanode = false;
+    std::vector<std::vector<std::string>> _loader_image_names;
+    std::vector<pMetaDataBatch> _readers_output_meta_data;
     // box IoU matcher variables
     bool _is_box_iou_matcher = false;                                             // bool variable to set the box iou matcher
     BoxIouMatcherInfo _iou_matcher_info;
@@ -251,10 +278,20 @@ std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, co
 template <typename T, typename M>
 std::shared_ptr<T> MasterGraph::meta_add_node(std::shared_ptr<M> node) {
     auto meta_node = std::make_shared<T>();
-    _meta_data_graph->_meta_nodes.push_back(meta_node);
+    if (_meta_data_graph) {
+        _meta_data_graph->_meta_nodes.push_back(meta_node);
+        _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
+    } else {
+        auto loader_id = node->get_id();
+        auto reader_id = _loader_modules[loader_id]->get_metadata_reader()->get_reader_id();
+        auto meta_data_graph = _metadata_reader_info_map[reader_id].graph;
+        if (meta_data_graph) {
+            meta_data_graph->_meta_nodes.push_back(meta_node);
+            _augmentation_metanode = true;  // Set this in metadata graph for multiple readers
+        }
+    }
     meta_node->_node = node;
     meta_node->_batch_size = _user_batch_size;
-    _augmentation_metanode = true;
     return meta_node;
 }
 
@@ -403,6 +440,19 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
     _loader_modules.emplace_back(loader_module);
     node->set_id(_loaders_count++);
     _root_nodes.push_back(node);
+    for (auto &output : outputs)
+        _tensor_map.insert(std::make_pair(output, node));
+
+    return node;
+}
+
+/*
+ * Explicit specialization for ReaderNode
+ */
+template <>
+inline std::shared_ptr<ReaderNode> MasterGraph::add_node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
+    auto node = std::make_shared<ReaderNode>(outputs[0]);
+    node->set_id(_loaders_count);
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 

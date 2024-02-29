@@ -291,8 +291,30 @@ MasterGraph::build() {
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
     if (_loaders_count > 1) {
         create_multiple_graphs();
+        _ring_buffer.init_metadata(RocalMemType::HOST, _metadata_outputs_buffer_size);
     } else {
         _loader_module = _loader_modules[0];
+        _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size); // Will be removed later and replaced by line below
+        // _ring_buffer.init_metadata(RocalMemType::HOST, _metadata_outputs_buffer_size[0]);
+        if (_metadata_reader_info_map.size() == 1) {
+            _meta_data_graph = _metadata_reader_info_map[0].graph;
+            _augmented_meta_data = _metadata_reader_info_map[0].metadata_batch;
+            _meta_data_reader = _loader_module->get_metadata_reader();
+
+            // This part can be omiited while running training
+            for (auto metadata_tensor_list : _metadatareader_output_tensor_list[0]) {
+                auto tensor_list = static_cast<TensorList *>(metadata_tensor_list);
+                if (tensor_list->type() == "labels" || tensor_list->type() == "bb_labels") {
+                    _labels_tensor_list = *tensor_list;
+                } else if (tensor_list->type() == "bbox") {
+                    _bbox_tensor_list = *tensor_list;
+                } else if (tensor_list->type() == "mask") {
+                    _mask_tensor_list = *tensor_list;
+                } else {
+                    THROW("The tensorList does not have metadata")
+                }
+            }
+        }
         create_single_graph();
     }
     start_processing();
@@ -350,6 +372,16 @@ void MasterGraph::set_output(Tensor *output_tensor) {
         auto actual_output = create_tensor(output_tensor->info(), true);
         add_node<CopyNode>({output_tensor}, {actual_output});
     }
+}
+
+void MasterGraph::set_output(TensorList *tensor_list) {
+    tensor_list->set_output(); // set_is_output to true;
+    auto reader_id = _metadata_outputs_map.find(tensor_list)->second;
+    if (tensor_list->type() == "bb_labels" || tensor_list->type() == "bbox" || tensor_list->type() == "mask") {
+        _metadata_reader_info_map[reader_id].enable_metadata_graph_process();
+    }
+
+    _metadata_outputs_buffer_size[reader_id][_metadata_name_map[tensor_list->type()]] = _user_batch_size * tensor_list->at(0)->info().data_size();
 }
 
 void MasterGraph::release() {
@@ -454,6 +486,8 @@ MasterGraph::reset() {
     _ring_buffer.reset();
     _sequence_start_framenum_vec.clear();
     _sequence_frame_timestamps_vec.clear();
+    _loader_image_names.clear();
+    _readers_output_meta_data.clear();
     // clearing meta ring buffer
     // if random_bbox meta reader is used: read again to get different crops
     if (_randombboxcrop_meta_data_reader != nullptr)
@@ -487,7 +521,6 @@ MasterGraph::timing() {
         t.copy_to_output += _convert_time.get_timing();
         t.bb_process_time += _bencode_time.get_timing();
     }
-
     return t;
 }
 
@@ -921,7 +954,60 @@ MasterGraph::get_output_tensors() {
         _output_tensor_list[i]->set_mem_handle(output_ptr[i]);
         _output_tensor_list[i]->set_roi(roi_ptr[i]);
     }
+
+    if (_readers_count > 0 && _loaders_count > 1) {    // Execute for multiple loader case
+        // Get metadata buffers and update
+        auto meta_data_read_buffers = _ring_buffer.get_meta_read_buffers_reader();
+        auto meta_data_reader_output = _ring_buffer.get_meta_data_vec().second;
+        _current_metadata_batch_list = meta_data_reader_output;
+        for (unsigned reader_id = 0; reader_id < _readers_count; reader_id++) {
+            auto metadata_buffer = meta_data_read_buffers[reader_id];
+            auto metadata_output_tensor_list = _metadatareader_output_tensor_list[reader_id];
+            // Size should be the same
+            for (unsigned output_idx = 0; output_idx < metadata_output_tensor_list.size(); output_idx++) {
+                update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output[reader_id]);
+            }
+        }
+    } else {
+        // Get metadata buffers and update
+        auto meta_data_reader_output = _ring_buffer.get_meta_data().second;
+        auto metadata_buffer = _ring_buffer.get_meta_read_buffers();
+        auto metadata_output_tensor_list = _metadatareader_output_tensor_list[0];
+        // Size should be the same
+        for (unsigned output_idx = 0; output_idx < metadata_output_tensor_list.size(); output_idx++) {
+            update_meta_data_tensor_list(static_cast<TensorList *>(metadata_output_tensor_list[output_idx]), metadata_buffer[output_idx], meta_data_reader_output);
+        }
+    }
     return &_output_tensor_list;
+}
+
+void MasterGraph::update_meta_data_tensor_list(TensorList *metadata_tensorlist, void *buffer, pMetaDataBatch metadata_output) {
+    unsigned char *meta_data_buffer = reinterpret_cast<unsigned char *>(buffer);
+    if (metadata_tensorlist->type() == "labels" || metadata_tensorlist->type() == "bb_labels") {
+        auto labels = metadata_output->get_labels_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({labels[i].size()});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else if (metadata_tensorlist->type() == "bbox") {
+        auto bbox_cords = metadata_output->get_bb_cords_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({bbox_cords[i].size(), 4});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else if (metadata_tensorlist->type() == "mask") {
+        auto mask_cords = metadata_output->get_mask_cords_batch();
+        for (unsigned i = 0; i < metadata_tensorlist->size(); i++) {
+            metadata_tensorlist->at(i)->set_dims({mask_cords[i].size(), 1});
+            metadata_tensorlist->at(i)->set_mem_handle((void *)meta_data_buffer);
+            meta_data_buffer += metadata_tensorlist->at(i)->info().data_size();
+        }
+    } else {
+        THROW("Unsupported TensorList type for metadata")
+    }
+
 }
 
 bool MasterGraph::is_out_of_data() {
@@ -1055,28 +1141,30 @@ void MasterGraph::output_routine_multiple_loaders() {
             auto write_output_buffers = write_buffers.first;
             _rb_block_if_full_time.end();
 
+            // Allocate decoded image info for each reader
+            std::vector<decoded_image_info> decode_image_readers_info(_readers_count);
             // Swap handles on the input tensor, so that new tensor is loaded to be processed
             for (auto loader_module : _loader_modules) {
                 auto load_ret = loader_module->load_next();
                 if (load_ret != LoaderModuleStatus::OK)
                     THROW("Loader module failed to load next batch of images, status " + TOSTR(load_ret))                
+
+                if (!_processing)
+                    break;
+                auto meta_data_reader = loader_module->get_metadata_reader();
+                auto full_batch_image_names = loader_module->get_id(); // Temp change
+                decode_image_readers_info[meta_data_reader->get_reader_id()] = loader_module->get_decode_image_info();
+                auto crop_image_info = loader_module->get_crop_image_info();   // Temp change
+
+                if (full_batch_image_names.size() != _user_batch_size)
+                    WRN("Internal problem: names count " + TOSTR(full_batch_image_names.size()))
+                
+                // meta_data lookup is done before _meta_data_graph->process() is called to have the new meta_data ready for processing
+                
+                if (meta_data_reader)
+                    meta_data_reader->lookup(full_batch_image_names);
+                _loader_image_names.push_back(full_batch_image_names);
             }
-
-            if (!_processing)
-                break;
-            auto full_batch_image_names = _loader_modules[0]->get_id(); // Temp change
-            auto decode_image_info = _loader_modules[0]->get_decode_image_info();   // Temp change
-            auto crop_image_info = _loader_modules[0]->get_crop_image_info();   // Temp change
-
-            if (full_batch_image_names.size() != _user_batch_size)
-                WRN("Internal problem: names count " + TOSTR(full_batch_image_names.size()))
-            
-            /*
-            // meta_data lookup is done before _meta_data_graph->process() is called to have the new meta_data ready for processing
-            if (_meta_data_reader)
-                _meta_data_reader->lookup(full_batch_image_names);
-            */
-
             if (!_processing)
                 break;
 
@@ -1094,30 +1182,28 @@ void MasterGraph::output_routine_multiple_loaders() {
             }
 
             update_node_parameters();
-            pMetaDataBatch output_meta_data = nullptr;
-            /* if (_augmented_meta_data) {
-                output_meta_data = _augmented_meta_data->clone(!_augmentation_metanode);  // copy the data if metadata is not processed by the nodes, else create an empty instance
-                if (_meta_data_graph) {
-                    if (_is_random_bbox_crop) {
-                        _meta_data_graph->update_random_bbox_meta_data(_augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
-                    } else {
-                        _meta_data_graph->update_meta_data(_augmented_meta_data, decode_image_info);
+            for (auto reader_output : _metadata_reader_info_map) {
+                auto meta_data_graph = reader_output.second.graph;
+                auto augmented_meta_data = reader_output.second.metadata_batch;
+                if (augmented_meta_data) {
+                    // Augmentation meta nodes part to be checked
+                    auto output_meta_data = augmented_meta_data->clone(!meta_data_graph->has_meta_nodes());  // copy the data if metadata is not processed by the nodes, else create an empty instance
+                    if (meta_data_graph && reader_output.second.process_graph) {
+                        // if (_is_random_bbox_crop) {
+                        //     meta_data_graph->update_random_bbox_meta_data(augmented_meta_data, output_meta_data, decode_image_info, crop_image_info);
+                        // } else {
+                            meta_data_graph->update_meta_data(augmented_meta_data, decode_image_readers_info[reader_output.first]);
+                        // }
+                        meta_data_graph->process(augmented_meta_data, output_meta_data);
                     }
-                    _meta_data_graph->process(_augmented_meta_data, output_meta_data);
+                    _readers_output_meta_data.push_back(std::move(output_meta_data));
                 }
-            }*/
+            }
+
             _process_time.start();
             for (auto& graph : _graphs) {
                 graph->schedule();
             }
-            for (auto& graph : _graphs) {
-                graph->wait();
-            }
-            _process_time.end();
-
-            auto write_roi_buffers = write_buffers.second;   // Obtain ROI buffers from ring buffer
-            for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
-                _internal_tensor_list[idx]->copy_roi(write_roi_buffers[idx]);   // Copy ROI from internal tensor's buffer to ring buffer
 
             /*_bencode_time.start();
             if (_is_box_encoder) {
@@ -1136,8 +1222,20 @@ void MasterGraph::output_routine_multiple_loaders() {
             // _sequence_frame_timestamps_vec.insert(_sequence_frame_timestamps_vec.begin(), _loader_module->get_sequence_frame_timestamps());
 #endif
             */
-            _ring_buffer.set_meta_data(full_batch_image_names, output_meta_data);
+            _ring_buffer.set_meta_data(_loader_image_names, _readers_output_meta_data);
+
+            for (auto& graph : _graphs) {
+                graph->wait();
+            }
+            _process_time.end();
+
+            auto write_roi_buffers = write_buffers.second;   // Obtain ROI buffers from ring buffer
+            for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)
+                _internal_tensor_list[idx]->copy_roi(write_roi_buffers[idx]);   // Copy ROI from internal tensor's buffer to ring buffer
+
             _ring_buffer.push();  // Image data and metadata is now stored in output the ring_buffer, increases it's level by 1
+            _loader_image_names.clear();
+            _readers_output_meta_data.clear();
         }
     } catch (const std::exception &e) {
         ERR("Exception thrown in the process routine: " + STR(e.what()) + STR("\n"));
@@ -1183,20 +1281,89 @@ ReaderConfig MasterGraph::get_reader_config(Tensor *input) {
     return _reader_tensor_map.find(input)->second;
 }
 
+std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_label_metadata_reader(const char *source_path, MetaDataReaderType reader_type, bool shuffle, bool loop, bool is_output) {
+    // if (_meta_data_reader)
+    //     THROW("A metadata reader has already been created")
+    // if (_augmented_meta_data)
+    //     THROW("Metadata can only have a single output")
+
+    MetaDataConfig config(MetaDataType::Label, reader_type, source_path);
+
+    auto meta_data_graph = create_meta_data_graph(config);
+    auto meta_data = create_meta_data_reader(config);
+    auto meta_data_reader = meta_data.first;
+    auto meta_data_output = meta_data.second;
+    unsigned reader_id = _readers_count++;
+
+    // Create the READER CONFIG
+    auto reader_cfg = ReaderConfig(StorageType::FILE_SYSTEM, meta_data_reader, source_path, "", is_output, shuffle, loop);
+    reader_cfg.set_reader_id(reader_id);    // To be changed    
+    meta_data_reader->read_all(source_path);
+    meta_data_reader->set_reader_id(reader_id);
+    // _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
+    // _meta_data_reader->read_all(source_path);
+
+    // Insert Graph and output into the map
+    _metadata_reader_info_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
+
+    std::vector<size_t> dims;
+    dims = {_user_batch_size * 1000, 1};
+    auto jpegs_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::UINT8);  // Create default jpegs Info
+    jpegs_info.set_max_shape();
+    auto jpegs_tensor = new Tensor(jpegs_info);
+    add_node<ReaderNode>({}, {jpegs_tensor});
+
+    dims = {1};
+    auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
+    default_labels_info.set_metadata();
+    // _meta_data_buffer_size.emplace_back(_user_batch_size * sizeof(vx_int32));
+
+    TensorList *labels_tensor_list;
+    labels_tensor_list = new TensorList("labels");  // Can this be a shared ptr?
+    for (unsigned i = 0; i < _user_batch_size; i++) {
+        auto info = default_labels_info;
+        labels_tensor_list->push_back(new Tensor(info));
+    }
+
+    // Set the reader config and Jpegs tensor list in a map
+    _reader_tensor_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+
+    std::vector<rocalTensorList *> metadata_output_tensor_list;
+    // std::vector<size_t> metadata_buffer_size;
+    _meta_data_buffer_size.clear();          // TO BE CHECKED
+    metadata_output_tensor_list.emplace_back(labels_tensor_list);
+    _meta_data_buffer_size.push_back(_user_batch_size * default_labels_info.data_size());
+    _metadata_outputs_map.insert(std::make_pair(labels_tensor_list, reader_id));
+
+    // _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);
+    _metadatareader_output_tensor_list.emplace_back(metadata_output_tensor_list);
+    std::vector<size_t> metadata_size(_meta_data_buffer_size.size(), 0);  // Will be removed later
+    _metadata_outputs_buffer_size.emplace_back(metadata_size);
+    return std::make_tuple(jpegs_tensor, metadata_output_tensor_list);
+}
+
 std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_coco_reader(const char *source_path, const char *json_path, MetaDataReaderType reader_type, MetaDataType metadata_type, bool is_output, bool shuffle, bool loop, bool ltrb_bbox, bool is_box_encoder) {
-    if (_meta_data_reader)
-        THROW("A metadata reader has already been created")
-    if (_augmented_meta_data)
-        THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
+    // if (_meta_data_reader)
+    //     THROW("A metadata reader has already been created")
+    // if (_augmented_meta_data)
+    //     THROW("Metadata output already defined, there can only be a single output for metadata augmentation");
 
     MetaDataConfig config(metadata_type, reader_type, json_path, std::map<std::string, std::string>(), std::string());
-    _meta_data_graph = create_meta_data_graph(config);
-    _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
-    
+    auto meta_data_graph = create_meta_data_graph(config);
+    auto meta_data = create_meta_data_reader(config);
+    auto meta_data_reader = meta_data.first;
+    auto meta_data_output = meta_data.second;
+    unsigned reader_id = _readers_count++;
+
     // Create the READER CONFIG
-    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, _meta_data_reader, source_path, json_path, is_output, shuffle, loop);
-    _meta_data_reader->read_all(json_path);
-    if (!ltrb_bbox) _augmented_meta_data->set_xywh_bbox();
+    auto reader_cfg = ReaderConfig(StorageType::COCO_FILE_SYSTEM, meta_data_reader, source_path, json_path, is_output, shuffle, loop);
+    reader_cfg.set_reader_id(reader_id);    // To be changed    
+    meta_data_reader->read_all(json_path);
+    meta_data_reader->set_reader_id(reader_id);
+
+    // Insert Graph and output into the map
+    _metadata_reader_info_map.emplace(reader_id, MetadataInfo(meta_data_graph, meta_data_output));
+    if (!ltrb_bbox) meta_data.second->set_xywh_bbox();  // Set XYWH boxes in output metadata
     std::vector<size_t> dims;
     size_t max_objects = static_cast<size_t>(is_box_encoder ? MAX_SSD_ANCHORS : MAX_OBJECTS);
 
@@ -1204,16 +1371,17 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
     auto jpegs_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::UINT8);  // Create default jpegs Info
     jpegs_info.set_max_shape();
     auto jpegs_tensor = new Tensor(jpegs_info);
+    add_node<ReaderNode>({}, {jpegs_tensor});
     
     dims = {max_objects};
     auto default_labels_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::INT32);  // Create default labels Info
     default_labels_info.set_metadata();
-    _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
+    // _meta_data_buffer_size.emplace_back(_user_batch_size * default_labels_info.data_size());
 
     dims = {max_objects, BBOX_COUNT};
     auto default_bbox_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::FP32);  // Create default Bbox Info
     default_bbox_info.set_metadata();
-    _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
+    // _meta_data_buffer_size.emplace_back(_user_batch_size * default_bbox_info.data_size());
 
     TensorInfo default_matches_info;
     TensorInfo default_mask_info;
@@ -1221,31 +1389,49 @@ std::tuple<rocalTensor *, std::vector<rocalTensorList *>> MasterGraph::create_co
         dims = {MAX_MASK_BUFFER, 1};
         default_mask_info = TensorInfo(std::move(dims), RocalMemType::HOST, RocalTensorDataType::FP32);  // Create default mask Info
         default_mask_info.set_metadata();
-        _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
+        // _meta_data_buffer_size.emplace_back(_user_batch_size * default_mask_info.data_size());
     }
+
+    TensorList *labels_tensor_list, *bbox_tensor_list, *mask_tensor_list;
+    labels_tensor_list = new TensorList("bb_labels");  // Can this be a shared ptr?
+    bbox_tensor_list = new TensorList("bbox");
+    if (metadata_type == MetaDataType::PolygonMask)
+        mask_tensor_list = new TensorList("mask");
 
     for (unsigned i = 0; i < _user_batch_size; i++) {  // Create rocALTensorList for each metadata
         auto labels_info = default_labels_info;
         auto bbox_info = default_bbox_info;
-        _labels_tensor_list.push_back(new Tensor(labels_info));
-        _bbox_tensor_list.push_back(new Tensor(bbox_info));
+        labels_tensor_list->push_back(new Tensor(labels_info));
+        bbox_tensor_list->push_back(new Tensor(bbox_info));
         if (metadata_type == MetaDataType::PolygonMask) {
             auto mask_info = default_mask_info;
-            _mask_tensor_list.push_back(new Tensor(mask_info));
+            mask_tensor_list->push_back(new Tensor(mask_info));
         }
     }
-    
-    
+
     // Set the reader config and Jpegs tensor list in a map
     _reader_tensor_map.insert(std::make_pair(jpegs_tensor, reader_cfg));
+    std::vector<rocalTensorList *> metadata_output_tensor_list;
+    std::vector<size_t> metadata_buffer_size;
 
-    _ring_buffer.init_metadata(RocalMemType::HOST, _meta_data_buffer_size);
-    _metadata_output_tensor_list.emplace_back(&_labels_tensor_list);
-    _metadata_output_tensor_list.emplace_back(&_bbox_tensor_list);
-    if (metadata_type == MetaDataType::PolygonMask)
-        _metadata_output_tensor_list.emplace_back(&_mask_tensor_list);
+    metadata_output_tensor_list.emplace_back(labels_tensor_list);
+    metadata_buffer_size.push_back(_user_batch_size * default_labels_info.data_size());
+    _metadata_outputs_map.insert(std::make_pair(labels_tensor_list, reader_id));
 
-    return std::make_tuple(jpegs_tensor, _metadata_output_tensor_list);
+    metadata_output_tensor_list.emplace_back(bbox_tensor_list);
+    metadata_buffer_size.push_back(_user_batch_size * default_bbox_info.data_size());
+    _metadata_outputs_map.insert(std::make_pair(bbox_tensor_list, reader_id));
+
+    if (metadata_type == MetaDataType::PolygonMask) {
+        metadata_output_tensor_list.emplace_back(mask_tensor_list);
+        metadata_buffer_size.push_back(_user_batch_size * default_mask_info.data_size());
+        _metadata_outputs_map.insert(std::make_pair(mask_tensor_list, reader_id));
+    }
+    _ring_buffer.init_metadata(RocalMemType::HOST, metadata_buffer_size);   // Will be removed later
+    _metadatareader_output_tensor_list.emplace_back(metadata_output_tensor_list);
+    std::vector<size_t> metadata_size(metadata_buffer_size.size(), 0);  // Will be removed later
+    _metadata_outputs_buffer_size.emplace_back(metadata_size);
+    return std::make_tuple(jpegs_tensor, metadata_output_tensor_list);
 }
 
 std::vector<rocalTensorList *> MasterGraph::create_coco_meta_data_reader(const char *source_path, bool is_output, MetaDataReaderType reader_type, MetaDataType metadata_type, bool ltrb_bbox, bool is_box_encoder, bool avoid_class_remapping, bool aspect_ratio_grouping, bool is_box_iou_matcher, float sigma, unsigned pose_output_width, unsigned pose_output_height) {
@@ -1674,6 +1860,22 @@ TensorList *MasterGraph::matched_index_meta_data() {
         meta_data_buffers += _matches_tensor_list[i]->info().data_size();
     }
     return &_matches_tensor_list;
+}
+
+std::vector<std::vector<int>>& MasterGraph::get_mask_polygons_count(TensorList *mask_tensor_list) {
+    if (mask_tensor_list->type() != "mask")
+        THROW("Invalid tensorList")
+
+    auto reader_id = _metadata_outputs_map.find(mask_tensor_list)->second;   // TODO - Add condition to check if it is present.
+    return _current_metadata_batch_list[reader_id]->get_mask_polygons_count_batch();
+}
+
+std::vector<std::vector<std::vector<int>>>& MasterGraph::get_mask_vertices_count(TensorList *mask_tensor_list) {
+    if (mask_tensor_list->type() != "mask")
+        THROW("Invalid tensorList")
+
+    auto reader_id = _metadata_outputs_map.find(mask_tensor_list)->second;   // TODO - Add condition to check if it is present.
+    return _current_metadata_batch_list[reader_id]->get_mask_vertices_count_batch();
 }
 
 void MasterGraph::notify_user_thread() {

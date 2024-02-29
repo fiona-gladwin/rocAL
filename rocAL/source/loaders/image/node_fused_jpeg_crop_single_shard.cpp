@@ -58,6 +58,33 @@ void FusedJpegCropSingleShardNode::init(unsigned shard_id, unsigned shard_count,
     _loader_module->start_loading();
 }
 
+void FusedJpegCropSingleShardNode::init(Tensor *jpegs, unsigned shard_id, unsigned shard_count, unsigned cpu_num_threads, DecoderType decoder_type, ReaderConfig reader_cfg,
+                           size_t load_batch_count, RocalMemType mem_type, unsigned num_attempts, std::vector<float> &area_factor, std::vector<float> &aspect_ratio) {
+    if (!_loader_module)
+        THROW("ERROR: loader module is not set for ImageLoaderNode, cannot initialize")
+    if (shard_count < 1)
+        THROW("Shard count should be greater than or equal to one")
+    if (shard_id >= shard_count)
+        THROW("Shard is should be smaller than shard count")
+    _loader_module->set_output(_outputs[0]);
+    _loader_module->set_reader_output(jpegs);
+    // Set reader and decoder config accordingly for the ImageLoaderNode
+    reader_cfg.set_shard_count(shard_count);
+    reader_cfg.set_shard_id(shard_id);
+    reader_cfg.set_cpu_num_threads(cpu_num_threads);
+    reader_cfg.set_batch_count(load_batch_count);
+    
+    auto decoder_cfg = DecoderConfig(decoder_type);
+    decoder_cfg.set_random_area(area_factor);
+    decoder_cfg.set_random_aspect_ratio(aspect_ratio);
+    decoder_cfg.set_num_attempts(num_attempts);
+    decoder_cfg.set_seed(ParameterFactory::instance()->get_seed());
+    _loader_module->initialize(reader_cfg, decoder_cfg,
+                               mem_type,
+                               _batch_size);
+    _loader_module->start_loading();
+}
+
 std::shared_ptr<LoaderModule> FusedJpegCropSingleShardNode::get_loader_module() {
     if (!_loader_module)
         WRN("FusedJpegCropSingleShardNode's loader module is null, not initialized")

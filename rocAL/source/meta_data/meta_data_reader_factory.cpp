@@ -39,6 +39,35 @@ THE SOFTWARE.
 #include "tf_meta_data_reader_detection.h"
 #include "video_label_reader.h"
 
+
+std::pair<std::shared_ptr<MetaDataReader>, pMetaDataBatch> create_meta_data_reader(const MetaDataConfig& config) {
+    switch (config.reader_type()) {
+        case MetaDataReaderType::FOLDER_BASED_LABEL_READER: {
+            if (config.type() != MetaDataType::Label)
+                THROW("FOLDER_BASED_LABEL_READER can only be used to load labels")
+            auto meta_data_reader = std::make_shared<LabelReaderFolders>();
+            auto meta_data_batch = std::make_shared<LabelBatch>();
+            meta_data_reader->init(config, meta_data_batch);
+            return std::make_pair(meta_data_reader, meta_data_batch);
+        } break;
+        case MetaDataReaderType::COCO_META_DATA_READER: {
+            if (config.type() != MetaDataType::BoundingBox && config.type() != MetaDataType::PolygonMask)
+                THROW("COCO_META_DATA_READER can only be used to load bounding boxes and mask coordinates")
+            auto meta_data_reader = std::make_shared<COCOMetaDataReader>();
+            pMetaDataBatch meta_data_batch;
+            if (config.type() == MetaDataType::PolygonMask)
+                meta_data_batch = std::make_shared<PolygonMaskBatch>();
+            else
+                meta_data_batch = std::make_shared<BoundingBoxBatch>();
+            meta_data_reader->init(config, meta_data_batch);
+            return std::make_pair(meta_data_reader, meta_data_batch);
+        } break;
+        default:
+            THROW("MetaDataReader type is unsupported : " + TOSTR(config.reader_type()));
+    } 
+}
+
+
 std::shared_ptr<MetaDataReader> create_meta_data_reader(const MetaDataConfig& config, pMetaDataBatch& meta_data_batch) {
     switch (config.reader_type()) {
         case MetaDataReaderType::FOLDER_BASED_LABEL_READER: {

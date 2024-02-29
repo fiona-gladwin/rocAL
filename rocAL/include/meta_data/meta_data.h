@@ -307,9 +307,11 @@ class LabelBatch : public MetaDataBatch {
         if (buffer.size() < 1)
             THROW("The buffers are insufficient")  // TODO -change
         auto labels_buffer = (int*)buffer[0];
-        for (unsigned i = 0; i < _label_ids.size(); i++) {
-            memcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
-            labels_buffer += _label_ids[i].size();
+        if (labels_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                memcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
+                labels_buffer += _label_ids[i].size();
+            }
         }
     }
     std::vector<size_t>& get_buffer_size() override {
@@ -374,12 +376,18 @@ class BoundingBoxBatch : public LabelBatch {
             THROW("The buffers are insufficient")  // TODO -change
         int* labels_buffer = (int*)buffer[0];
         float* bbox_buffer = (float*)buffer[1];
-        for (unsigned i = 0; i < _label_ids.size(); i++) {
-            memcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
-            if (_bbox_output_type == BoundingBoxType::XYWH) convert_ltrb_to_xywh(_bb_cords[i]);
-            memcpy(bbox_buffer, _bb_cords[i].data(), _label_ids[i].size() * 4 * sizeof(float));
-            labels_buffer += _label_ids[i].size();
-            bbox_buffer += (_label_ids[i].size() * 4);
+        if (labels_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                memcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
+                labels_buffer += _label_ids[i].size();
+            }
+        }
+        if (bbox_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                if (_bbox_output_type == BoundingBoxType::XYWH) convert_ltrb_to_xywh(_bb_cords[i]);
+                memcpy(bbox_buffer, _bb_cords[i].data(), _label_ids[i].size() * 4 * sizeof(float));
+                bbox_buffer += (_label_ids[i].size() * 4);
+            }
         }
     }
     std::vector<size_t>& get_buffer_size() override {
@@ -447,14 +455,24 @@ struct PolygonMaskBatch : public BoundingBoxBatch {
         int* labels_buffer = (int*)buffer[0];
         float* bbox_buffer = (float*)buffer[1];
         float* mask_buffer = (float*)buffer[2];
-        for (unsigned i = 0; i < _label_ids.size(); i++) {
-            mempcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
-            if (_bbox_output_type == BoundingBoxType::XYWH) convert_ltrb_to_xywh(_bb_cords[i]);
-            memcpy(bbox_buffer, _bb_cords[i].data(), _label_ids[i].size() * 4 * sizeof(float));
-            memcpy(mask_buffer, _mask_cords[i].data(), _mask_cords[i].size() * sizeof(float));
-            labels_buffer += _label_ids[i].size();
-            bbox_buffer += (_label_ids[i].size() * 4);
-            mask_buffer += _mask_cords[i].size();
+        if (labels_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                mempcpy(labels_buffer, _label_ids[i].data(), _label_ids[i].size() * sizeof(int));
+                labels_buffer += _label_ids[i].size();
+            }   
+        }
+        if (bbox_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                if (_bbox_output_type == BoundingBoxType::XYWH) convert_ltrb_to_xywh(_bb_cords[i]);
+                memcpy(bbox_buffer, _bb_cords[i].data(), _label_ids[i].size() * 4 * sizeof(float));
+                bbox_buffer += (_label_ids[i].size() * 4);
+            }   
+        }
+        if (mask_buffer) {
+            for (unsigned i = 0; i < _label_ids.size(); i++) {
+                memcpy(mask_buffer, _mask_cords[i].data(), _mask_cords[i].size() * sizeof(float));
+                mask_buffer += _mask_cords[i].size();
+            }   
         }
     }
     std::vector<size_t>& get_buffer_size() override {

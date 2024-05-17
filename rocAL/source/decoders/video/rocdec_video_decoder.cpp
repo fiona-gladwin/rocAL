@@ -48,6 +48,7 @@ VideoDecoder::Status RocDecVideoDecoder::Initialize(const char *src_filename, in
 }
 
 // Seeks to the frame_number in the video file and decodes each frame in the sequence.
+// Seeks to the frame_number in the video file and decodes each frame in the sequence.
 VideoDecoder::Status RocDecVideoDecoder::Decode(unsigned char *out_buffer, unsigned seek_frame_number, size_t sequence_length, size_t stride, int out_width, int out_height, int out_stride, AVPixelFormat out_pix_format) {
     
     VideoDecoder::Status status = Status::OK;
@@ -66,10 +67,14 @@ VideoDecoder::Status RocDecVideoDecoder::Decode(unsigned char *out_buffer, unsig
     OutputSurfaceInfo *surf_info;
     uint8_t *pvideo = nullptr;
     int num_decoded_frames = sequence_length * stride;
-    bool b_seek = !seek_frame_number;       // only if not first frame 
+    // bool b_seek = !seek_frame_number;
+    bool b_seek = true;       // only if not first frame 
     uint32_t image_size = out_height * out_stride * sizeof(uint8_t);
     video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
     video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
+    VideoPostProcess post_process;
+    bool sequence_decoded = false;
+    OutputFormatEnum _output_format = rgb; 
     do {
         if (b_seek) {
             video_seek_ctx.seek_frame_ = static_cast<uint64_t>(seek_frame_number);
@@ -91,22 +96,26 @@ VideoDecoder::Status RocDecVideoDecoder::Decode(unsigned char *out_buffer, unsig
             std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
             break;
         }
-        for (int i = 0; i < n_frame_returned; i++) {
+        // Take the min of sequence length and num frames to avoid out of bounds memory error
+        int required_n_frames = std::min(static_cast<int>(sequence_length), n_frame_returned);
+        for (int i = 0; i < required_n_frames; i++) {
             uint8_t *pframe = _rocvid_decoder->GetFrame(&pts);
             if (n_frame % stride == 0) {
-                // todo:: access the frame in HIP/GPU memory
-                // do color conversion and scaling following videodecodergb sample
-                // the destination memory should be set to out_buffer pointer (expect to be GPU mem ptr)
+                post_process.ColorConvertYUV2RGB(pframe, surf_info, out_buffer, _output_format, _rocvid_decoder->GetStream());
                 out_buffer += image_size;
             }
+            n_frame++;
             // release frame
             _rocvid_decoder->ReleaseFrame(pts);
+            if (n_frame == num_decoded_frames) {
+                sequence_decoded = true;
+                break;
+            }
         }
         //auto end_time = std::chrono::high_resolution_clock::now();
         //auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
         //total_dec_time += time_per_decode;
-        n_frame += n_frame_returned;
-        if (n_frame >= num_decoded_frames) {
+        if (sequence_decoded) {
             break;
         }
     } while (n_video_bytes);

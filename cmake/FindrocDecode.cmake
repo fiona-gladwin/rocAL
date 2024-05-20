@@ -22,7 +22,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # 
+################################################################################################################################################################
+# - Try to find rocDecode libraries and headers
+# Once done this will define
+#
+# rocDecode_FOUND - system has rocDecode
+# rocDecode_INCLUDE_DIRS - the rocDecode include directory
+# rocDecode_LIBRARIES - Link these to use rocDecode
 ################################################################################
+
 find_path(rocDecode_INCLUDE_DIRS
     NAMES rocdecode.h rocparser.h
     HINTS
@@ -47,7 +55,20 @@ find_library(rocDecode_LIBRARIES
 )
 mark_as_advanced(rocDecode_LIBRARIES)
 
-if(rocDecode_LIBRARIES AND rocDecode_INCLUDE_DIRS)
+find_path(rocDecode_LIBRARIES_DIRS
+    NAMES rocdecode
+    HINTS
+    $ENV{rocDecode_PATH}/lib
+    $ENV{rocDecode_PATH}/lib64
+    PATHS
+    ${rocDecode_PATH}/lib
+    ${rocDecode_PATH}/lib64
+    /usr/local/lib
+    ${ROCM_PATH}/lib
+)
+mark_as_advanced(rocDecode_LIBRARIES_DIRS)
+
+if(rocDecode_LIBRARIES AND rocDecode_LIBRARIES_DIRS)
     set(rocDecode_FOUND TRUE)
 endif( )
 
@@ -57,11 +78,13 @@ find_package_handle_standard_args( rocDecode
     REQUIRED_VARS
         rocDecode_INCLUDE_DIRS
         rocDecode_LIBRARIES
+        rocDecode_LIBRARIES_DIRS
 )
 
 set(rocDecode_FOUND ${rocDecode_FOUND} CACHE INTERNAL "")
 set(rocDecode_LIBRARIES ${rocDecode_LIBRARIES} CACHE INTERNAL "")
 set(rocDecode_INCLUDE_DIRS ${rocDecode_INCLUDE_DIRS} CACHE INTERNAL "")
+set(rocDecode_LIBRARIES_DIRS ${rocDecode_LIBRARIES_DIRS} CACHE INTERNAL "")
 
 if(rocDecode_FOUND)
     message("-- ${White}Using rocDecode -- \n\tLibraries:${rocDecode_LIBRARIES} \n\tIncludes:${rocDecode_INCLUDE_DIRS}${ColourReset}")

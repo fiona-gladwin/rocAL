@@ -245,10 +245,9 @@ if(${BUILD_ROCAL})
         set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${rocDecode_LIBRARIES})
     endif()
 
-    file(GLOB_RECURSE SOURCES "source/*.cpp")
+    file(GLOB_RECURSE SOURCES "source/*.cpp" ${ROCM_PATH}/share/rocdecode/utils/*.cpp ${ROCM_PATH}/share/rocdecode/utils/rocvideodecode/*.cpp)
     add_library(${PROJECT_NAME} SHARED ${SOURCES} ${TF_PROTO_SRCS} ${TF_PROTO_HEADERS} ${CAFFE_PROTO_HEADERS} 
-                                ${CAFFE_PROTO_SRCS} ${CAFFE2_PROTO_SRCS} ${CAFFE2_PROTO_HEADERS} 
-                                ${ROCM_PATH}/share/rocdecode/utils/rocvideodecode/roc_video_dec.cpp)
+                                ${CAFFE_PROTO_SRCS} ${CAFFE2_PROTO_SRCS} ${CAFFE2_PROTO_HEADERS})
 
     if("${BACKEND}" STREQUAL "HIP" AND HIP_FOUND)
         add_dependencies(${PROJECT_NAME} rocAL_hip)

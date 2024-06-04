@@ -23,7 +23,7 @@ THE SOFTWARE.
 #pragma once
 #include "pipeline/node.h"
 #include "rocal_api_types.h"
-
+#include <vx_ext_rpp.h>
 class ResizeNode : public Node {
 public:
     ResizeNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs);
@@ -41,4 +41,6 @@ private:
     unsigned _src_width, _src_height, _dst_width, _dst_height, _out_width, _out_height;
     unsigned _max_width = 0, _max_height = 0;
     std::vector<unsigned> _dst_roi_width_vec, _dst_roi_height_vec;
+    vx_array _vx_layout_array;
+    Layouts _vx_layout;
 };

@@ -79,7 +79,6 @@ void ResizeNode::update_node() {
     height_status = vxCopyArrayRange((vx_array)_vx_args.dst_height, 0, _batch_size, sizeof(vx_uint32), _dst_roi_height_vec.data(), VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST);
     if (width_status != 0 || height_status != 0)
         WRN("ERROR: vxCopyArrayRange _dst_roi_width or _dst_roi_height failed " + TOSTR(width_status) + "  " + TOSTR(height_status));
-    vxCopyArrayRange((vx_array)_vx_args_array, 0, 1, sizeof(ResizeArgs), &_vx_args, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
     _outputs[0]->update_tensor_roi(_dst_roi_width_vec, _dst_roi_height_vec);
     _dst_roi_width_vec.clear();
     _dst_roi_height_vec.clear();

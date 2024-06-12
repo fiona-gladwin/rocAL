@@ -89,7 +89,8 @@ class Decoder {
                                size_t input_size,
                                int *width,
                                int *height,
-                               int *color_comps) = 0;
+                               int *color_comps,
+                               int thread_id = 0) = 0;
 
     // TODO: Extend the decode API if needed, color format and order can be passed to the function
     //! Decodes the actual image data
@@ -105,10 +106,11 @@ class Decoder {
                                    size_t max_decoded_width, size_t max_decoded_height,
                                    size_t original_image_width, size_t original_image_height,
                                    size_t &actual_decoded_width, size_t &actual_decoded_height,
-                                   Decoder::ColorFormat desired_decoded_color_format, DecoderConfig decoder_config, bool keep_original) = 0;
+                                   Decoder::ColorFormat desired_decoded_color_format, DecoderConfig decoder_config, 
+                                   bool keep_original, int thread_id = 0) = 0;
 
     virtual ~Decoder() = default;
-    virtual void initialize(int device_id) = 0;
+    virtual void initialize(int device_id, int num_threads) = 0;
     virtual bool is_partial_decoder() = 0;
     virtual void set_bbox_coords(std::vector<float> bbox_coords) = 0;
     virtual std::vector<float> get_bbox_coords() = 0;

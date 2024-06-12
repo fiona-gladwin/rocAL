@@ -37,7 +37,7 @@ TJDecoder::TJDecoder() {
     }
 };
 
-Decoder::Status TJDecoder::decode_info(unsigned char* input_buffer, size_t input_size, int* width, int* height, int* color_comps) {
+Decoder::Status TJDecoder::decode_info(unsigned char* input_buffer, size_t input_size, int* width, int* height, int* color_comps, int thread_id) {
     // TODO : Use the most recent TurboJpeg API tjDecompressHeader3 which returns the color components
     if (tjDecompressHeader2(m_jpegDecompressor,
                             input_buffer,
@@ -58,7 +58,7 @@ Decoder::Status TJDecoder::decode(unsigned char* input_buffer, size_t input_size
                                   size_t max_decoded_width, size_t max_decoded_height,
                                   size_t original_image_width, size_t original_image_height,
                                   size_t& actual_decoded_width, size_t& actual_decoded_height,
-                                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size) {
+                                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size, int thread_id) {
     int tjpf = TJPF_RGB;
     int planes = 1;
     switch (desired_decoded_color_format) {

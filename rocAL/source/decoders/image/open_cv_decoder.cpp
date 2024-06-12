@@ -36,7 +36,7 @@ CVDecoder::CVDecoder() {
     cv::redirectError(handleError);
 }
 
-Decoder::Status CVDecoder::decode_info(unsigned char* input_buffer, size_t input_size, int* width, int* height, int* color_comps) {
+Decoder::Status CVDecoder::decode_info(unsigned char* input_buffer, size_t input_size, int* width, int* height, int* color_comps, int thread_id) {
     // TODO: OpenCV seems not able to decode header separately, remove the imdecode from this call if possible and replace it with a proper function for decoding the header only
 #if 0
     m_mat_orig = cv::imdecode(cv::Mat(1, input_size, CV_8UC1, input_buffer), cv::IMREAD_UNCHANGED);
@@ -58,7 +58,7 @@ Decoder::Status CVDecoder::decode(unsigned char* input_buffer, size_t input_size
                                   size_t max_decoded_width, size_t max_decoded_height,
                                   size_t original_image_width, size_t original_image_height,
                                   size_t& actual_decoded_width, size_t& actual_decoded_height,
-                                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size) {
+                                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size, int thread_id) {
     if (desired_decoded_color_format == Decoder::ColorFormat::RGB || desired_decoded_color_format == Decoder::ColorFormat::BGR)  // don't decode twice)
         m_mat_orig = cv::imdecode(cv::Mat(1, input_size, CV_8UC1, input_buffer), CV_LOAD_IMAGE_COLOR);
     else

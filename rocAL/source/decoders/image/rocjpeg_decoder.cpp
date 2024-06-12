@@ -312,10 +312,17 @@ Decoder::Status RocJpegDecoder::decode(unsigned char *input_buffer, size_t input
     uint32_t channel0_size = output_image.pitch[0] * heights[0];
     uint32_t channel1_size = output_image.pitch[1] * heights[1];
     uint32_t channel2_size = output_image.pitch[2] * heights[2];
+    std::cerr << "Image Size : " << output_image.pitch[0] * heights[0] << "  &  " << channel_sizes[0] <<  "\n";
     CHECK_HIP(hipMemcpyDtoD((void *)output_buffer, output_image.channel[0], output_image.pitch[0] * heights[0]));
     return Status::OK;
 }
 
 RocJpegDecoder::~RocJpegDecoder() {
+    // for (auto& handle : _rocjpeg_handles) {
+    //     CHECK_ROCJPEG(rocJpegDestroy(handle));
+    // }
+    // for (auto& rocjpeg_stream : _rocjpeg_streams) {
+    //     CHECK_ROCJPEG(rocJpegStreamDestroy(rojpecg_stream));
+    // }
 }
 #endif

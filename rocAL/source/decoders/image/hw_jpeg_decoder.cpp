@@ -84,7 +84,7 @@ static int ReadFunc(void *ptr, uint8_t *buf, int buf_size) {
     return buf_size;
 }
 
-void HWJpegDecoder::initialize(int dev_id) {
+void HWJpegDecoder::initialize(int dev_id, int num_threads) {
     int ret = 0;
     char device[128] = "";
     char *pdevice = NULL;
@@ -105,7 +105,7 @@ void HWJpegDecoder::initialize(int dev_id) {
         INFO("HardwareJpegDecoder::Initialize : Found vaapi device for the device\n");
 };
 
-Decoder::Status HWJpegDecoder::decode_info(unsigned char *input_buffer, size_t input_size, int *width, int *height, int *color_comps) {
+Decoder::Status HWJpegDecoder::decode_info(unsigned char *input_buffer, size_t input_size, int *width, int *height, int *color_comps, int thread_id) {
     struct buffer_data bd = {0};
     int ret = 0;
     bd.ptr = input_buffer;
@@ -209,7 +209,7 @@ Decoder::Status HWJpegDecoder::decode(unsigned char *input_buffer, size_t input_
                                       size_t max_decoded_width, size_t max_decoded_height,
                                       size_t original_image_width, size_t original_image_height,
                                       size_t &actual_decoded_width, size_t &actual_decoded_height,
-                                      Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size) {
+                                      Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size, int thread_id) {
     Decoder::Status status = Status::OK;
 
     AVPixelFormat out_pix_fmt = AV_PIX_FMT_RGB24;

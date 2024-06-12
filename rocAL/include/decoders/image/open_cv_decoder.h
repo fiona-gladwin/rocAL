@@ -44,7 +44,7 @@ class CVDecoder : public Decoder {
      \param height pointer to the user's buffer to write the height of the compressed image to
      \param color_comps pointer to the user's buffer to write the number of color components of the compressed image to
     */
-    Status decode_info(unsigned char *input_buffer, size_t input_size, int *width, int *height, int *color_comps) override;
+    Status decode_info(unsigned char *input_buffer, size_t input_size, int *width, int *height, int *color_comps, int thread_id = 0) override;
 
     //! Decodes the actual image data
     //! Decodes the actual image data
@@ -61,14 +61,14 @@ class CVDecoder : public Decoder {
                   size_t max_decoded_width, size_t max_decoded_height,
                   size_t original_image_width, size_t original_image_height,
                   size_t &actual_decoded_width, size_t &actual_decoded_height,
-                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size = false) override;
+                  Decoder::ColorFormat desired_decoded_color_format, DecoderConfig config, bool keep_original_size = false, int thread_id = 0) override;
 
     bool is_partial_decoder() override { return _is_partial_decoder; }
     void set_bbox_coords(std::vector<float> bbox_coord) override { _bbox_coord = bbox_coord; }
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
     std::vector<float> get_bbox_coords() override { return _bbox_coord; }
     // virtual Status decode(unsigned char* input_buffer, size_t input_size,  unsigned char* output_buffer,int desired_width, int desired_height, ColorFormat desired_color);
-    void initialize(int device_id) override{};
+    void initialize(int device_id, int num_threads) override{};
     ~CVDecoder() override;
 
    private:

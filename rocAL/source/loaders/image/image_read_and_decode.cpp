@@ -84,14 +84,14 @@ void ImageReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         AreaRange area_range = std::make_pair((float)random_area[0], (float)random_area[1]);
         _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size);
     }
+    _num_threads = reader_config.get_cpu_num_threads();
     if ((_decoder_config._type != DecoderType::SKIP_DECODE)) {
         for (int i = 0; i < batch_size; i++) {
             _compressed_buff[i].resize(MAX_COMPRESSED_SIZE);  // If we don't need MAX_COMPRESSED_SIZE we can remove this & resize in load module
             _decoder[i] = create_decoder(decoder_config);
-            _decoder[i]->initialize(device_id);
+            _decoder[i]->initialize(device_id, std::min(_batch_size, _num_threads));
         }
     }
-    _num_threads = reader_config.get_cpu_num_threads();
     _reader = create_reader(reader_config);
     _is_external_source = (reader_config.type() == StorageType::EXTERNAL_FILE_SOURCE);
 }
@@ -286,12 +286,12 @@ ImageReadAndDecode::load(unsigned char *buff,
             _actual_decoded_height[i] = max_decoded_height;
             int original_width, original_height, jpeg_sub_samp;
             if (_decoder[i]->decode_info(_compressed_buff[i].data(), _actual_read_size[i], &original_width, &original_height,
-                                         &jpeg_sub_samp) != Decoder::Status::OK) {
+                                         &jpeg_sub_samp, i) != Decoder::Status::OK) {
                 // Substituting the image which failed decoding with other image from the same batch
                 int j = ((i + 1) != _batch_size) ? _batch_size - 1 : _batch_size - 2;
                 while ((j >= 0)) {
                     if (_decoder[i]->decode_info(_compressed_buff[j].data(), _actual_read_size[j], &original_width, &original_height,
-                                                 &jpeg_sub_samp) == Decoder::Status::OK) {
+                                                 &jpeg_sub_samp, i) == Decoder::Status::OK) {
                         _image_names[i] = _image_names[j];
                         _compressed_buff[i] = _compressed_buff[j];
                         _actual_read_size[i] = _actual_read_size[j];
@@ -322,7 +322,7 @@ ImageReadAndDecode::load(unsigned char *buff,
                                     max_decoded_width, max_decoded_height,
                                     original_width, original_height,
                                     scaledw, scaledh,
-                                    decoder_color_format, _decoder_config, keep_original) != Decoder::Status::OK) {
+                                    decoder_color_format, _decoder_config, keep_original, i) != Decoder::Status::OK) {
             }
             _actual_decoded_width[i] = scaledw;
             _actual_decoded_height[i] = scaledh;

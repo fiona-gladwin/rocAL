@@ -2157,6 +2157,32 @@ rocalNop(
 }
 
 RocalTensor ROCAL_API_CALL
+rocalReinterpretCast(
+    RocalContext p_context,
+    RocalTensor p_input,
+    RocalTensorOutputType output_datatype,
+    bool is_output) {
+    Tensor* output = nullptr;
+    if ((p_context == nullptr) || (p_input == nullptr)) {
+        ERR("Invalid ROCAL context or invalid input tensor")
+        return output;
+    }
+    auto context = static_cast<Context*>(p_context);
+    auto input = static_cast<Tensor*>(p_input);
+    try {
+        RocalTensorDataType op_tensor_datatype = static_cast<RocalTensorDataType>(output_datatype);
+        auto output_info = input->info();
+        output_info.reset_data_type(op_tensor_datatype);
+        output = context->master_graph->create_tensor(output_info, is_output);
+        context->master_graph->add_node<CopyNode>({input}, {output});
+    } catch (const std::exception& e) {
+        context->capture_error(e.what());
+        ERR(e.what())
+    }
+    return output;
+}
+
+RocalTensor ROCAL_API_CALL
 rocalPreEmphasisFilter(RocalContext p_context,
                        RocalTensor p_input,
                        bool is_output,

@@ -1112,3 +1112,11 @@ def spectrogram(*inputs, bytes_per_sample_hint = [0], center_windows = True, lay
                      "power": power, "nfft": nfft, "window_length": window_length, "window_step": window_step, "output_layout": layout, "output_dtype": output_dtype}
     spectrogram_output = b.spectrogram(Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (spectrogram_output)
+
+def reinterpret(*inputs, output_dtype):
+    """
+    Produces tensor output reinterpreted with new data type
+    """
+    kwargs_pybind = {"input": inputs[0], "output_datatype" : output_dtype, "is_output": False }
+    reinterpret_output = b.reinterpret(Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    return (reinterpret_output)

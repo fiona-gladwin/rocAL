@@ -140,6 +140,19 @@ class TensorInfo {
         _data_size = (_data_size / _data_type_size);
         _data_size *= data_type_size();
     }
+    void reset_data_type(RocalTensorDataType data_type) {
+        if (_data_type == data_type)
+            return;
+        _data_type = data_type;
+        if (_dims.back() % data_type_size() != 0) {
+            THROW("The innermost dimension is not divisible by the requested data type, Data type change cannot be done")
+        }
+        _dims[_num_of_dims - 1] = _dims.back() / data_type_size();
+        _data_size = (_data_size / _data_type_size);
+        _data_size *= data_type_size();
+        modify_strides();
+        set_max_shape();
+    }
     void get_modified_dims_from_layout(RocalTensorlayout input_layout, RocalTensorlayout output_layout, std::vector<size_t>& new_dims) {
         std::vector<size_t> dims_mapping;
         if (input_layout == RocalTensorlayout::NHWC && output_layout == RocalTensorlayout::NCHW) {

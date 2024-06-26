@@ -1144,4 +1144,10 @@ extern "C" RocalTensor ROCAL_API_CALL rocalSpectrogram(RocalContext context,
                                                        RocalTensorLayout output_layout = ROCAL_NFT,
                                                        RocalTensorOutputType output_datatype = ROCAL_FP32);
 
+extern "C" RocalTensor ROCAL_API_CALL rocalReinterpretCast(
+    RocalContext p_context,
+    RocalTensor p_input,
+    RocalTensorOutputType output_datatype,
+    bool is_output = false);
+
 #endif  // MIVISIONX_ROCAL_API_AUGMENTATION_H

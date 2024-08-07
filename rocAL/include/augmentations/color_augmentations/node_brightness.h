@@ -32,7 +32,7 @@ class BrightnessNode : public Node {
     BrightnessNode() = delete;
 
     void init(float alpha, float beta);
-    void init(FloatParam *alpha_param, FloatParam *beta_param);
+    void init(FloatParam *alpha_param, FloatParam *beta_param, RocalMemType affinity);
 
    protected:
     void create_node() override;
@@ -43,4 +43,5 @@ class BrightnessNode : public Node {
     ParameterVX<float> _beta;
     constexpr static float ALPHA_RANGE[2] = {0.1, 1.95};
     constexpr static float BETA_RANGE[2] = {0, 25};
+    RocalMemType _affinity;
 };

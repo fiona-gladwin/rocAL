@@ -43,6 +43,19 @@ THE SOFTWARE.
 #include "augmentations/geometry_augmentations/node_resize.h"
 #include "rocal_api.h"
 
+RocalMemType translate_affinity(RocalProcessMode process_mode)
+{
+    switch(process_mode)
+    {
+        case ROCAL_PROCESS_GPU:
+            return RocalMemType::HIP;
+        case ROCAL_PROCESS_CPU:
+            return RocalMemType::HOST;
+        default:
+            THROW("Unkown Rocal data type")
+    }
+}
+
 #ifdef ROCAL_AUDIO
 std::tuple<unsigned, unsigned>
 evaluate_audio_data_set(StorageType storage_type, DecoderType decoder_type,
@@ -234,6 +247,7 @@ rocalJpegFileSource(
     bool is_output,
     bool shuffle,
     bool loop,
+    RocalProcessMode affinity,
     RocalImageSizeEvaluationPolicy decode_size_policy,
     unsigned max_width,
     unsigned max_height,
@@ -264,7 +278,7 @@ rocalJpegFileSource(
         INFO("Internal buffer size width = " + TOSTR(width) + " height = " + TOSTR(height) + " depth = " + TOSTR(num_of_planes))
 
         auto info = TensorInfo(std::move(dims),
-                               context->master_graph->mem_type(),
+                               translate_affinity(affinity),
                                RocalTensorDataType::UINT8,
                                tensor_layout,
                                color_format);

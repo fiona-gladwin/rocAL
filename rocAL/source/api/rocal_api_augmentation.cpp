@@ -27,6 +27,19 @@ THE SOFTWARE.
 #include "loaders/image_source_evaluator.h"
 #include "rocal_api.h"
 
+RocalMemType translate_node_affinity(RocalProcessMode process_mode)
+{
+    switch(process_mode)
+    {
+        case ROCAL_PROCESS_GPU:
+            return RocalMemType::HIP;
+        case ROCAL_PROCESS_CPU:
+            return RocalMemType::HOST;
+        default:
+            THROW("Unkown Rocal data type")
+    }
+}
+
 RocalTensor ROCAL_API_CALL
 rocalSequenceRearrange(RocalContext p_context,
                        RocalTensor p_input,
@@ -646,6 +659,7 @@ rocalBrightness(
     bool is_output,
     RocalFloatParam p_alpha,
     RocalFloatParam p_beta,
+    RocalProcessMode affinity,
     RocalTensorLayout output_layout,
     RocalTensorOutputType output_datatype) {
     Tensor* output = nullptr;
@@ -662,10 +676,11 @@ rocalBrightness(
         RocalTensorlayout op_tensor_layout = static_cast<RocalTensorlayout>(output_layout);
         RocalTensorDataType op_tensor_datatype = static_cast<RocalTensorDataType>(output_datatype);
         TensorInfo output_info = input->info();
+        output_info.set_mem_type(translate_node_affinity(affinity));
         output_info.set_tensor_layout(op_tensor_layout);
         output_info.set_data_type(op_tensor_datatype);
         output = context->master_graph->create_tensor(output_info, is_output);
-        context->master_graph->add_node<BrightnessNode>({input}, {output})->init(alpha, beta);
+        context->master_graph->add_node<BrightnessNode>({input}, {output})->init(alpha, beta, translate_node_affinity(affinity));
     } catch (const std::exception& e) {
         context->capture_error(e.what());
         ERR(e.what())

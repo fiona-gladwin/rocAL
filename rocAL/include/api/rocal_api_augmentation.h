@@ -208,6 +208,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalRotateFixed(RocalContext context, Roc
  * \return RocalTensor
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalBrightness(RocalContext context, RocalTensor input, bool is_output,
+                                                      RocalProcessMode affinity = RocalProcessMode::ROCAL_PROCESS_CPU,
                                                       RocalFloatParam alpha = NULL, RocalFloatParam beta = NULL,
                                                       RocalTensorLayout output_layout = ROCAL_NONE,
                                                       RocalTensorOutputType output_datatype = ROCAL_UINT8);

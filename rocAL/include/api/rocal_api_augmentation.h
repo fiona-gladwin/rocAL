@@ -275,6 +275,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalGammaFixed(RocalContext context, Roca
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalContrast(RocalContext context, RocalTensor input,
                                                     bool is_output,
+                                                    RocalProcessMode affinity,
                                                     RocalFloatParam contrast_factor = NULL, RocalFloatParam contrast_center = NULL,
                                                     RocalTensorLayout output_layout = ROCAL_NONE,
                                                     RocalTensorOutputType output_datatype = ROCAL_UINT8);

@@ -962,7 +962,7 @@ void MasterGraph::output_routine() {
                     _meta_data_graph->update_box_encoder_meta_data(&_anchors, output_meta_data, _criteria, _offset, _scale, _means, _stds, (float *)bbox_encode_write_buffers.first, (int *)bbox_encode_write_buffers.second);
             }
             if (_is_box_iou_matcher) {
-                int *matches_write_buffer = reinterpret_cast<int *>(_ring_buffer.get_meta_write_buffers()[2]);
+                int64_t *matches_write_buffer = reinterpret_cast<int64_t *>(_ring_buffer.get_meta_write_buffers()[2]);
                 _meta_data_graph->update_box_iou_matcher(_iou_matcher_info, matches_write_buffer, output_meta_data);
             }
             _bencode_time.end();
@@ -1045,7 +1045,7 @@ std::vector<rocalTensorList *> MasterGraph::create_coco_meta_data_reader(const c
     if (is_box_iou_matcher) {
         _is_box_iou_matcher = true;
         dims = {MAX_RETINANET_ANCHORS};
-        default_matches_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default matches info
+        default_matches_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT64);  // Create default matches info
         default_matches_info.set_metadata();
         _meta_data_buffer_size.emplace_back(_user_batch_size * default_matches_info.data_size());
     }
@@ -1426,13 +1426,30 @@ TensorList *MasterGraph::mask_meta_data() {
     return &_mask_tensor_list;
 }
 
-TensorList *MasterGraph::matched_index_meta_data() {
+TensorList *MasterGraph::matched_index_meta_data(void *buffer, RocalOutputMemType external_mem_type) {
     if (_ring_buffer.level() == 0)
         THROW("No meta data has been loaded")
     auto meta_data_buffers = reinterpret_cast<unsigned char *>(_ring_buffer.get_meta_read_buffers()[2]);  // Get matches buffer from ring buffer
     for (unsigned i = 0; i < _matches_tensor_list.size(); i++) {
         _matches_tensor_list[i]->set_mem_handle(reinterpret_cast<void *>(meta_data_buffers));
         meta_data_buffers += _matches_tensor_list[i]->info().data_size();
+        if (buffer != nullptr) {
+            if (external_mem_type == RocalOutputMemType::ROCAL_MEMCPY_HOST) {
+                memcpy(reinterpret_cast<void *>(buffer), reinterpret_cast<void *>(meta_data_buffers), _matches_tensor_list[i]->info().data_size() * _user_batch_size);
+            }
+#if ENABLE_HIP 
+            else if (external_mem_type == RocalOutputMemType::ROCAL_MEMCPY_GPU) {
+                // copy from host to device
+                hipError_t status;
+                if ((status = hipMemcpyHtoD(reinterpret_cast<void *>(buffer), reinterpret_cast<void *>(meta_data_buffers), 
+                                            _matches_tensor_list[i]->info().data_size() * _user_batch_size)))
+                    THROW("copy_data::hipMemcpyHtoD failed: " + TOSTR(status))
+            }
+#endif
+            else {
+                THROW("Unsupported memtype passed")
+            }
+        }
     }
     return &_matches_tensor_list;
 }

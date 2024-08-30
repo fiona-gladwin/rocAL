@@ -121,7 +121,7 @@ class MasterGraph {
     TensorList *labels_meta_data();
     TensorList *bbox_meta_data();
     TensorList *mask_meta_data();
-    TensorList *matched_index_meta_data();
+    TensorList *matched_index_meta_data(void *buffer = nullptr, RocalOutputMemType external_mem_type = RocalOutputMemType::ROCAL_MEMCPY_HOST);
     void set_loop(bool val) { _loop = val; }
     void set_output(Tensor *output_tensor);
     size_t calculate_cpu_num_threads(size_t shard_count);

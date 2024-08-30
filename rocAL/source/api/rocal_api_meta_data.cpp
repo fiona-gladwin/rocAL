@@ -507,9 +507,9 @@ void
 
 RocalTensorList
     ROCAL_API_CALL
-    rocalGetMatchedIndices(RocalContext p_context) {
+    rocalGetMatchedIndices(RocalContext p_context, void *buffer, RocalOutputMemType external_mem_type) {
     if (!p_context)
         THROW("Invalid rocal context passed to rocalGetMatchedIndices")
     auto context = static_cast<Context*>(p_context);
-    return context->master_graph->matched_index_meta_data();
+    return context->master_graph->matched_index_meta_data(buffer, external_mem_type);
 }

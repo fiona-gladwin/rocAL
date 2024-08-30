@@ -550,15 +550,16 @@ PYBIND11_MODULE(rocal_pybind, m) {
         return complete_list;
     });
     m.def(
-        "getMatchedIndices", [](RocalContext context) {
-            rocalTensorList *matches = rocalGetMatchedIndices(context);
+        "getMatchedIndices", [](RocalContext context, py::object p, RocalOutputMemType external_mem_type) {
+            auto ptr = ctypes_void_ptr(p);
+            rocalTensorList *matches = rocalGetMatchedIndices(context, static_cast<void *>(ptr), external_mem_type);
             return py::array(py::buffer_info(
-                static_cast<int *>(matches->at(0)->buffer()),
-                sizeof(int),
+                static_cast<int64_t *>(matches->at(0)->buffer()),
+                sizeof(int64_t),
                 py::format_descriptor<int>::format(),
                 1,
                 {matches->size() * matches->at(0)->dims().at(0)},
-                {sizeof(int)}));
+                {sizeof(int64_t)}));
         },
         py::return_value_policy::reference);
     m.def("rocalGetEncodedBoxesAndLables", [](RocalContext context, uint batch_size, uint num_anchors) {

@@ -313,6 +313,6 @@ extern "C" void ROCAL_API_CALL rocalBoxIouMatcher(RocalContext p_context, std::v
  * \param [in] p_context rocAL context
  * \return RocalTensorList of matched indices
  */
-extern "C" RocalTensorList ROCAL_API_CALL rocalGetMatchedIndices(RocalContext p_context);
+extern "C" RocalTensorList ROCAL_API_CALL rocalGetMatchedIndices(RocalContext p_context, void *buffer = nullptr, RocalOutputMemType external_mem_type = RocalOutputMemType::ROCAL_MEMCPY_HOST);
 
 #endif  // MIVISIONX_ROCAL_API_META_DATA_H

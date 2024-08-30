@@ -63,6 +63,8 @@ vx_size tensor_data_size(RocalTensorDataType data_type) {
             return sizeof(vx_uint32);
         case RocalTensorDataType::INT32:
             return sizeof(vx_int32);
+        case RocalTensorDataType::INT64:
+            return sizeof(vx_int64);
         default:
             throw std::runtime_error("tensor data_type not valid");
     }

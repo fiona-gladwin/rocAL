@@ -38,3 +38,11 @@ void Node::create(std::shared_ptr<Graph> graph) {
 void Node::update_parameters() {
     update_node();
 }
+
+void Node::add_next(const std::shared_ptr<Node> &node) {
+    _next.emplace_back(node);
+}
+
+void Node::add_previous(const std::shared_ptr<Node> &node) {
+    _prev.emplace_back(node);
+}

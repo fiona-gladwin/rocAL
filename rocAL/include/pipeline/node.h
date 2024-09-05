@@ -37,8 +37,8 @@ class Node {
     void update_parameters();
     std::vector<Tensor *> input() { return _inputs; };
     std::vector<Tensor *> output() { return _outputs; };
-    void add_next(const std::shared_ptr<Node> &node) {}      // To be implemented
-    void add_previous(const std::shared_ptr<Node> &node) {}  // To be implemented
+    void add_next(const std::shared_ptr<Node> &node);
+    void add_previous(const std::shared_ptr<Node> &node);
     std::shared_ptr<Graph> graph() { return _graph; }
     void set_meta_data(pMetaDataBatch meta_data_info) { _meta_data_info = meta_data_info; }
     bool _is_ssd = false;
@@ -54,4 +54,6 @@ class Node {
     vx_node _node = nullptr;
     size_t _batch_size;
     pMetaDataBatch _meta_data_info;
+    std::vector<std::shared_ptr<Node>> _next;
+    std::vector<std::shared_ptr<Node>> _prev;
 };

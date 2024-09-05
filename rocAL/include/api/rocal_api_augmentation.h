@@ -275,7 +275,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalGammaFixed(RocalContext context, Roca
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalContrast(RocalContext context, RocalTensor input,
                                                     bool is_output,
-                                                    RocalProcessMode affinity,
+                                                    RocalProcessMode affinity = RocalProcessMode::ROCAL_PROCESS_GPU,
                                                     RocalFloatParam contrast_factor = NULL, RocalFloatParam contrast_center = NULL,
                                                     RocalTensorLayout output_layout = ROCAL_NONE,
                                                     RocalTensorOutputType output_datatype = ROCAL_UINT8);
@@ -951,6 +951,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalCropMirrorNormalize(RocalContext cont
  * \return RocalTensor
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalCrop(RocalContext context, RocalTensor input, bool is_output,
+                                                RocalProcessMode affinity = RocalProcessMode::ROCAL_PROCESS_GPU,
                                                 RocalFloatParam crop_width = NULL,
                                                 RocalFloatParam crop_height = NULL,
                                                 RocalFloatParam crop_depth = NULL,

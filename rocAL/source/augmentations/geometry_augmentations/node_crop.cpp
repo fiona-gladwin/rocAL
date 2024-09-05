@@ -45,7 +45,7 @@ void CropNode::create_node() {
     vx_scalar roi_type_vx = vxCreateScalar(vxGetContext((vx_reference)_graph->get()), VX_TYPE_INT32, &roi_type);
 
     _node = vxExtRppCrop(_graph->get(), _inputs[0]->handle(), _crop_tensor, _outputs[0]->handle(),
-                         input_layout_vx, output_layout_vx, roi_type_vx);
+                         input_layout_vx, output_layout_vx, roi_type_vx, static_cast<uint32_t>(_affinity));
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_node)) != VX_SUCCESS)
         THROW("Error adding the Crop node (vxExtRppCrop) failed: " + TOSTR(status))
@@ -89,12 +89,13 @@ void CropNode::init(unsigned int crop_h, unsigned int crop_w) {
     _crop_param->set_fixed_crop(0.5, 0.5);  // for center_crop
 }
 
-void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatParam *x_drift, FloatParam *y_drift) {
+void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatParam *x_drift, FloatParam *y_drift, RocalMemType affinity) {
     _crop_param->set_x_drift_factor(core(x_drift));
     _crop_param->set_y_drift_factor(core(y_drift));
     _crop_param->set_crop_height_factor(core(crop_h_factor));
     _crop_param->set_crop_width_factor(core(crop_w_factor));
     _crop_param->set_random();
+    _affinity = affinity;
 }
 
 // Create vx_tensor for the crop coordinates

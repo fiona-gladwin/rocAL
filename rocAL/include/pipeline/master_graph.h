@@ -243,26 +243,8 @@ std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, co
         node->add_previous(parent_node);
     }
 
-    bool reset_context_affinity = false;    // If a GPU node is added in pipeline, the affinity of context must be set to GPU
     for (auto &output : outputs) {
         _tensor_map.insert(std::make_pair(output, node));
-        if (!reset_context_affinity && _mem_type == RocalMemType::HOST && output->info().mem_type() != _mem_type)
-            reset_context_affinity = true;
-    }
-
-    if (reset_context_affinity) {
-        std::cerr << "RESET CONTEXT AFFINITY...\n";
-        AgoTargetAffinityInfo affinity;
-        affinity.device_type = AGO_TARGET_AFFINITY_GPU;
-        affinity.device_info = (_gpu_id >= 0 && _gpu_id <= 9) ? _gpu_id : 0;
-
-        vx_status status;
-        // Setting attribute to run on CPU or GPU should be called before load kernel module
-        if ((status = vxSetContextAttribute(_context,
-                                            VX_CONTEXT_ATTRIBUTE_AMD_AFFINITY,
-                                            &affinity,
-                                            sizeof(affinity))) != VX_SUCCESS)
-            THROW("vxSetContextAttribute for AMD_AFFINITY failed " + TOSTR(status))
     }
 
     return node;

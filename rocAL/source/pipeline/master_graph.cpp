@@ -248,11 +248,70 @@ void MasterGraph::create_single_graph() {
     _graph = std::make_shared<Graph>(_context, _affinity, 0, _cpu_num_threads, _gpu_id);
     for (auto &node : _nodes) {
         // Any tensor not yet created can be created as virtual tensor
-        for (auto &tensor : node->output())
-            if (tensor->info().type() == TensorInfo::Type::UNKNOWN) {
-                tensor->create_virtual(_context, _graph->get());
-                _internal_tensors.push_back(tensor);
+        bool allocate_pinned_mem = false;
+        for (auto& next_node : node->next()) {
+            std::cerr << "Node affinity : " << static_cast<int>(next_node->get_node_affinity()) ;
+
+            if (next_node->get_node_affinity() != _mem_type) {
+                allocate_pinned_mem = true;
+                std::cerr << "Pinned mem allocation set to true\n";
+                break;
             }
+        }
+        if (node->get_node_affinity() != _mem_type || allocate_pinned_mem == true) {
+
+            for (auto &tensor : node->output())
+                if (tensor->info().type() == TensorInfo::Type::UNKNOWN) {  
+                    // allocate memory
+                    void *ptr = nullptr;
+                    auto size = ceil(tensor->info().data_size() / 256) * 256;
+                    int mem_type_val;
+                    if (allocate_pinned_mem) {
+#if ENABLE_HIP
+                        std::cerr << "Pinned mem ***********\n";
+                        hipError_t err = hipHostMalloc((void **)&ptr, size, hipHostMallocDefault);
+                        if (err != hipSuccess || !ptr)
+                            THROW("hipHostMalloc of size " + TOSTR(size) + " failed " + TOSTR(err))
+                        err = hipMemset((void *)ptr, 0, size);
+                        if (err != hipSuccess)
+                            THROW("hipMemset of size " + TOSTR(size) + " failed " + TOSTR(err))
+                        mem_type_val = 2;
+                        std::cerr << "PTR :: " << ptr << " " << tensor->info().data_size() << "\n\n";
+#endif
+                    } else if (tensor->info().mem_type() == RocalMemType::HIP) {
+#if ENABLE_HIP
+                            std::cerr << "HIP mem ***********\n";
+                            hipError_t err = hipMalloc((void **)&ptr, size);
+                            if (err != hipSuccess || !ptr)
+                                THROW("hipHostMalloc of size " + TOSTR(size) + " failed " + TOSTR(err))
+                            err = hipMemset((void *)ptr, 0, size);
+                            if (err != hipSuccess)
+                                THROW("hipMemset of size " + TOSTR(size) + " failed " + TOSTR(err))
+                            mem_type_val = 1;
+#endif
+                    } else if (tensor->info().mem_type() == RocalMemType::HOST) {
+                        std::cerr << "HOST mem ***********\n";
+                        ptr = (void *)malloc(size);
+                        memset((void *)ptr, 0, size);
+                        mem_type_val = 0;
+                    } else {
+                        THROW("Unsupported mem type for the tensor")
+                    }
+                    if (tensor->create_from_handle(_context, ptr, allocate_pinned_mem) != 0)
+                        THROW("Creating output tensor for loader failed");
+                    
+                    _intermediate_output.push_back(std::make_pair(ptr, mem_type_val));
+
+                    // set the memory in the map
+                }
+        } else {
+            std::cerr << "Create virtual....\n";
+            for (auto &tensor : node->output())
+                if (tensor->info().type() == TensorInfo::Type::UNKNOWN) {
+                    tensor->create_virtual(_context, _graph->get());
+                    _internal_tensors.push_back(tensor);
+                }
+        }
         node->create(_graph);
     }
     _graph->verify();
@@ -323,6 +382,24 @@ void MasterGraph::release() {
     _root_nodes.clear();
     _meta_data_nodes.clear();
     _tensor_map.clear();
+    for (auto& pair : _intermediate_output) {
+        if (pair.second == 0) {
+            free(pair.first);
+        }
+#if ENABLE_HIP
+        else if (pair.second == 1) {
+            if (hipFree((void *)pair.first) != hipSuccess) {
+                // printf("Error Freeing device buffer <%d, %d, %p>\n", buffIdx, sub_buf_idx, _dev_sub_buffer[buffIdx][sub_buf_idx]);
+                ERR("Could not release hip memory in the ring buffer")
+            }
+        } else if (pair.second == 2) {
+            if (hipHostFree((void *)pair.first) != hipSuccess) {
+                ERR("Could not release hip memory for ROI in the ring buffer")
+            }
+        }
+#endif
+    }
+    _intermediate_output.clear();
     _ring_buffer.release_gpu_res();
     // shut_down loader:: required for releasing any allocated resourses
     _loader_module->shut_down();

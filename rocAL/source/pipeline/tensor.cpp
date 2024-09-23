@@ -108,12 +108,13 @@ bool operator==(const TensorInfo &rhs, const TensorInfo &lhs) {
             rhs.layout() == lhs.layout());
 }
 
-void TensorInfo::reset_tensor_roi_buffers() {
+void TensorInfo::reset_tensor_roi_buffers(bool is_pinned) {
     unsigned *roi_buf;
     auto roi_no_of_dims = _is_image ? 2 : (_num_of_dims - 1);
     auto roi_size = (_layout == RocalTensorlayout::NFCHW || _layout == RocalTensorlayout::NFHWC) ? _dims[0] * _dims[1] : _batch_size;  // For Sequences pre allocating the ROI to N * F to replicate in OpenVX extensions
-    allocate_host_or_pinned_mem((void **)&roi_buf, roi_size * roi_no_of_dims * 2 * sizeof(unsigned), _mem_type);                       // 2 denotes, one coordinate each for begin and end
-    _roi.set_ptr(roi_buf, _mem_type, roi_size, roi_no_of_dims);
+    RocalMemType roi_mem_type = is_pinned ? RocalMemType::HIP : _mem_type;
+    allocate_host_or_pinned_mem((void **)&roi_buf, roi_size * roi_no_of_dims * 2 * sizeof(unsigned), roi_mem_type);                       // 2 denotes, one coordinate each for begin and end
+    _roi.set_ptr(roi_buf, roi_mem_type, roi_size, roi_no_of_dims);
     if (_is_image) {
         Roi2DCords *roi = _roi.get_2D_roi();
         for (unsigned i = 0; i < _batch_size; i++) {
@@ -305,7 +306,7 @@ int Tensor::create_virtual(vx_context context, vx_graph graph) {
     return 0;
 }
 
-int Tensor::create_from_handle(vx_context context) {
+int Tensor::create_from_handle(vx_context context, void *handle_ptr, bool is_pinned) {
     if (_vx_handle) {
         WRN("Tensor object create method is already called ")
         return -1;
@@ -320,12 +321,21 @@ int Tensor::create_from_handle(vx_context context) {
     stride[0] = tensor_data_size(_info.data_type());
     for (unsigned i = 1; i < num_of_dims; i++)
         stride[i] = stride[i - 1] * _info.dims().at(i - 1);
-
-    _vx_handle = vxCreateTensorFromHandle(_context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0, stride, ptr, vx_mem_type(_info._mem_type));
+    if (!handle_ptr)
+        _vx_handle = vxCreateTensorFromHandle(_context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0, stride, ptr, vx_mem_type(_info._mem_type));
+    else {
+        std::cerr << "Handle Not a nullptr\n";
+        _vx_handle = vxCreateTensorFromHandle(_context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0, stride, handle_ptr, vx_mem_type(_info._mem_type));
+    }
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_vx_handle)) != VX_SUCCESS)
         THROW("Error: vxCreateTensorFromHandle(input: failed " + TOSTR(status))
     _info._type = TensorInfo::Type::HANDLE;
+
+    if (is_pinned) {
+        _info.reset_tensor_roi_buffers(is_pinned);
+    }
+
     void *roi_handle = reinterpret_cast<void *>(_info.roi().get_ptr());
     create_roi_tensor_from_handle(&roi_handle);  // Create ROI tensor from handle
     return 0;

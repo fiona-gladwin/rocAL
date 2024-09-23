@@ -44,6 +44,9 @@ class Node {
     bool _is_ssd = false;
     const Roi2DCords *get_src_roi() { return _inputs[0]->info().roi().get_2D_roi(); }
     const Roi2DCords *get_dst_roi() { return _outputs[0]->info().roi().get_2D_roi(); }
+    void set_node_affinity(RocalMemType affinity) { _affinity = affinity; }
+    RocalMemType get_node_affinity() { return _affinity; }
+    std::vector<std::shared_ptr<Node>> &next() { return _next; }
 
    protected:
     virtual void create_node() = 0;
@@ -56,4 +59,5 @@ class Node {
     pMetaDataBatch _meta_data_info;
     std::vector<std::shared_ptr<Node>> _next;
     std::vector<std::shared_ptr<Node>> _prev;
+    RocalMemType _affinity;
 };

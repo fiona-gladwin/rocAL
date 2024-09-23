@@ -171,6 +171,7 @@ class MasterGraph {
     std::list<std::shared_ptr<Node>> _meta_data_nodes;                            //!< List of nodes where meta data has to be updated after augmentation
     std::map<Tensor *, std::shared_ptr<Node>> _tensor_map;                        //!< key: tensor, value : Parent node
     void *_output_tensor_buffer = nullptr;                                        //!< In the GPU processing case , is used to convert the U8 samples to float32 before they are being transfered back to host
+    std::vector<std::pair<void *, int>> _intermediate_output;
 
     // Output tensorList for metadata
     std::vector<rocalTensorList *> _metadata_output_tensor_list;
@@ -242,10 +243,13 @@ std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, co
         parent_node->add_next(node);
         node->add_previous(parent_node);
     }
-
+    RocalMemType node_affinity = outputs[0]->info().mem_type();
     for (auto &output : outputs) {
         _tensor_map.insert(std::make_pair(output, node));
+        if (node_affinity != output->info().mem_type())
+            THROW("Outputs of different affinity detected from a single node")
     }
+    node->set_node_affinity(node_affinity);
 
     return node;
 }
@@ -272,6 +276,7 @@ inline std::shared_ptr<ImageLoaderNode> MasterGraph::add_node(const std::vector<
 #else
     auto node = std::make_shared<ImageLoaderNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -290,6 +295,7 @@ inline std::shared_ptr<ImageLoaderSingleShardNode> MasterGraph::add_node(const s
 #else
     auto node = std::make_shared<ImageLoaderSingleShardNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -308,6 +314,7 @@ inline std::shared_ptr<FusedJpegCropNode> MasterGraph::add_node(const std::vecto
 #else
     auto node = std::make_shared<FusedJpegCropNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
@@ -327,6 +334,7 @@ inline std::shared_ptr<FusedJpegCropSingleShardNode> MasterGraph::add_node(const
 #else
     auto node = std::make_shared<FusedJpegCropSingleShardNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _loader_module->set_random_bbox_data_reader(_randombboxcrop_meta_data_reader);
@@ -349,6 +357,7 @@ inline std::shared_ptr<Cifar10LoaderNode> MasterGraph::add_node(const std::vecto
 #else
     auto node = std::make_shared<Cifar10LoaderNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -371,6 +380,7 @@ inline std::shared_ptr<VideoLoaderNode> MasterGraph::add_node(const std::vector<
 #else
     auto node = std::make_shared<VideoLoaderNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -389,6 +399,7 @@ inline std::shared_ptr<VideoLoaderSingleShardNode> MasterGraph::add_node(const s
 #else
     auto node = std::make_shared<VideoLoaderSingleShardNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -411,6 +422,7 @@ template<> inline std::shared_ptr<AudioLoaderNode> MasterGraph::add_node(const s
 #else
     auto node = std::make_shared<AudioLoaderNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->GetLoaderModule();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
@@ -428,6 +440,7 @@ template<> inline std::shared_ptr<AudioLoaderSingleShardNode> MasterGraph::add_n
 #else
     auto node = std::make_shared<AudioLoaderSingleShardNode>(outputs[0], nullptr);
 #endif
+    node->set_node_affinity(outputs[0]->info().mem_type());
     _loader_module = node->GetLoaderModule();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);

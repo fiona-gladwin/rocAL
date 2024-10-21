@@ -229,7 +229,7 @@ int test(int test_case, const char *path, int qa_mode, int downmix, int gpu) {
             std::vector<float> range = {1.15, 1.15};
             RocalTensor uniform_distribution_resample = rocalUniformDistribution(handle, decoded_output, false, range);
             RocalTensor resampled_rate = rocalTensorMulScalar(handle, uniform_distribution_resample, false, resample, ROCAL_FP32);
-            rocalResample(handle, decoded_output, resampled_rate, true, 0.42 * 507150, 50.0, ROCAL_FP32);
+            rocalResample(handle, decoded_output, resampled_rate, true, 1.15 * 507150, 50.0, ROCAL_FP32);
         } break;
         case 6: {
             std::cout << "Running TENSOR ADD TENSOR" << std::endl;

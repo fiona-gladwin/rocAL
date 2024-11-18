@@ -101,12 +101,12 @@ std::string get_scaling_mode(unsigned int val, RocalResizeScalingMode &scale_mod
     }
 }
 
-int test(int test_case, int reader_type, const char *path, const char *outName, int rgb, int gpu, int width, int height, int num_of_classes, int display_all, int resize_interpolation_type, int resize_scaling_mode);
+int test(int test_case, int reader_type, const char *path, const char *outName, int rgb, int gpu, int width, int height, int num_of_classes, int display_all, int resize_interpolation_type, int resize_scaling_mode, int batch_size);
 int main(int argc, const char **argv) {
     // check command-line usage
     const int MIN_ARG_COUNT = 2;
     if (argc < MIN_ARG_COUNT) {
-        printf("Usage: unit_tests reader-type <image-dataset-folder> output_image_name <width> <height> test_case gpu=1/cpu=0 rgb=1/grayscale=0 one_hot_labels=num_of_classes/0  display_all=0(display_last_only)1(display_all)\n");
+        printf("Usage: unit_tests reader-type <image-dataset-folder> output_image_name <width> <height> test_case gpu=1/cpu=0 batch_size rgb=1/grayscale=0 one_hot_labels=num_of_classes/0  display_all=0(display_last_only)1(display_all)\n");
         return -1;
     }
 
@@ -124,12 +124,16 @@ int main(int argc, const char **argv) {
     int num_of_classes = 0;
     int resize_interpolation_type = 1;  // For Bilinear interpolations
     int resize_scaling_mode = 0;        // For Default scaling mode
+    int bs = 2;
 
     if (argc >= argIdx + MIN_ARG_COUNT)
         test_case = atoi(argv[++argIdx]);
 
     if (argc >= argIdx + MIN_ARG_COUNT)
         gpu = atoi(argv[++argIdx]);
+
+    if (argc >= argIdx + MIN_ARG_COUNT)
+        bs = atoi(argv[++argIdx]);
 
     if (argc >= argIdx + MIN_ARG_COUNT)
         rgb = atoi(argv[++argIdx]);
@@ -146,19 +150,19 @@ int main(int argc, const char **argv) {
     if (argc >= argIdx + MIN_ARG_COUNT)
         resize_scaling_mode = atoi(argv[++argIdx]);
 
-    test(test_case, reader_type, path, outName, rgb, gpu, width, height, num_of_classes, display_all, resize_interpolation_type, resize_scaling_mode);
+    test(test_case, reader_type, path, outName, rgb, gpu, width, height, num_of_classes, display_all, resize_interpolation_type, resize_scaling_mode, bs);
 
     return 0;
 }
 
-int test(int test_case, int reader_type, const char *path, const char *outName, int rgb, int gpu, int width, int height, int num_of_classes, int display_all, int resize_interpolation_type, int resize_scaling_mode) {
+int test(int test_case, int reader_type, const char *path, const char *outName, int rgb, int gpu, int width, int height, int num_of_classes, int display_all, int resize_interpolation_type, int resize_scaling_mode, int batch_size) {
     size_t num_threads = 1;
-    unsigned int input_batch_size = 8;
+    unsigned int input_batch_size = static_cast<unsigned>(batch_size);
     int decode_max_width = width;
     int decode_max_height = height;
     int pipeline_type = -1;
     std::cout << "Test case " << test_case << std::endl;
-    std::cout << "Running on " << (gpu ? "GPU" : "CPU") << " , " << (rgb ? " Color " : " Grayscale ") <<  input_batch_size << std::endl;
+    std::cout << "Running on " << (gpu ? "GPU" : "CPU") << " , " << (rgb ? " Color " : " Grayscale ") <<  "Batch size : " << input_batch_size << std::endl;
 
     RocalImageColor color_format = (rgb != 0) ? RocalImageColor::ROCAL_COLOR_RGB24
                                               : RocalImageColor::ROCAL_COLOR_U8;
@@ -325,8 +329,13 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             rocalCreateLabelReader(handle, path);
             if (decode_max_height <= 0 || decode_max_width <= 0)
                 decoded_output = rocalJpegFileSource(handle, path, color_format, num_threads, false, true);
-            else
-                decoded_output = rocalJpegFileSource(handle, path, color_format, num_threads, false, false, false, ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED, decode_max_width, decode_max_height, ROCAL_DECODER_HW_JPEG);
+            else {
+                if (gpu) {
+                    decoded_output = rocalJpegFileSource(handle, path, color_format, num_threads, true, false, false, ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED, decode_max_width, decode_max_height, ROCAL_DECODER_HW_JPEG);
+                } else {
+                    decoded_output = rocalJpegFileSource(handle, path, color_format, num_threads, true, false, false, ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED, decode_max_width, decode_max_height);
+                }
+            }
             // ROCAL_DECODER_HW_JPEG
         } break;
     }
@@ -346,6 +355,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
         std::cout << "Not a valid option! Exiting!\n";
         return -1;
     }
+    /*
     switch (test_case) {
         case 0: {
             std::cout << "Running rocalResize" << std::endl;
@@ -598,6 +608,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             std::cout << "Not a valid option! Exiting!\n";
             return -1;
     }
+    */
 
     // Calling the API to verify and build the augmentation graph
     rocalVerify(handle);

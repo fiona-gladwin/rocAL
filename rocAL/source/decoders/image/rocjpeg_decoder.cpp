@@ -355,34 +355,6 @@ Decoder::Status RocJpegDecoder::decode_info_batch(std::vector<std::vector<unsign
     return Status::OK;
 }
 
-Decoder::Status RocJpegDecoder::decode_info(unsigned char *input_buffer, size_t input_size, int *width, int *height, int *color_comps) {
-    RocJpegChromaSubsampling subsampling;
-    uint8_t num_components;
-    uint32_t widths[4] = {};
-    uint32_t heights[4] = {};
-    if (rocJpegStreamParse(reinterpret_cast<uint8_t*>(input_buffer), input_size, _rocjpeg_streams[0]) != ROCJPEG_STATUS_SUCCESS) {
-        return Status::HEADER_DECODE_FAILED;
-    }
-    if (rocJpegGetImageInfo(_rocjpeg_handle, _rocjpeg_streams[0], &num_components, &subsampling, widths, heights) != ROCJPEG_STATUS_SUCCESS) {
-        return Status::HEADER_DECODE_FAILED;
-    }
-    *width = widths[0];
-    *height = heights[0];
-    _rocjpeg_image_buff_size += (((widths[0] + 8) &~ 7) * ((heights[0] + 8) &~ 7));
-
-    if (widths[0] < 64 || heights[0] < 64) {
-        return Status::CONTENT_DECODE_FAILED;
-    }
-
-    std::string chroma_sub_sampling = "";
-    GetChromaSubsamplingStr(subsampling, chroma_sub_sampling);
-    if (subsampling == ROCJPEG_CSS_440 || subsampling == ROCJPEG_CSS_411) {
-        // std::cerr << "The chroma sub-sampling is not supported by VCN Hardware" << std::endl;
-        return Status::UNSUPPORTED;
-    }
-    return Status::OK;
-}
-
 Decoder::Status RocJpegDecoder::decode_batch(std::vector<std::vector<unsigned char>> &input_buffer, std::vector<size_t> &input_size,
                                        std::vector<unsigned char *> &output_buffer,
                                        size_t max_decoded_width, size_t max_decoded_height,

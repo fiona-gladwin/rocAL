@@ -154,7 +154,10 @@ enum RocalProcessMode {
     ROCAL_PROCESS_GPU = 0,
     /*! \brief AMD ROCAL_PROCESS_CPU
      */
-    ROCAL_PROCESS_CPU = 1
+    ROCAL_PROCESS_CPU = 1,
+    /*! \brief AMD ROCAL_PROCESS_HYBRID
+     */
+    ROCAL_PROCESS_HYBRID = 2
 };
 
 /*! \brief rocAL Flip Axis enum

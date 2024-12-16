@@ -270,6 +270,7 @@ class TensorInfo {
     bool is_image() const { return _is_image; }
     void set_metadata() { _is_metadata = true; }
     bool is_metadata() const { return _is_metadata; }
+    void set_mem_type(RocalMemType memtype) { _mem_type = memtype; }
     void set_roi_ptr(unsigned* roi_ptr) { _roi.reset_ptr(roi_ptr); }
     void copy_roi(void* roi_buffer) { _roi.copy(roi_buffer); }
     std::shared_ptr<std::vector<float>> get_sample_rates() const { return _sample_rates; }  //!< The number of samples of audio carried per second
@@ -289,7 +290,7 @@ class TensorInfo {
     uint64_t _data_type_size = tensor_data_size(_data_type);
     uint64_t _data_size = 0;
     std::vector<size_t> _max_shape;  //!< stores the the width and height dimensions in the tensor
-    void reset_tensor_roi_buffers();
+    void reset_tensor_roi_buffers(bool is_pinned = false);
     void reallocate_tensor_sample_rate_buffers(); //!< Reallocating the sample_rate buffer
     bool _is_image = false;
     bool _is_metadata = false;
@@ -346,7 +347,7 @@ class Tensor : public rocalTensor {
     vx_tensor get_roi_tensor() { return _vx_roi_handle; }
     // create_from_handle() no internal memory allocation is done here since
     // tensor's handle should be swapped with external buffers before usage
-    int create_from_handle(vx_context context);
+    int create_from_handle(vx_context context, void *handle_ptr = nullptr, bool is_pinned = false);
     int create_virtual(vx_context context, vx_graph graph);
     bool is_handle_set() { return (_vx_handle != 0); }
     void set_dims(std::vector<size_t> dims) override { _info.set_dims(dims); }

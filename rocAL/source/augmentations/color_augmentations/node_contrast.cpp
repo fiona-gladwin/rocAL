@@ -41,7 +41,7 @@ void ContrastNode::create_node() {
     vx_scalar output_layout_vx = vxCreateScalar(vxGetContext((vx_reference)_graph->get()), VX_TYPE_INT32, &output_layout);
     vx_scalar roi_type_vx = vxCreateScalar(vxGetContext((vx_reference)_graph->get()), VX_TYPE_INT32, &roi_type);
 
-    _node = vxExtRppContrast(_graph->get(), _inputs[0]->handle(), _inputs[0]->get_roi_tensor(), _outputs[0]->handle(), _factor.default_array(), _center.default_array(), input_layout_vx, output_layout_vx,roi_type_vx);
+    _node = vxExtRppContrast(_graph->get(), _inputs[0]->handle(), _inputs[0]->get_roi_tensor(), _outputs[0]->handle(), _factor.default_array(), _center.default_array(), input_layout_vx, output_layout_vx,roi_type_vx, static_cast<uint32_t>(_affinity));
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_node)) != VX_SUCCESS)
         THROW("Adding the contrast (vxExtRppContrast) node failed: " + TOSTR(status))
@@ -52,9 +52,10 @@ void ContrastNode::init(float contrast_factor, float contrast_center) {
     _center.set_param(contrast_center);
 }
 
-void ContrastNode::init(FloatParam *contrast_factor_param, FloatParam *contrast_center_param) {
+void ContrastNode::init(FloatParam *contrast_factor_param, FloatParam *contrast_center_param, RocalMemType affinity) {
     _factor.set_param(core(contrast_factor_param));
     _center.set_param(core(contrast_center_param));
+    _affinity = affinity;
 }
 
 void ContrastNode::update_node() {

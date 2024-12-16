@@ -32,7 +32,7 @@ class ContrastNode : public Node {
     ContrastNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs);
     ContrastNode() = delete;
     void init(float contrast_factor, float contrast_center);
-    void init(FloatParam *contrast_factor_param, FloatParam *contrast_center_param);
+    void init(FloatParam *contrast_factor_param, FloatParam *contrast_center_param, RocalMemType affinity);
 
    protected:
     void create_node() override;
@@ -42,4 +42,5 @@ class ContrastNode : public Node {
     ParameterVX<float> _factor, _center;
     constexpr static float CONTRAST_FACTOR_RANGE[2] = {0.1, 1.95};
     constexpr static float CONTRAST_CENTER_RANGE[2] = {60, 90};
+    RocalMemType _affinity;
 };

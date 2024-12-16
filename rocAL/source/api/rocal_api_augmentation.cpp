@@ -27,6 +27,19 @@ THE SOFTWARE.
 #include "loaders/image_source_evaluator.h"
 #include "rocal_api.h"
 
+RocalMemType translate_node_affinity(RocalProcessMode process_mode)
+{
+    switch(process_mode)
+    {
+        case ROCAL_PROCESS_GPU:
+            return RocalMemType::HIP;
+        case ROCAL_PROCESS_CPU:
+            return RocalMemType::HOST;
+        default:
+            THROW("Unkown Rocal data type")
+    }
+}
+
 RocalTensor ROCAL_API_CALL
 rocalSequenceRearrange(RocalContext p_context,
                        RocalTensor p_input,
@@ -644,6 +657,7 @@ rocalBrightness(
     RocalContext p_context,
     RocalTensor p_input,
     bool is_output,
+    RocalProcessMode affinity,
     RocalFloatParam p_alpha,
     RocalFloatParam p_beta,
     RocalTensorLayout output_layout,
@@ -662,10 +676,11 @@ rocalBrightness(
         RocalTensorlayout op_tensor_layout = static_cast<RocalTensorlayout>(output_layout);
         RocalTensorDataType op_tensor_datatype = static_cast<RocalTensorDataType>(output_datatype);
         TensorInfo output_info = input->info();
+        output_info.set_mem_type(translate_node_affinity(affinity));
         output_info.set_tensor_layout(op_tensor_layout);
         output_info.set_data_type(op_tensor_datatype);
         output = context->master_graph->create_tensor(output_info, is_output);
-        context->master_graph->add_node<BrightnessNode>({input}, {output})->init(alpha, beta);
+        context->master_graph->add_node<BrightnessNode>({input}, {output})->init(alpha, beta, translate_node_affinity(affinity));
     } catch (const std::exception& e) {
         context->capture_error(e.what());
         ERR(e.what())
@@ -1230,6 +1245,7 @@ rocalContrast(
     RocalContext p_context,
     RocalTensor p_input,
     bool is_output,
+    RocalProcessMode affinity,
     RocalFloatParam p_contrast_factor,
     RocalFloatParam p_contrast_center,
     RocalTensorLayout output_layout,
@@ -1248,10 +1264,11 @@ rocalContrast(
         RocalTensorlayout op_tensor_layout = static_cast<RocalTensorlayout>(output_layout);
         RocalTensorDataType op_tensor_datatype = static_cast<RocalTensorDataType>(output_datatype);
         TensorInfo output_info = input->info();
+        output_info.set_mem_type(translate_node_affinity(affinity));
         output_info.set_tensor_layout(op_tensor_layout);
         output_info.set_data_type(op_tensor_datatype);
         output = context->master_graph->create_tensor(output_info, is_output);
-        context->master_graph->add_node<ContrastNode>({input}, {output})->init(contrast_factor, contrast_center);
+        context->master_graph->add_node<ContrastNode>({input}, {output})->init(contrast_factor, contrast_center, translate_node_affinity(affinity));
     } catch (const std::exception& e) {
         context->capture_error(e.what());
         ERR(e.what())
@@ -1818,6 +1835,7 @@ rocalCrop(
     RocalContext p_context,
     RocalTensor p_input,
     bool is_output,
+    RocalProcessMode affinity,
     RocalFloatParam p_crop_width,
     RocalFloatParam p_crop_height,
     RocalFloatParam p_crop_depth,
@@ -1842,12 +1860,13 @@ rocalCrop(
         RocalTensorlayout op_tensor_layout = static_cast<RocalTensorlayout>(output_layout);
         RocalTensorDataType op_tensor_datatype = static_cast<RocalTensorDataType>(output_datatype);
         TensorInfo output_info = input->info();
+        output_info.set_mem_type(translate_node_affinity(affinity));
         output_info.set_tensor_layout(op_tensor_layout);
         output_info.set_data_type(op_tensor_datatype);
         output = context->master_graph->create_tensor(output_info, is_output);
 
         std::shared_ptr<CropNode> crop_node = context->master_graph->add_node<CropNode>({input}, {output});
-        crop_node->init(crop_h, crop_w, x_drift, y_drift);
+        crop_node->init(crop_h, crop_w, x_drift, y_drift, translate_node_affinity(affinity));
         if (context->master_graph->meta_data_graph())
             context->master_graph->meta_add_node<CropMetaNode, CropNode>(crop_node);
     } catch (const std::exception& e) {

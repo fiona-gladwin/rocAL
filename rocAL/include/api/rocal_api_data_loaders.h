@@ -55,6 +55,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalJpegFileSource(RocalContext context,
                                                           bool is_output,
                                                           bool shuffle = false,
                                                           bool loop = false,
+                                                          RocalProcessMode affinity = RocalProcessMode::ROCAL_PROCESS_CPU,
                                                           RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                           unsigned max_width = 0, unsigned max_height = 0, RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG,
                                                           RocalShardingInfo rocal_sharding_info = RocalShardingInfo());

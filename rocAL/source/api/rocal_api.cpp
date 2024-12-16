@@ -52,6 +52,8 @@ rocalCreate(
                     return RocalAffinity::GPU;
                 case ROCAL_PROCESS_CPU:
                     return RocalAffinity::CPU;
+                case ROCAL_PROCESS_HYBRID:
+                    return RocalAffinity::GPU;
                 default:
                     THROW("Unkown Rocal data type")
             }

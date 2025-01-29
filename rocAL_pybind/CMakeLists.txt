@@ -67,6 +67,7 @@ endif()
 find_package(pybind11 QUIET CONFIG)	
 find_package(HALF QUIET)
 find_package(OpenMP QUIET)
+find_package(Protobuf QUIET)
 
 # Backend
 if(BUILD_PYPACKAGE)
@@ -217,6 +218,11 @@ if(NOT OpenMP_FOUND)
     set(BUILD_ROCAL_PYBIND false)
     message("-- ${Yellow}NOTE: rocAL pybind library requires OpenMP, Not Found ${ColourReset}")
 endif()
+# Google ProtoBuff
+if(NOT Protobuf_FOUND)
+    set(BUILD_ROCAL_PYBIND false)
+    message("-- ${Yellow}NOTE: rocAL pybind library requires Protobuf, Not Found ${ColourReset}")
+endif()
 
 if(${BUILD_ROCAL_PYBIND})
     # avoid setting the default installation path to /usr/local
@@ -248,6 +254,9 @@ if(${BUILD_ROCAL_PYBIND})
     # OpenMP
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${OpenMP_CXX_LIBRARIES})
+    # Protobuf
+    include_directories(${PROTOBUF_INCLUDE_DIRS})
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${PROTOBUF_LIBRARIES})
 
     file(GLOB_RECURSE pyfiles amd/*.py)
     file(GLOB_RECURSE sources *.cpp)
@@ -267,6 +276,26 @@ if(${BUILD_ROCAL_PYBIND})
         target_compile_definitions(rocal_pybind PUBLIC ENABLE_DLPACK=0)
         message("-- ${Yellow}NOTE: DLPack Not Found - rocAL Tensorflow and Generic plugins built without GPU support!${ColourReset}")
     endif()
+
+    # Set the path to the protocol buffer source files
+    message(${CMAKE_CURRENT_SOURCE_DIR}/../rocAL/proto/rocal.proto)
+    set(ROCAL_PROTO_FILES ${CMAKE_CURRENT_SOURCE_DIR}/../rocAL/proto/rocal.proto)
+    set(PROTO_PY_OUTPUT_DIR ${CMAKE_BINARY_DIR})
+    # Add a custom command to run protoc and generate Python files
+    add_custom_command(
+        OUTPUT ${PROTO_PY_OUTPUT_DIR}/rocal_proto.py
+        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+        ARGS --python_out=${PROTO_PY_OUTPUT_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../rocAL/proto/rocal.proto ${ROCAL_PROTO_FILES}
+        DEPENDS ${ROCAL_PROTO_FILES}
+        COMMENT "Generating Python code from .proto files"
+    )
+
+    # Add the generated Python files to the target
+    add_custom_target(
+        generate_proto_python
+        DEPENDS ${PROTO_PY_OUTPUT_DIR}/rocal_proto.py
+    )
+    add_dependencies(rocal_pybind generate_proto_python)
 
     set_target_properties(rocal_pybind PROPERTIES
         PREFIX "${PYTHON_MODULE_PREFIX}"

@@ -25,6 +25,7 @@
 
 import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
+from amd.rocal.pipeline import get_function_and_module_with_args
 import amd.rocal.types as types
 
 
@@ -75,12 +76,15 @@ def file(file_root, file_filters=None, file_list='', stick_to_shard=False, pad_l
 
         @return    label reader meta data and labels.
     """
+    name, module_name, args = get_function_and_module_with_args(Pipeline._current_pipeline)
+
     Pipeline._current_pipeline._reader = "labelReader"
     # Output
     labels = []
     kwargs_pybind = {"source_path": file_root, "file_list": file_list}
     label_reader_meta_data = b.labelReader(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    Pipeline._current_pipeline.add_operator_output(label_reader_meta_data, "readers_file")
     return (label_reader_meta_data, labels)
 
 

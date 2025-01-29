@@ -30,6 +30,27 @@ import ctypes
 import functools
 import inspect
 
+class Operators(object):
+    def __init__(self):
+        self.op_name = None
+        self.op_module_name = None
+        self.op_args = None
+        self.inputs = None
+        self.outputs = None
+    def __init__(self, name, module_name = None, arguments = None):
+        self.op_name = name
+        self.op_module_name = module_name
+        self.op_args = arguments
+
+class InputOutput(object):
+    def __init__(self):
+        self.name = None
+        self.dtype = None
+        self.layout = None
+        self.nDims = None
+    def __init__(self, name):
+        self.name = name
+
 
 class Pipeline(object):
 
@@ -123,6 +144,8 @@ class Pipeline(object):
         self._external_source = None
         self._external_source_mode = None
         self._last_batch_policy = None
+        self._operators = []
+        self._outputs = {}
 
     def build(self):
         """!Build the pipeline using rocalVerify call
@@ -266,12 +289,26 @@ class Pipeline(object):
         :return:
         A list of `rocalTensorList` objects for respective pipeline outputs.
         """
+        print("All pipeline Operators")
+        for op in self._operators:
+            print("Op name : ", op.op_name)
+            print("Op module name : ", op.op_module_name)
+            print("Op args : ", op.op_args)
+
+
         try:
             if self.get_remaining_images() > 0:
                 self.rocal_run()
                 return b.getOutputTensors(self._handle)
         except:
             raise StopIteration
+    
+    def add_pipeline_operator(self, fn_name, fn_module_name, fn_args):
+        self._operators.append(Operators(fn_name, fn_module_name, fn_args))
+    
+    def add_operator_output(self, output_tensor, name):
+        self._outputs[name] = output_tensor
+
 
 
 def _discriminate_args(func, **func_kwargs):
@@ -306,6 +343,40 @@ def _discriminate_args(func, **func_kwargs):
 
     return ctor_args, fn_args
 
+
+def get_function_and_module_with_args(pipeline):
+    frame = inspect.currentframe().f_back
+    
+    # Get the function name
+    function_name = frame.f_code.co_name
+    
+    # Get the module name (file name, without path and extension)
+    module_name = inspect.getmodule(frame).__name__
+    
+    # Get the arguments passed to the function
+    # args, _, kwargs = inspect.getargvalues(frame)
+    
+    # # Prepare a dictionary of arguments with their values
+    # arguments = {arg: frame.f_locals[arg] for arg in args}
+    # arguments.update(kwargs)  # Add keyword arguments
+
+    # Get argument details from the current frame
+    arg_info = inspect.getargvalues(frame)
+    
+    # Extract the args, varargs, and kwargs from arg_info
+    args_list = arg_info.args  # List of argument names
+    varargs = arg_info.varargs  # Name of the *args argument, or None
+    varkwargs = arg_info.keywords  # Name of the **kwargs argument, or None
+    local_vars = arg_info.locals  # Dictionary of local variables in the current scope
+
+    # Print arguments with their values
+    arguments = {arg: local_vars[arg] for arg in args_list}  # Regular arguments
+    if varargs:
+        arguments[varargs] = local_vars[varargs]  # Handle *args if present
+    if varkwargs:
+        arguments[varkwargs] = local_vars[varkwargs]  # Handle **kwargs if present
+    pipeline.add_pipeline_operator(function_name, module_name, arguments)
+    return function_name, module_name, arguments
 
 def pipeline_def(fn=None, **pipeline_kwargs):
     """!

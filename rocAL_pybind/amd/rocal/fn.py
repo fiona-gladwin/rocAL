@@ -32,6 +32,7 @@ from amd.rocal import reductions
 import amd.rocal.types as types
 import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
+from amd.rocal.pipeline import get_function_and_module_with_args
 
 
 def blend(*inputs, ratio=None, device=None, output_layout=types.NHWC, output_dtype=types.UINT8):
@@ -410,11 +411,14 @@ def resize(*inputs, max_size=[], resize_longer=0, resize_shorter=0, resize_width
 
         @return    Resized Image
     """
+
+    name, module_name, args = get_function_and_module_with_args(Pipeline._current_pipeline)
     # pybind call arguments
     kwargs_pybind = {"input_image": inputs[0], "dest_width:": resize_width, "dest_height": resize_height, "is_output": False, "scaling_mode": scaling_mode, "max_size": max_size, "resize_shorter": resize_shorter,
                      "resize_longer": resize_longer, "interpolation_type": interpolation_type, "output_layout": output_layout, "output_dtype": output_dtype}
     resized_image = b.resize(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    Pipeline._current_pipeline.add_operator_output(resized_image, "fn_resize")
     return (resized_image)
 
 

@@ -283,9 +283,9 @@ if(${BUILD_ROCAL_PYBIND})
     set(PROTO_PY_OUTPUT_DIR ${CMAKE_BINARY_DIR})
     # Add a custom command to run protoc and generate Python files
     add_custom_command(
-        OUTPUT ${PROTO_PY_OUTPUT_DIR}/rocal_pb2.py
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/amd/rocal/rocal_pb2.py
         COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-        ARGS --python_out=${PROTO_PY_OUTPUT_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../rocAL/proto/ ${ROCAL_PROTO_FILES}
+        ARGS --python_out=${CMAKE_CURRENT_SOURCE_DIR}/amd/rocal/ --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../rocAL/proto/ ${ROCAL_PROTO_FILES}
         DEPENDS ${ROCAL_PROTO_FILES}
         COMMENT "Generating Python code from .proto files"
     )
@@ -293,9 +293,10 @@ if(${BUILD_ROCAL_PYBIND})
     # Add the generated Python files to the target
     add_custom_target(
         generate_proto_python
-        DEPENDS ${PROTO_PY_OUTPUT_DIR}/rocal_pb2.py
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/amd/rocal/rocal_pb2.py
     )
     add_dependencies(rocal_pybind generate_proto_python)
+    file(GLOB_RECURSE pyfiles amd/*.py)
 
     set_target_properties(rocal_pybind PROPERTIES
         PREFIX "${PYTHON_MODULE_PREFIX}"

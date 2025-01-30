@@ -130,6 +130,9 @@ from rocal_pybind.types import RocalImageColor
 from rocal_pybind.types import RocalTensorLayout
 from rocal_pybind.types import RocalDecodeDevice
 from rocal_pybind.types import RocalDecoderType
+from rocal_pybind.types import RocalTensorOutputType
+from rocal_pybind.types import RocalLastBatchPolicy
+
 # TODO - Add other types as well
 
 _known_types = {
@@ -248,5 +251,9 @@ def get_enum_val_from_string(type_string, value):
         return RocalDecodeDevice(value)
     elif type_string == "RocalDecoderType":
         return RocalDecoderType(value)
+    elif type_string == "RocalTensorOutputType":
+        return RocalTensorOutputType(value)
+    elif type_string == "RocalLastBatchPolicy":
+        return RocalLastBatchPolicy(value)
     else:
-        print("Pybind does not support this enum")
+        print("Pybind does not support this enum", type_string)

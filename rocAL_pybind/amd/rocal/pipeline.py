@@ -305,7 +305,8 @@ class Pipeline(object):
     
     def add_pipeline_operator(self, fn_name, fn_module_name, fn_args):
         self._operators.append(Operators(fn_name, fn_module_name, fn_args))
-    
+        return self._operators[-1]
+
     def add_operator_output(self, output_tensor, name):
         self._outputs[name] = output_tensor
 
@@ -344,7 +345,7 @@ def _discriminate_args(func, **func_kwargs):
     return ctor_args, fn_args
 
 
-def get_function_and_module_with_args(pipeline):
+def add_new_operator(pipeline):
     frame = inspect.currentframe().f_back
     
     # Get the function name
@@ -375,8 +376,8 @@ def get_function_and_module_with_args(pipeline):
         arguments[varargs] = local_vars[varargs]  # Handle *args if present
     if varkwargs:
         arguments[varkwargs] = local_vars[varkwargs]  # Handle **kwargs if present
-    pipeline.add_pipeline_operator(function_name, module_name, arguments)
-    return function_name, module_name, arguments
+    operator = pipeline.add_pipeline_operator(function_name, module_name, arguments)
+    return operator
 
 def pipeline_def(fn=None, **pipeline_kwargs):
     """!

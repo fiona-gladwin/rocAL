@@ -26,7 +26,7 @@
 import amd.rocal.types as types
 import rocal_pybind as b
 from amd.rocal.pipeline import Pipeline
-from amd.rocal.pipeline import get_function_and_module_with_args
+from amd.rocal.pipeline import add_new_operator
 
 
 def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations_file='', index_path ='', shard_id=0, num_shards=1, random_shuffle=False,
@@ -52,7 +52,7 @@ def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations
 
         @return    Decoded and preprocessed image.
     """
-    name, module_name, args = get_function_and_module_with_args(Pipeline._current_pipeline)
+    operator = add_new_operator(Pipeline._current_pipeline)
     reader = Pipeline._current_pipeline._reader
     Pipeline._current_pipeline._last_batch_policy = last_batch_policy
     sharding_info = b.RocalShardingInfo(last_batch_policy, pad_last_batch, stick_to_shard, shard_size)

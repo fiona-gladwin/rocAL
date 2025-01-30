@@ -30,6 +30,7 @@ import ctypes
 import functools
 import inspect
 from amd.rocal import rocal_pb2
+import importlib
 
 class Operators(object):
     def __init__(self):
@@ -415,6 +416,28 @@ class Pipeline(object):
 
     @classmethod    
     def deserialize(cls, serialize_string = '', filename = ''):
+
+        def fetch_arguments(args_list):
+            arguments_map = {}
+            for arg in args_list:
+                if (not arg.HasField("type")) and (not arg.is_vector):
+                    arguments_map[arg.name] = None
+                elif (arg.type not in ['int', 'float', 'bool', 'string']) and (not arg.is_vector):
+                    arguments_map[arg.name] = types.get_enum_val_from_string(arg.type, arg.ints[0])
+                elif arg.is_vector: # Need to handle separately
+                    arguments_map[arg.name] = []
+                else:
+                    if arg.type == 'int':
+                        arguments_map[arg.name] = arg.ints[0]
+                    elif arg.type == 'float':
+                        arguments_map[arg.name] = arg.floats[0]
+                    elif arg.type == 'bool':
+                        arguments_map[arg.name] = arg.bools[0]
+                    elif arg.type == 'string':
+                        arguments_map[arg.name] = arg.strings[0]
+            return arguments_map
+                    
+
         # if (serialize_string && filename):
         #     raise Exception("Serialize string and filename cannot be passed together")
         
@@ -433,6 +456,16 @@ class Pipeline(object):
         # fetch each operator - and add to the node
         # as you add the first node, obtain the op tensor, name of the output store it
         # Get the next node -> obtain the name of the input -> check if it is present in outputs -> pass it to the node -> fetch output add the tensor and name
+        first_node = False
+        for operator in deserialized_pipeline.operators:
+            # Access the module already imported in the global scope
+            module = importlib.import_module(operator.module_name)  # To be checked if this needs change -> module = globals().get(operator.module_name)
+            function = getattr(module, operator.name)   # Get the function from the module using its name
+
+            # Fetch each argument for the operator and pass to the function
+            op_arguments = fetch_arguments(operator.args)
+
+
         # Get pipeline outputs and set the outputs 
 
         return pipeline

@@ -24,6 +24,13 @@ syntax = "proto2";
 
 package rocal_proto;
 
+// Stores the Input/Ouptut tensors
+message InputOutput {
+  required string name = 1;
+  optional string type = 2;
+  required bool is_argument_input = 3 [default = false];
+}
+
 // Stores a single argument
 message Arguments {
   required string name = 1;
@@ -43,6 +50,9 @@ message OperatorDef {
   optional string module_name = 2;
   // Arguments
   repeated Arguments args = 3;
+  // Inputs
+  repeated InputOutput inputs = 4;
+  repeated InputOutput outputs = 5;
 }
 
 // Stores pipeline arguments and a list of nodes/operators
@@ -53,4 +63,6 @@ message PipelineDef {
   optional int64 seed = 4 [default = 1];
   optional bool rocal_cpu = 5 [default = true];
   optional int32 prefetch_queue_depth = 6 [default = 2];
+  repeated OperatorDef operators = 7;
+  repeated InputOutput pipeline_outputs = 8;
 }

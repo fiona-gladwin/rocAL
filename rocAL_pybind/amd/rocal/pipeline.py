@@ -53,6 +53,10 @@ class InputOutput(object):
         self.nDims = None
     def __init__(self, name):
         self.name = name
+        # TODO - Obtain all the values
+        self.dtype = None
+        self.layout = None
+        self.nDims = None
 
 
 class Pipeline(object):
@@ -149,6 +153,7 @@ class Pipeline(object):
         self._last_batch_policy = None
         self._operators = []
         self._outputs = {}
+        self._pipeline_outputs = {}
 
     def build(self):
         """!Build the pipeline using rocalVerify call
@@ -184,6 +189,17 @@ class Pipeline(object):
 
     def set_outputs(self, *output_list):
         b.setOutputs(self._handle, len(output_list), output_list)
+        # Check if the output is in list of outputs present in pipeline
+        # if it is present copy the dict value into this.
+        for output in output_list:
+            output_present = False
+            for out_name, out_val in self._outputs.items():
+                if out_val is output:
+                    self._pipeline_outputs[out_name] = out_val
+                    output_present = True
+                    break
+            if (not output_present):
+                print("!!!!!!!Output does not exist in the pipeline!!!!!!!")
 
     def __enter__(self):
         Pipeline._current_pipeline = self
@@ -344,12 +360,16 @@ class Pipeline(object):
                 if (is_vector_arg):
                     for val in arg_val:
                         if isinstance(arg_val, float):
+                            argument.type = 'float'
                             argument.floats.append(arg_val)
                         elif isinstance(arg_val, int):
+                            argument.type = 'int'
                             argument.ints.append(arg_val)
                         elif isinstance(arg_val, str):
+                            argument.type = 'string'
                             argument.strings.append(arg_val)
                         elif isinstance(arg_val, bool):
+                            argument.type = 'bool'
                             argument.bools.append(arg_val)
                         elif arg_val is not None:
                             argument.type = str(arg_val).split('.')[0]
@@ -358,19 +378,36 @@ class Pipeline(object):
                             # type_str = str(type(arg_val))
                 else:
                     if isinstance(arg_val, float):
+                        argument.type = 'float'
                         argument.floats.append(arg_val)
                     elif isinstance(arg_val, int):
+                        argument.type = 'int'
                         argument.ints.append(arg_val)
                     elif isinstance(arg_val, str):
+                        argument.type = 'string'
                         argument.strings.append(arg_val)
                     elif isinstance(arg_val, bool):
+                        argument.type = 'bool'
                         argument.bools.append(arg_val)
                     elif arg_val is not None:
                             argument.type = str(arg_val).split('.')[0]
                             argument.ints.append(int(arg_val))
                 
                 operator.args.append(argument)
+
+            # Serialize the inputs and outputs in the pipeline
+            for input_tensor in node_op.inputs:
+                op_input = rocal_pb2.InputOutput(name=input_tensor.name, is_argument_input=True)
+                operator.inputs.append(op_input)
+            
+            for output_tensor in node_op.outputs:
+                op_output = rocal_pb2.InputOutput(name=output_tensor.name, is_argument_input=False)
+                operator.outputs.append(op_output)
             pipeline.operators.append(operator)
+
+        for pipe_out_key, pipe_out_val in self._pipeline_outputs.items():
+            output = rocal_pb2.InputOutput(name=pipe_out_key, is_argument_input=False)
+            pipeline.pipeline_outputs.append(output)
 
         # Serialize to string (e.g., for network transmission or saving)
         serialized_pipeline = pipeline.SerializeToString()

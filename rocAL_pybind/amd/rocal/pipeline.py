@@ -457,17 +457,33 @@ class Pipeline(object):
         # as you add the first node, obtain the op tensor, name of the output store it
         # Get the next node -> obtain the name of the input -> check if it is present in outputs -> pass it to the node -> fetch output add the tensor and name
         first_node = False
-        for operator in deserialized_pipeline.operators:
-            # Access the module already imported in the global scope
-            module = importlib.import_module(operator.module_name)  # To be checked if this needs change -> module = globals().get(operator.module_name)
-            function = getattr(module, operator.name)   # Get the function from the module using its name
-
-            # Fetch each argument for the operator and pass to the function
-            op_arguments = fetch_arguments(operator.args)
-
+        with pipeline:
+            for operator in deserialized_pipeline.operators:
+                # Access the module already imported in the global scope
+                module = importlib.import_module(operator.module_name)  # To be checked if this needs change -> module = globals().get(operator.module_name)
+                function = getattr(module, operator.name)   # Get the function from the module using its name
+                # print(function)
+                # Fetch each argument for the operator and pass to the function
+                op_arguments = fetch_arguments(operator.args)
+                # print("The op arguments : ", op_arguments)
+                inputs_list = []
+                if len(operator.inputs) != 0:
+                    for input_tensor in operator.inputs:
+                        if input_tensor.name in pipeline._outputs.keys():
+                            print("Input is present in the outputs list")
+                            inputs_list.append(pipeline._outputs[input_tensor.name])
+                    inputs_list = tuple(inputs_list)
+                # Invoke the function
+                print("Invoking the function --- : ", function)
+                function(*inputs_list, **op_arguments)
 
         # Get pipeline outputs and set the outputs 
-
+        for pipe_out in deserialized_pipeline.pipeline_outputs:
+            if pipe_out.name in pipeline._outputs.keys():
+                pipeline.set_outputs(pipeline._outputs[pipe_out.name])
+            else:
+                raise Exception("Pipeline output not found while deserialize")
+        
         return pipeline
 
 def _discriminate_args(func, **func_kwargs):

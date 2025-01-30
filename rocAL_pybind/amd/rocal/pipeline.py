@@ -29,6 +29,7 @@ import numpy as np
 import ctypes
 import functools
 import inspect
+from amd.rocal import rocal_pb2
 
 class Operators(object):
     def __init__(self):
@@ -315,6 +316,32 @@ class Pipeline(object):
         # Add output to the operator too
         # TODO - Fetch the operator ndims, dtype, layout and add
         op.outputs.append(InputOutput(name))
+    
+    def serialize(self, filename = ''):
+        # Create an instance of PipelineDef
+        pipeline = rocal_pb2.PipelineDef()
+
+        # Set fields in Pipeline class
+        pipeline.num_threads = self._num_threads
+        pipeline.batch_size = self._batch_size
+        pipeline.device_id = self._device_id
+        pipeline.seed = self._seed
+        pipeline.rocal_cpu = self._rocal_cpu
+        pipeline.prefetch_queue_depth = self._prefetch_queue_depth
+
+        # Serialize to string (e.g., for network transmission or saving)
+        serialized_pipeline = pipeline.SerializeToString()
+        return serialized_pipeline
+
+    @classmethod    
+    def deserialize(cls, serialize_string = '', filename = ''):
+        # if (serialize_string && filename):
+        #     raise Exception("Serialize string and filename cannot be passed together")
+        
+        deserialized_pipeline = rocal_pb2.PipelineDef()
+        deserialized_pipeline.ParseFromString(serialize_string)
+        print(deserialized_pipeline)
+
 
 def _discriminate_args(func, **func_kwargs):
     """!Split args on those applicable to Pipeline constructor and the decorated function."""

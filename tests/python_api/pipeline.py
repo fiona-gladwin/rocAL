@@ -68,20 +68,21 @@ def main():
 
     with image_classification_train_pipeline:
         jpegs, _ = fn.readers.file(file_root=data_path)
-        decode = fn.decoders.image_slice(jpegs, output_type=types.RGB,
-                                         file_root=data_path, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
+        decode = fn.decoders.image(jpegs, file_root=data_path, shard_id=local_rank, num_shards=world_size,)
+        # decode = fn.decoders.image_slice(jpegs, output_type=types.RGB,
+        #                                  file_root=data_path, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
         res = fn.resize(decode, resize_width=224, resize_height=224,
                         output_layout=types.NCHW, output_dtype=types.UINT8)
-        flip_coin = fn.random.coin_flip(probability=0.5)
-        cmnp = fn.crop_mirror_normalize(res,
-                                        output_layout=types.NCHW,
-                                        output_dtype=types.FLOAT,
-                                        crop=(224, 224),
-                                        mirror=flip_coin,
-                                        mean=[0.485 * 255, 0.456 *
-                                              255, 0.406 * 255],
-                                        std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
-        image_classification_train_pipeline.set_outputs(cmnp)
+        # flip_coin = fn.random.coin_flip(probability=0.5)
+        # cmnp = fn.crop_mirror_normalize(res,
+        #                                 output_layout=types.NCHW,
+        #                                 output_dtype=types.FLOAT,
+        #                                 crop=(224, 224),
+        #                                 mirror=flip_coin,
+        #                                 mean=[0.485 * 255, 0.456 *
+        #                                       255, 0.406 * 255],
+        #                                 std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
+        image_classification_train_pipeline.set_outputs(res)
 
 # There are 2 ways to get the outputs from the pipeline
 # 1. Use the iterator
@@ -90,32 +91,61 @@ def main():
 # Method 1
     # use the iterator
     image_classification_train_pipeline.build()
-    imageIteratorPipeline = ROCALClassificationIterator(
-        image_classification_train_pipeline)
-    cnt = 0
-    for i, it in enumerate(imageIteratorPipeline):
-        print(it)
-        print("************************************** i *************************************", i)
-        for img in it[0]:
-            cnt += 1
-            draw_patches(img[0], cnt, device=rocal_cpu, layout="NCHW")
-    imageIteratorPipeline.reset()
-    print("*********************************************************************")
+    serialized_string = image_classification_train_pipeline.serialize()
+    print("Serialize : ", serialized_string)
 
-# Method 2
-    iter = 0
-    # use pipe.run() call
-    output_data_batch = image_classification_train_pipeline.run()
-    print("\n Output Data Batch: ", output_data_batch)
-    # length depends on the number of augmentations
+    new_pipe = Pipeline.deserialize(serialized_string)
+    new_pipe.build()
+
+    output_data_batch = new_pipe.run()
+    print("The new pipeline outputs :: ", output_data_batch)
+
     for i in range(len(output_data_batch)):
         print("\n Output Layout: ", output_data_batch[i].layout())
         print("\n Output Dtype: ", output_data_batch[i].dtype())
+        print("Output Batch size : ", output_data_batch[i].batch_size())
         for image_counter in range(output_data_batch[i].batch_size()):
             image = output_data_batch[i].at(image_counter)
             image = image.transpose([1, 2, 0])
-            cv2.imwrite("output_images_iter" + str(i) + str(image_counter) +
+            cv2.imwrite("output_images_iter____" + str(i) + str(image_counter) +
                         ".jpg", cv2.cvtColor(image * 255, cv2.COLOR_RGB2BGR))
+
+    output_data_batch = image_classification_train_pipeline.run()
+    for i in range(len(output_data_batch)):
+        print("\n Output Layout: ", output_data_batch[i].layout())
+        print("\n Output Dtype: ", output_data_batch[i].dtype())
+        print("Output Batch size : ", output_data_batch[i].batch_size())
+        for image_counter in range(output_data_batch[i].batch_size()):
+            image = output_data_batch[i].at(image_counter)
+            image = image.transpose([1, 2, 0])
+            cv2.imwrite("output_images_iter_old___" + str(i) + str(image_counter) +
+                        ".jpg", cv2.cvtColor(image * 255, cv2.COLOR_RGB2BGR))
+    # imageIteratorPipeline = ROCALClassificationIterator(
+    #     image_classification_train_pipeline)
+    # cnt = 0
+    # for i, it in enumerate(imageIteratorPipeline):
+    #     # print(it)
+    #     # print("************************************** i *************************************", i)
+    #     for img in it[0]:
+    #         cnt += 1
+    #         # draw_patches(img[0], cnt, device=rocal_cpu, layout="NCHW")
+    # imageIteratorPipeline.reset()
+    # print("*********************************************************************")
+
+# # Method 2
+#     iter = 0
+#     # use pipe.run() call
+#     output_data_batch = image_classification_train_pipeline.run()
+#     print("\n Output Data Batch: ", output_data_batch)
+#     # length depends on the number of augmentations
+#     for i in range(len(output_data_batch)):
+#         print("\n Output Layout: ", output_data_batch[i].layout())
+#         print("\n Output Dtype: ", output_data_batch[i].dtype())
+#         for image_counter in range(output_data_batch[i].batch_size()):
+#             image = output_data_batch[i].at(image_counter)
+#             image = image.transpose([1, 2, 0])
+#             cv2.imwrite("output_images_iter" + str(i) + str(image_counter) +
+#                         ".jpg", cv2.cvtColor(image * 255, cv2.COLOR_RGB2BGR))
 
 
 if __name__ == '__main__':

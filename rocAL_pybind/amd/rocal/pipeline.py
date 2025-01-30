@@ -422,6 +422,20 @@ class Pipeline(object):
         deserialized_pipeline.ParseFromString(serialize_string)
         print(deserialized_pipeline)
 
+        # get all the pipeline arguments, and do the rocalCreate
+        pipeline = cls(num_threads = deserialized_pipeline.num_threads or 4,
+        batch_size = deserialized_pipeline.batch_size,
+        device_id = deserialized_pipeline.device_id,
+        seed = deserialized_pipeline.seed or 0,
+        rocal_cpu = deserialized_pipeline.rocal_cpu or True,
+        prefetch_queue_depth = deserialized_pipeline.prefetch_queue_depth or 2)
+
+        # fetch each operator - and add to the node
+        # as you add the first node, obtain the op tensor, name of the output store it
+        # Get the next node -> obtain the name of the input -> check if it is present in outputs -> pass it to the node -> fetch output add the tensor and name
+        # Get pipeline outputs and set the outputs 
+
+        return pipeline
 
 def _discriminate_args(func, **func_kwargs):
     """!Split args on those applicable to Pipeline constructor and the decorated function."""

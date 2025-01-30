@@ -122,6 +122,16 @@ from rocal_pybind.types import MISSING_COMPONENT_ERROR
 from rocal_pybind.types import MISSING_COMPONENT_SKIP
 from rocal_pybind.types import MISSING_COMPONENT_EMPTY
 
+from rocal_pybind.types import RocalOutputMemType
+from rocal_pybind.types import RocalResizeScalingMode
+from rocal_pybind.types import RocalResizeInterpolationType
+from rocal_pybind.types import RocalImageSizeEvaluationPolicy
+from rocal_pybind.types import RocalImageColor
+from rocal_pybind.types import RocalTensorLayout
+from rocal_pybind.types import RocalDecodeDevice
+from rocal_pybind.types import RocalDecoderType
+# TODO - Add other types as well
+
 _known_types = {
 
     OK: ("OK", OK),
@@ -220,3 +230,23 @@ def data_type_function(dtype):
     else:
         raise RuntimeError(
             str(dtype) + " does not correspond to a known type.")
+
+def get_enum_val_from_string(type_string, value):
+    if type_string == "RocalOutputMemType":
+        return RocalOutputMemType(value)
+    elif type_string == "RocalResizeScalingMode":
+        return RocalResizeScalingMode(value)
+    elif type_string == "RocalResizeInterpolationType":
+        return RocalResizeInterpolationType(value)
+    elif type_string == "RocalImageSizeEvaluationPolicy":
+        return RocalImageSizeEvaluationPolicy(value)
+    elif type_string == "RocalImageColor":
+        return RocalImageColor(value)
+    elif type_string == "RocalTensorLayout":
+        return RocalTensorLayout(value)
+    elif type_string == "RocalDecodeDevice":
+        return RocalDecodeDevice(value)
+    elif type_string == "RocalDecoderType":
+        return RocalDecoderType(value)
+    else:
+        print("Pybind does not support this enum")

@@ -329,6 +329,49 @@ class Pipeline(object):
         pipeline.rocal_cpu = self._rocal_cpu
         pipeline.prefetch_queue_depth = self._prefetch_queue_depth
 
+        # Serialize the operators
+        for node_op in self._operators:
+            operator = rocal_pb2.OperatorDef()
+            operator.name = node_op.op_name
+            operator.module_name = node_op.op_module_name
+            # Serialize every argument in the operator
+            for arg_name, arg_val in node_op.op_args.items():
+                if arg_name == 'inputs':
+                    continue
+                is_vector_arg = isinstance(arg_val, list) or isinstance(arg_val, tuple)
+                argument = rocal_pb2.Arguments(name = arg_name, is_vector = is_vector_arg)
+                print(arg_val)
+                if (is_vector_arg):
+                    for val in arg_val:
+                        if isinstance(arg_val, float):
+                            argument.floats.append(arg_val)
+                        elif isinstance(arg_val, int):
+                            argument.ints.append(arg_val)
+                        elif isinstance(arg_val, str):
+                            argument.strings.append(arg_val)
+                        elif isinstance(arg_val, bool):
+                            argument.bools.append(arg_val)
+                        elif arg_val is not None:
+                            argument.type = str(arg_val).split('.')[0]
+                            argument.ints.append(int(arg_val))
+                            # print("Invalid argument type ", int(arg_val), str(arg_val).split('.')[0])
+                            # type_str = str(type(arg_val))
+                else:
+                    if isinstance(arg_val, float):
+                        argument.floats.append(arg_val)
+                    elif isinstance(arg_val, int):
+                        argument.ints.append(arg_val)
+                    elif isinstance(arg_val, str):
+                        argument.strings.append(arg_val)
+                    elif isinstance(arg_val, bool):
+                        argument.bools.append(arg_val)
+                    elif arg_val is not None:
+                            argument.type = str(arg_val).split('.')[0]
+                            argument.ints.append(int(arg_val))
+                
+                operator.args.append(argument)
+            pipeline.operators.append(operator)
+
         # Serialize to string (e.g., for network transmission or saving)
         serialized_pipeline = pipeline.SerializeToString()
         return serialized_pipeline
@@ -416,12 +459,11 @@ def add_new_operator(pipeline):
             # TODO - Add a check to check if it is tensor instance
             # check if the input tensor is part of the tensor pipeline
             for name, output_tensor in pipeline._outputs.items():
-                if (tensor is output_tensor):
-                    # print("Present in the pipeline as op tensor", name)
+                if tensor is output_tensor:
                     operator.inputs.append(InputOutput(name))   # Add tensor input out
                     break
-                else:
-                    print(f"The input tensor for {function_name} augmentation not present in the tensor list")
+            # else:
+            #     print(f"The input tensor for {function_name}, {tensor} augmentation not present in the tensor list")
 
     return operator
 

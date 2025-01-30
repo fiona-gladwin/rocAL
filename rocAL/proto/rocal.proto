@@ -24,6 +24,27 @@ syntax = "proto2";
 
 package rocal_proto;
 
+// Stores a single argument
+message Arguments {
+  required string name = 1;
+  optional string type = 2;
+  repeated float floats = 3;
+  repeated int64 ints = 4;
+  repeated string strings = 5;
+  repeated bool bools = 6;
+
+  // vector storage
+  required bool is_vector = 8 [default = false];
+}
+
+// Stores info about each operator in pipeline
+message OperatorDef {
+  required string name = 1;
+  optional string module_name = 2;
+  // Arguments
+  repeated Arguments args = 3;
+}
+
 // Stores pipeline arguments and a list of nodes/operators
 message PipelineDef {
   optional int64 num_threads = 1 [default = 4];

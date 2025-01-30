@@ -180,7 +180,7 @@ def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations
             "sharding_info": sharding_info}
         decoded_image = b.imageDecoderShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
-    Pipeline._current_pipeline.add_operator_output(decoded_image, "decoders_image")
+    Pipeline._current_pipeline.add_operator_output(operator, decoded_image, "decoders_image")
     return (decoded_image)
 
 

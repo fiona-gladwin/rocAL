@@ -35,12 +35,14 @@ class Operators(object):
         self.op_name = None
         self.op_module_name = None
         self.op_args = None
-        self.inputs = None
-        self.outputs = None
+        self.inputs = []
+        self.outputs = []
     def __init__(self, name, module_name = None, arguments = None):
         self.op_name = name
         self.op_module_name = module_name
         self.op_args = arguments
+        self.inputs = []
+        self.outputs = []
 
 class InputOutput(object):
     def __init__(self):
@@ -307,10 +309,12 @@ class Pipeline(object):
         self._operators.append(Operators(fn_name, fn_module_name, fn_args))
         return self._operators[-1]
 
-    def add_operator_output(self, output_tensor, name):
-        self._outputs[name] = output_tensor
-
-
+    def add_operator_output(self, op, output_tensor, name):
+        name = name + str(len(self._outputs))
+        self._outputs[name] = output_tensor # Add output to pipeline
+        # Add output to the operator too
+        # TODO - Fetch the operator ndims, dtype, layout and add
+        op.outputs.append(InputOutput(name))
 
 def _discriminate_args(func, **func_kwargs):
     """!Split args on those applicable to Pipeline constructor and the decorated function."""
@@ -377,6 +381,21 @@ def add_new_operator(pipeline):
     if varkwargs:
         arguments[varkwargs] = local_vars[varkwargs]  # Handle **kwargs if present
     operator = pipeline.add_pipeline_operator(function_name, module_name, arguments)
+
+    # Check if 'inputs' is present in the argument
+    if(any(key == 'inputs' for key in arguments.keys())):
+        print("INPUTS : ", arguments['inputs'])
+        for tensor in arguments['inputs']:
+            # TODO - Add a check to check if it is tensor instance
+            # check if the input tensor is part of the tensor pipeline
+            for name, output_tensor in pipeline._outputs.items():
+                if (tensor is output_tensor):
+                    # print("Present in the pipeline as op tensor", name)
+                    operator.inputs.append(InputOutput(name))   # Add tensor input out
+                    break
+                else:
+                    print(f"The input tensor for {function_name} augmentation not present in the tensor list")
+
     return operator
 
 def pipeline_def(fn=None, **pipeline_kwargs):

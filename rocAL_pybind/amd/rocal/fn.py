@@ -418,7 +418,7 @@ def resize(*inputs, max_size=[], resize_longer=0, resize_shorter=0, resize_width
                      "resize_longer": resize_longer, "interpolation_type": interpolation_type, "output_layout": output_layout, "output_dtype": output_dtype}
     resized_image = b.resize(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
-    Pipeline._current_pipeline.add_operator_output(resized_image, "fn_resize")
+    Pipeline._current_pipeline.add_operator_output(operator, resized_image, "fn_resize")
     return (resized_image)
 
 

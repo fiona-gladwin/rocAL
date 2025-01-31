@@ -148,6 +148,7 @@ def brightness(*inputs, brightness=None, brightness_shift=None, device=None, out
 
         @return    Image with Adjusted Brightness
     """
+    operator = add_new_operator(Pipeline._current_pipeline)
     brightness = b.createFloatParameter(brightness) if isinstance(
         brightness, float) else brightness
     brightness_shift = b.createFloatParameter(brightness_shift) if isinstance(
@@ -158,6 +159,7 @@ def brightness(*inputs, brightness=None, brightness_shift=None, device=None, out
                      "output_layout": output_layout, "output_dtype": output_dtype}
     brightness_image = b.brightness(
         Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
+    Pipeline._current_pipeline.add_operator_output(operator, brightness_image, "fn_brightness")
     return (brightness_image)
 
 

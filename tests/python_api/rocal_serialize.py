@@ -53,25 +53,17 @@ def main():
 
     with pipe:
         jpegs, _ = fn.readers.file(file_root=data_path)
-        decode = fn.decoders.image(jpegs, file_root=data_path, shard_id=local_rank, num_shards=world_size,)
+        decode = fn.decoders.image(jpegs, file_root=data_path, shard_id=local_rank, num_shards=world_size)
         res = fn.resize(decode, resize_width=224, resize_height=224,
                         output_layout=types.NHWC, output_dtype=types.UINT8)
-        # flip_coin = fn.random.coin_flip(probability=0.5)
-        # cmnp = fn.crop_mirror_normalize(res,
-        #                                 output_layout=types.NCHW,
-        #                                 output_dtype=types.FLOAT,
-        #                                 crop=(224, 224),
-        #                                 mirror=1,
-        #                                 mean=[0.485 * 255, 0.456 *
-        #                                       255, 0.406 * 255],
-        #                                 std=[0.229 * 255, 0.224 * 255, 0.225 * 255])
         pipe.set_outputs(res)
 
     pipe.build()
-    serialized_string = pipe.serialize()    # Serialize the pipeline
-    print("Serialize : ", serialized_string)
+    # Serialize the pipeline
+    serialized_string = pipe.serialize()
     
-    new_deserialized_pipe = Pipeline.deserialize(serialized_string) # Deserialize the pipeline from the serialized string
+    # Deserialize the pipeline from the serialized string
+    new_deserialized_pipe = Pipeline.deserialize(serialized_string)
     new_deserialized_pipe.build()
 
     output_data_batch_new = new_deserialized_pipe.run() # Run deserialized pipeline and fetch outputs

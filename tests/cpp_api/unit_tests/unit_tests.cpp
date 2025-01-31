@@ -153,7 +153,7 @@ int main(int argc, const char **argv) {
 
 int test(int test_case, int reader_type, const char *path, const char *outName, int rgb, int gpu, int width, int height, int num_of_classes, int display_all, int resize_interpolation_type, int resize_scaling_mode) {
     size_t num_threads = 1;
-    unsigned int input_batch_size = 8;
+    const unsigned int input_batch_size = 2;
     int decode_max_width = width;
     int decode_max_height = height;
     int pipeline_type = -1;
@@ -319,6 +319,16 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             rocalCreateMXNetReader(handle, path, true);
             decoded_output = rocalMXNetRecordSource(handle, path, color_format, num_threads, false, false, false, ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED, decode_max_width, decode_max_height);
         } break;
+        case 12:  // web_dataset reader
+        {
+            std::cout << "Running WEB DATASET READER" << std::endl;
+            pipeline_type = 4;
+            std::vector<std::set<std::string>> extensions = {
+                {"JPEG", "cls"},
+            };
+            rocalCreateWebDatasetReader(handle, path, "", extensions, RocalMissingComponentsBehaviour::ROCAL_MISSING_COMPONENT_ERROR, true);
+            decoded_output = rocalWebDatasetSourceSingleShard(handle, path, "", color_format, 0, 1, false, false, false, ROCAL_USE_USER_GIVEN_SIZE, decode_max_width, decode_max_height);
+        } break;
         default: {
             std::cout << "Running IMAGE READER" << std::endl;
             pipeline_type = 1;
@@ -330,6 +340,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
                 // decoded_output = rocalJpegFileSource(handle, path, color_format, num_threads, true, false, false, ROCAL_USE_USER_GIVEN_SIZE_RESTRICTED, decode_max_width, decode_max_height);
             // ROCAL_DECODER_HW_JPEG
         } break;
+
     }
 
     if (rocalGetStatus(handle) != ROCAL_OK) {
@@ -642,13 +653,13 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
                 RocalTensorList labels = rocalGetImageLabels(handle);
                 int *label_id = reinterpret_cast<int *>(labels->at(0)->buffer());  // The labels are present contiguously in memory
                 int img_size = rocalGetImageNameLen(handle, image_name_length);
-                char img_name[img_size];
-                int label_one_hot_encoded[input_batch_size * num_of_classes];
-                rocalGetImageName(handle, img_name);
+                std::vector<char> img_name(img_size);
+                std::vector<int> label_one_hot_encoded(input_batch_size * num_of_classes);
+                rocalGetImageName(handle, img_name.data());
                 if (num_of_classes != 0) {
-                    rocalGetOneHotImageLabels(handle, label_one_hot_encoded, num_of_classes, RocalOutputMemType::ROCAL_MEMCPY_HOST);
+                    rocalGetOneHotImageLabels(handle, label_one_hot_encoded.data(), num_of_classes, RocalOutputMemType::ROCAL_MEMCPY_HOST);
                 }
-                std::cerr << "\nImage name:" << img_name << "\n";
+                std::cerr << "\nImage name:" << img_name.data() << "\n";
                 for (unsigned int i = 0; i < input_batch_size; i++) {
                     std::cerr << "Label id: " << label_id[i] << std::endl;
                     if(num_of_classes != 0)
@@ -670,9 +681,9 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             } break;
             case 2: {   // detection pipeline
                 int img_size = rocalGetImageNameLen(handle, image_name_length);
-                char img_name[img_size];
-                rocalGetImageName(handle, img_name);
-                std::cerr << "\nImage name:" << img_name;
+                std::vector<char> img_name(img_size);
+                rocalGetImageName(handle, img_name.data());
+                std::cerr << "\nImage name:" << img_name.data();
                 RocalTensorList bbox_labels = rocalGetBoundingBoxLabel(handle);
                 RocalTensorList bbox_coords = rocalGetBoundingBoxCords(handle);
                 for (unsigned i = 0; i < bbox_labels->size(); i++) {
@@ -707,6 +718,40 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
 
                     for (int k = 0; k < 17; k++) {
                         std::cout << "x : " << joints_data->joints_batch[i][k][0] << " , y : " << joints_data->joints_batch[i][k][1] << " , v : " << joints_data->joints_visibility_batch[i][k][0] << std::endl;
+                    }
+                }
+            } break;
+            case 4: {   // webdataset pipeline
+                int img_size = rocalGetImageNameLen(handle, image_name_length);
+                std::vector<char> img_name(img_size);
+                rocalGetImageName(handle, img_name.data());
+                std::cout << "\n Image name: " << img_name.data() << "\n \n";
+                RocalMetaData ascii_sample_contents = rocalGetAsciiDatas(handle);
+                std::vector<std::vector<std::vector<uint8_t>>> ext_componenet_list;
+                for(uint ext = 0; ext < ascii_sample_contents->size(); ext++) {
+                    RocalTensorList ext_ascii_values_batch = ascii_sample_contents->at(ext);
+                    std::vector<std::vector<uint8_t>> component_list;
+                    std::vector<uint8_t> ascii_components_array;
+                    for (uint i = 0; i < ext_ascii_values_batch->size(); i++) {
+                        if (ext_ascii_values_batch->at(i)->buffer() !=  nullptr) {
+                            uint8_t* buffer = reinterpret_cast<uint8_t*>(ext_ascii_values_batch->at(i)->buffer());
+                            size_t length = ext_ascii_values_batch->at(i)->dims().at(0);
+                            ascii_components_array.assign(buffer, buffer + length);
+                        } else {
+                            ascii_components_array = std::vector<uint8_t>{};
+                        }
+                        component_list.push_back(ascii_components_array);
+                    }
+                    ext_componenet_list.push_back(component_list);
+                }
+                for (size_t i = 0; i < ext_componenet_list.size(); ++i) {
+                    std::cout << " Meta Data Component " << i + 1 << ":" << std::endl;
+                    for (size_t j = 0; j < ext_componenet_list[i].size(); ++j) {
+                        std::cout << "  Value " << j + 1 << ": ";
+                        for (const auto& value : ext_componenet_list[i][j]) {
+                            std::cout << static_cast<uint8_t>(value) << " ";
+                        }
+                        std::cout << std::endl;
                     }
                 }
             } break;

@@ -81,4 +81,6 @@ extern "C" RocalStatus ROCAL_API_CALL rocalRun(RocalContext context);
  */
 extern "C" RocalStatus ROCAL_API_CALL rocalRelease(RocalContext rocal_context);
 
+extern "C" RocalStatus ROCAL_API_CALL rocalSerialize(RocalContext rocal_context, char* serialized_string);
+
 #endif

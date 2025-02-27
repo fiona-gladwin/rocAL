@@ -1715,3 +1715,30 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
         }
     }
 }
+
+void MasterGraph::serialize(char* serialized_string) {
+    // Add all the pipeline related arguments to protobuf string
+    
+    rocal_proto::PipelineDef pipe;
+    pipe.set_num_threads(_cpu_num_threads);
+    pipe.set_batch_size(_user_batch_size);
+    pipe.set_device_id(_gpu_id);
+    // pipe.set_seed();
+    pipe.set_rocal_cpu(_mem_type == RocalMemType::HOST ? true : false);
+    pipe.set_prefetch_queue_depth(_prefetch_queue_depth);
+
+    // Serialize the string and return
+    std::string serialized_pipeline = pipe.SerializeAsString();
+    std::cerr << "Serialized string : " << serialized_pipeline << "\n";
+
+    /*
+    rocal_proto::PipelineDef deserialized_pipeline;
+    google::protobuf::io::CodedInputStream coded_input(
+        reinterpret_cast<const uint8_t *>(serialized_pipeline.c_str()), serialized_pipeline.size());
+    coded_input.SetTotalBytesLimit(serialized_pipeline.size());
+    deserialized_pipeline.ParseFromCodedStream(&coded_input);
+
+    std::cerr << "Batch size : " << deserialized_pipeline.batch_size() << "\n";
+    std::cerr << "Num Threads : " << deserialized_pipeline.num_threads() << "\n";
+    */
+}

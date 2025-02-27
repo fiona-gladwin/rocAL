@@ -105,3 +105,16 @@ rocalVerify(RocalContext p_context) {
     }
     return ROCAL_OK;
 }
+
+RocalStatus ROCAL_API_CALL
+rocalSerialize(RocalContext rocal_context, char* serialized_string) {
+    auto context = static_cast<Context*>(rocal_context);
+    try {
+        context->master_graph->serialize(serialized_string);
+    } catch (const std::exception& e) {
+        context->capture_error(e.what());
+        ERR(e.what())
+        return ROCAL_RUNTIME_ERROR;
+    }
+    return ROCAL_OK;
+}

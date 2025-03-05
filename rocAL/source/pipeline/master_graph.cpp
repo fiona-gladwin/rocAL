@@ -1725,6 +1725,45 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
     }
 }
 
+void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op) {
+    
+    std::vector<Argument> arguments_list;
+    
+    if (pipe_op->module_name == "reader") {
+        arguments_list = pipe_op->arguments;
+    } else {
+        arguments_list = pipe_op->node->get_args_list();
+    }
+    for (auto& op_arg : arguments_list) {
+        rocal_proto::Arguments *arg = opdef->add_args();
+        arg->set_name(op_arg.arg_name);
+        arg->set_type(op_arg.type_name);
+
+        if (op_arg.enum_type_name != "")
+            arg->set_instance_name(op_arg.enum_type_name);
+        // Add each value to the arg based on the type
+        if (!op_arg.is_vector && op_arg.values.size() == 1) {
+            std::cerr << op_arg.arg_name << " - " << op_arg.type_name << "<<\n";
+            if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
+                arg->add_ints(std::any_cast<int>(op_arg.values[0]));
+            } else if (op_arg.type_name == "float") {
+                arg->add_floats(std::any_cast<float>(op_arg.values[0]));
+            } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
+                arg->add_strings(std::any_cast<std::string>(op_arg.values[0]));
+            } else if (op_arg.type_name == "bool") {
+                arg->add_bools(std::any_cast<bool>(op_arg.values[0]));
+            } else if (op_arg.type_name == "unsigned") {
+                arg->add_uints(std::any_cast<unsigned>(op_arg.values[0])); // Use unsigned int instead of uint
+            } else if (op_arg.type_name == "size_t") {
+                arg->add_uints(std::any_cast<size_t>(op_arg.values[0])); // Use unsigned int instead of uint
+            } 
+            else {
+                THROW("Invalid type specified for the Argument " + op_arg.arg_name);
+            }
+        }
+    }
+}
+
 void MasterGraph::serialize(char* serialized_string) {
     // Add all the pipeline related arguments to protobuf string
     
@@ -1743,6 +1782,8 @@ void MasterGraph::serialize(char* serialized_string) {
         op->set_name(pipe_op->name);
         op->set_module_name(pipe_op->module_name);
         // Add support to add each argument in the operator
+        serialize_args_to_protobuf(op, pipe_op);
+        // std::cerr << "Serialized args for op : " << pipe_op->name << "\n";
     }
 
     // Serialize the string and return

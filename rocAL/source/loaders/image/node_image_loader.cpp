@@ -67,7 +67,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     this->_args.push_back(Argument("source_path", "string", source_path));
     this->_args.push_back(Argument("json_path", "string", json_path));
     // Feature key Map
-    this->_args.push_back(Argument("feature_key_map", "map_string", feature_key_map));
+    this->_args.push_back(Argument("feature_key_map", "map_string", feature_vector));
     this->_args.push_back(Argument("storage_type", "int", "StorageType", static_cast<int>(storage_type)));
     this->_args.push_back(Argument("decoder_type", "int", "DecoderType", static_cast<int>(decoder_type)));
     this->_args.push_back(Argument("shuffle", "bool", shuffle));
@@ -83,7 +83,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     this->_args.push_back(Argument("shard_size", "int", sharding_info.shard_size));
 
 
-    this->_args.push_back(Argument("file_prefix", "char_ptr", std::string(file_prefix)));
+    this->_args.push_back(Argument("file_prefix", "char_str", std::string(file_prefix)));
     this->_args.push_back(Argument("sequence_length", "unsigned", sequence_length));
     this->_args.push_back(Argument("step", "unsigned", step));
     this->_args.push_back(Argument("stride", "unsigned", stride));

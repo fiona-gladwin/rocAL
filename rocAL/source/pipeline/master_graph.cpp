@@ -1142,6 +1142,10 @@ TensorListVector* MasterGraph::create_label_reader(const char *source_path, Meta
     _meta_data_reader = create_meta_data_reader(config, _augmented_meta_data);
     _meta_data_reader->read_all(source_path);
 
+    // Add each opertor to the pipeline operators list
+    auto reader_op = std::make_shared<PipelineOperator>("LabelReader_" + std::to_string(_op_idx++), "reader");
+    _pipeline_operators.push_back(reader_op);
+
     std::vector<size_t> dims = {1};
     auto default_labels_info = TensorInfo(std::move(dims), _mem_type, RocalTensorDataType::INT32);  // Create default labels Info
     default_labels_info.set_metadata();
@@ -1726,6 +1730,15 @@ void MasterGraph::serialize(char* serialized_string) {
     // pipe.set_seed();
     pipe.set_rocal_cpu(_mem_type == RocalMemType::HOST ? true : false);
     pipe.set_prefetch_queue_depth(_prefetch_queue_depth);
+
+
+    // Serialize all operators
+    for (auto &pipe_op : _pipeline_operators) {
+        rocal_proto::OperatorDef *op = pipe.add_operators();
+        op->set_name(pipe_op->name);
+        op->set_module_name(pipe_op->module_name);
+        // Add support to add each argument in the operator
+    }
 
     // Serialize the string and return
     std::string serialized_pipeline = pipe.SerializeAsString();

@@ -23,10 +23,39 @@ THE SOFTWARE.
 #pragma once
 #include <memory>
 #include <set>
+#include <any>
 
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
+
+// template <typename T>
+class Argument {
+   public:
+    std::string arg_name;
+    std::string type_name;
+    std::string enum_type_name;
+    bool is_vector = false;
+    std::vector<std::any> values;   // Can change to std::variant later
+
+    template <typename T>
+    explicit inline Argument(std::string name, std::string type, T val)
+        : arg_name(name), type_name(type) {
+        values.push_back(val);
+    }
+    template <typename T>
+    explicit inline Argument(std::string name, std::string type, std::vector<T> &val)
+        : arg_name(name), type_name(type) {
+        is_vector = true;
+        values = val;
+    }
+    template <typename T>
+    explicit inline Argument(std::string name, std::string type, std::string enum_name, T val)
+        : arg_name(name), type_name(type), enum_type_name(enum_name) {
+        values.push_back(val);
+    }
+};
+
 class Node {
    public:
     Node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) : _inputs(inputs),
@@ -44,6 +73,7 @@ class Node {
     bool _is_ssd = false;
     const Roi2DCords *get_src_roi() { return _inputs[0]->info().roi().get_2D_roi(); }
     const Roi2DCords *get_dst_roi() { return _outputs[0]->info().roi().get_2D_roi(); }
+    virtual std::string node_name() { return ""; }
 
    protected:
     virtual void create_node() = 0;
@@ -54,4 +84,5 @@ class Node {
     vx_node _node = nullptr;
     size_t _batch_size;
     pMetaDataBatch _meta_data_info;
+    std::vector<Argument> _args;
 };

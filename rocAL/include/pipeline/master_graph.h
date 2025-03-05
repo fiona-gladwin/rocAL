@@ -80,6 +80,23 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
+class PipelineOperator {
+   public:
+    explicit inline PipelineOperator(std::string op_name, std::string op_module_name,
+                                     std::shared_ptr<Node> op_node = nullptr) {
+        name = op_name;
+        module_name = op_module_name;
+        node = op_node;
+    }
+    void set_arguments(std::vector<Argument> op_arguments) {
+        arguments = op_arguments;
+    }
+    std::string name;
+    std::string module_name;
+    std::vector<Argument> arguments;
+    std::shared_ptr<Node> node;
+};
+
 class MasterGraph {
    public:
     enum class Status { OK = 0,
@@ -235,12 +252,17 @@ class MasterGraph {
     BoxEncoderGpu *_box_encoder_gpu = nullptr;
 #endif
     TimingDbg _rb_block_if_empty_time, _rb_block_if_full_time;
+    std::vector<std::shared_ptr<PipelineOperator>> _pipeline_operators;
+    int _op_idx = 0;
 };
 
 template <typename T>
 std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
     auto node = std::make_shared<T>(inputs, outputs);
     _nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "augmentation", node));
 
     for (auto &input : inputs) {
         if (_tensor_map.find(input) == _tensor_map.end())
@@ -282,6 +304,10 @@ inline std::shared_ptr<ImageLoaderNode> MasterGraph::add_node(const std::vector<
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "loader", node));
+
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 
@@ -300,6 +326,10 @@ inline std::shared_ptr<ImageLoaderSingleShardNode> MasterGraph::add_node(const s
     _loader_module = node->get_loader_module();
     _loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
     _root_nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "loader", node));
+
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 

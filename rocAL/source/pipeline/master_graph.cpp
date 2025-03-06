@@ -1725,6 +1725,46 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
     }
 }
 
+void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::OperatorDef *opdef, 
+                                                            std::shared_ptr<PipelineOperator> pipe_op) {
+    if (pipe_op->module_name == "loader") {
+        for (auto& node_output : pipe_op->node->output()) {
+            rocal_proto::InputOutput *output = opdef->add_outputs();
+            output->set_name(node_output->tensor_name());
+            output->set_device(static_cast<int>(node_output->info().mem_type()));
+            output->set_dtype(static_cast<int>(node_output->info().data_type()));
+            output->set_layout(static_cast<int>(node_output->info().layout()));
+            output->set_color_format(static_cast<int>(node_output->info().color_format()));
+            for (auto& dim : node_output->info().dims())
+                output->add_dims(dim);
+            output->set_num_dims(node_output->info().num_of_dims());
+        }
+    } else if (pipe_op->module_name != "reader") {
+        for (auto& node_input : pipe_op->node->input()) {
+            rocal_proto::InputOutput *input = opdef->add_inputs();
+            input->set_name(node_input->tensor_name());
+            input->set_device(static_cast<int>(node_input->info().mem_type()));
+            input->set_dtype(static_cast<int>(node_input->info().data_type()));
+            input->set_layout(static_cast<int>(node_input->info().layout()));
+            input->set_color_format(static_cast<int>(node_input->info().color_format()));
+            for (auto& dim : node_input->info().dims())
+                input->add_dims(dim);
+            input->set_num_dims(node_input->info().num_of_dims());
+        }
+        for (auto& node_output : pipe_op->node->output()) {
+            rocal_proto::InputOutput *output = opdef->add_outputs();
+            output->set_name(node_output->tensor_name());
+            output->set_device(static_cast<int>(node_output->info().mem_type()));
+            output->set_dtype(static_cast<int>(node_output->info().data_type()));
+            output->set_layout(static_cast<int>(node_output->info().layout()));
+            output->set_color_format(static_cast<int>(node_output->info().color_format()));
+            for (auto& dim : node_output->info().dims())
+                output->add_dims(dim);
+            output->set_num_dims(node_output->info().num_of_dims());
+        }
+    }
+}
+
 void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op) {
     
     std::vector<Argument> arguments_list;
@@ -1783,8 +1823,12 @@ void MasterGraph::serialize(char* serialized_string) {
         op->set_module_name(pipe_op->module_name);
         // Add support to add each argument in the operator
         serialize_args_to_protobuf(op, pipe_op);
+        serialize_inputs_and_outputs_to_protobuf(op, pipe_op);
         // std::cerr << "Serialized args for op : " << pipe_op->name << "\n";
     }
+
+    // Convert the pipe.outputs to protobuffers.
+    // Protobuffers can be reused
 
     // Serialize the string and return
     std::string serialized_pipeline = pipe.SerializeAsString();

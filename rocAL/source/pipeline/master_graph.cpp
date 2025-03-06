@@ -1765,6 +1765,67 @@ void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::Operator
     }
 }
 
+void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument &op_arg) {
+    if (op_arg.enum_type_name == "SimpleParameter") {
+        if (op_arg.type_name == "int") {
+            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
+            auto simple_param = dynamic_cast<SimpleParameter<int> *>(param_core);
+            // Fetch and add values to the parameter class
+            parameter->add_param_val_int(simple_param->get());
+        } else if (op_arg.type_name == "float") {
+            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
+            auto simple_param = dynamic_cast<SimpleParameter<float> *>(param_core);
+            parameter->add_param_val_float(simple_param->get());
+        }
+    } else if (op_arg.enum_type_name == "UniformRand") {
+        if (op_arg.type_name == "int") {
+            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
+            auto uniform_param = dynamic_cast<UniformRand<int> *>(param_core);
+            // Fetch and add values to the parameter class
+            auto uniform_range = uniform_param->get_start_and_end();
+            parameter->add_param_val_int(uniform_range.first);
+            parameter->add_param_val_int(uniform_range.second);
+        } else if (op_arg.type_name == "float") {
+            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
+            auto uniform_param = dynamic_cast<UniformRand<float> *>(param_core);
+            // Fetch and add values to the parameter class
+            auto uniform_range = uniform_param->get_start_and_end();
+            parameter->add_param_val_float(uniform_range.first);
+            parameter->add_param_val_float(uniform_range.second);
+        }
+    } else if (op_arg.enum_type_name == "CustomRand") {
+        if (op_arg.type_name == "int") {
+            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
+            auto random_param = dynamic_cast<CustomRand<int> *>(param_core);
+            // Fetch and add values to the parameter class
+            auto values_vec = random_param->get_values();
+            // Get values
+            for (auto& val : values_vec) {
+                parameter->add_param_val_int(val);
+            }
+            auto frequency_vec = random_param->get_frequencies();
+            for (auto& val : frequency_vec) {
+                parameter->add_frequency(val);
+            }
+            parameter->set_size(random_param->size());
+        } else if (op_arg.type_name == "float") {
+            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
+            auto random_param = dynamic_cast<CustomRand<float> *>(param_core);
+            // Fetch and add values to the parameter class
+            auto values_vec = random_param->get_values();
+            // Get values
+            for (auto& val : values_vec) {
+                parameter->add_param_val_float(val);
+            }
+            auto frequency_vec = random_param->get_frequencies();
+            for (auto& val : frequency_vec) {
+                parameter->add_frequency(val);
+            }
+            parameter->set_size(random_param->size());
+        }
+    }
+}
+
 void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op) {
     
     std::vector<Argument> arguments_list;
@@ -1779,10 +1840,16 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
         arg->set_name(op_arg.arg_name);
         arg->set_type(op_arg.type_name);
 
+        if (op_arg.type_name == "nullptr") continue; // TODOSER - During deserialize Nullptr needs to be handled
         if (op_arg.enum_type_name != "")
             arg->set_instance_name(op_arg.enum_type_name);
+
+        if (op_arg.is_parameter) {
+            rocal_proto::Parameter *param = arg->mutable_param();
+            serialize_parameter_to_protobuf(param, op_arg);
+        }
         // Add each value to the arg based on the type
-        if (!op_arg.is_vector && op_arg.values.size() == 1) {
+        else if (!op_arg.is_vector && op_arg.values.size() == 1) {
             std::cerr << op_arg.arg_name << " - " << op_arg.type_name << "<<\n";
             if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
                 arg->add_ints(std::any_cast<int>(op_arg.values[0]));
@@ -1800,6 +1867,8 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
             else {
                 THROW("Invalid type specified for the Argument " + op_arg.arg_name);
             }
+        } else {
+            // TODO - VECTOR BASED PROCESSING
         }
     }
 }

@@ -59,6 +59,10 @@ void BrightnessNode::init(float alpha, float beta) {
 void BrightnessNode::init(FloatParam *alpha, FloatParam *beta) {
     _alpha.set_param(core(alpha));
     _beta.set_param(core(beta));
+
+    // Add all arguments as part of the Node
+    _args.push_back(Argument("alpha", alpha));
+    _args.push_back(Argument("beta", beta));
 }
 
 void BrightnessNode::update_node() {

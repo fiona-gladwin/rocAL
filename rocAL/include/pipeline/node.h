@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
+#include "parameters/parameter_factory.h"
 
 // template <typename T>
 class Argument {
@@ -36,8 +37,10 @@ class Argument {
     std::string type_name;
     std::string enum_type_name;
     bool is_vector = false;
+    bool is_parameter = false;
+    bool is_null_ptr = false;
     std::vector<std::any> values;   // Can change to std::variant later
-
+    pParamCore param_core;
     template <typename T>
     explicit inline Argument(std::string name, std::string type, T val)
         : arg_name(name), type_name(type) {
@@ -55,6 +58,37 @@ class Argument {
     explicit inline Argument(std::string name, std::string type, std::string enum_name, T val)
         : arg_name(name), type_name(type), enum_type_name(enum_name) {
         values.push_back(val);
+    }
+    inline void extract_param(const RocalParameterType param_type, pParamCore param) {
+        if (param_type == RocalParameterType::DETERMINISTIC) {
+            enum_type_name = "SimpleParameter";
+        } else if (param_type == RocalParameterType::RANDOM_UNIFORM) {
+            enum_type_name = "UniformRand";
+        } else if (param_type == RocalParameterType::RANDOM_CUSTOM) {
+            enum_type_name = "CustomRand";
+        }
+        param_core = param;
+        is_parameter = true;
+    }
+    explicit inline Argument(std::string name, FloatParam* param)
+        : arg_name(name) {
+        type_name = "float";
+        if (param == nullptr) {
+            is_null_ptr = true;
+            type_name = "nullptr";
+            return;
+        }
+        extract_param(param->type, pParamCore(core(param)));
+    }
+    explicit inline Argument(std::string name, IntParam* param)
+        : arg_name(name) {
+        type_name = "int";
+        if (param == nullptr) {
+            type_name = "nullptr";
+            is_null_ptr = true;
+            return;
+        }
+        extract_param(param->type, pParamCore(core(param)));
     }
 };
 

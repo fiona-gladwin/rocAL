@@ -28,13 +28,15 @@ package rocal_proto;
 message Arguments {
   required string name = 1;
   optional string type = 2;
-  repeated float floats = 3;
-  repeated int64 ints = 4;
-  repeated string strings = 5;
-  repeated bool bools = 6;
+  optional string instance_name = 3;
+  repeated float floats = 4;
+  repeated int64 ints = 5;
+  repeated string strings = 6;
+  repeated bool bools = 7;
+  repeated uint64 uints = 8;
 
   // vector storage
-  required bool is_vector = 8 [default = false];
+  required bool is_vector = 9 [default = false];
 }
 
 // Stores info about each operator in pipeline

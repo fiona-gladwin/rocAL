@@ -1899,6 +1899,20 @@ void MasterGraph::serialize(char* serialized_string) {
     // Convert the pipe.outputs to protobuffers.
     // Protobuffers can be reused
 
+    // Serialize the pipeline outputs
+    for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++) {
+        rocal_proto::InputOutput *output = pipe.add_pipe_outputs();
+        auto pipe_output = _internal_tensor_list[idx];
+        output->set_name(pipe_output->tensor_name());
+        output->set_device(static_cast<int>(pipe_output->info().mem_type()));
+        output->set_dtype(static_cast<int>(pipe_output->info().data_type()));
+        output->set_layout(static_cast<int>(pipe_output->info().layout()));
+        output->set_color_format(static_cast<int>(pipe_output->info().color_format()));
+        for (auto& dim : pipe_output->info().dims())
+            output->add_dims(dim);
+        output->set_num_dims(pipe_output->info().num_of_dims());
+    }
+
     // Serialize the string and return
     std::string serialized_pipeline = pipe.SerializeAsString();
     std::cerr << "Serialized string : " << serialized_pipeline << "\n";

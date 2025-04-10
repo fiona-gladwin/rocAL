@@ -33,19 +33,24 @@ THE SOFTWARE.
 // template <typename T>
 class Argument {
    public:
-    std::string arg_name;
-    std::string type_name;
-    std::string enum_type_name;
+    std::string arg_name;   // Name of the argument
+    std::string type_name;  // Denotes the data type of the argument
+    std::string enum_type_name; // Denotes the name of the enum <arg_name_enum>
+    // TODO - Make an enum
     bool is_vector = false;
     bool is_parameter = false;
     bool is_null_ptr = false;
     std::vector<std::any> values;   // Can change to std::variant later
     pParamCore param_core;
+    
+    // Contructor to initialize the arguments of in-built data types
     template <typename T>
     explicit inline Argument(std::string name, std::string type, T val)
         : arg_name(name), type_name(type) {
         values.push_back(val);
     }
+
+    // Constructor for vector type arguments
     template <typename T>
     explicit inline Argument(std::string name, std::string type, std::vector<T> &val)
         : arg_name(name), type_name(type) {
@@ -54,11 +59,15 @@ class Argument {
             values.push_back(v);  // Store std::string as std::any
         }
     }
+
+    // Constructor for enum type arguments
     template <typename T>
     explicit inline Argument(std::string name, std::string type, std::string enum_name, T val)
         : arg_name(name), type_name(type), enum_type_name(enum_name) {
         values.push_back(val);
     }
+
+    // Deduces the type of parameter of the argument
     inline void extract_param(const RocalParameterType param_type, pParamCore param) {
         if (param_type == RocalParameterType::DETERMINISTIC) {
             enum_type_name = "SimpleParameter";
@@ -70,6 +79,8 @@ class Argument {
         param_core = param;
         is_parameter = true;
     }
+
+    // Constructor for FloatParam arguments
     explicit inline Argument(std::string name, FloatParam* param)
         : arg_name(name) {
         type_name = "float";
@@ -80,6 +91,8 @@ class Argument {
         }
         extract_param(param->type, pParamCore(core(param)));
     }
+
+    // Constructor for IntParam arguments
     explicit inline Argument(std::string name, IntParam* param)
         : arg_name(name) {
         type_name = "int";
@@ -122,4 +135,5 @@ class Node {
     size_t _batch_size;
     pMetaDataBatch _meta_data_info;
     std::vector<Argument> _args;
+
 };

@@ -80,19 +80,20 @@ const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x8080800
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
 
+// Stores the information for the operator in the pipeline
 class PipelineOperator {
    public:
     explicit inline PipelineOperator(std::string op_name, std::string op_module_name,
                                      std::shared_ptr<Node> op_node = nullptr) {
-        name = op_name;
+        operator_name = op_name;
         module_name = op_module_name;
         node = op_node;
     }
     void set_arguments(std::vector<Argument> op_arguments) {
         arguments = op_arguments;
     }
-    std::string name;
-    std::string module_name;
+    std::string operator_name;  // Name of the Node/operator
+    std::string module_name;    // Denotes the type of operator i.e loader/reader/augmentation
     std::vector<Argument> arguments;
     std::shared_ptr<Node> node;
 };

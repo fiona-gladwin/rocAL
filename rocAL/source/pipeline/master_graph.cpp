@@ -1835,6 +1835,7 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
     } else {
         arguments_list = pipe_op->node->get_args_list();
     }
+    // Iterate through each argument to store in the protobuffers
     for (auto& op_arg : arguments_list) {
         rocal_proto::Arguments *arg = opdef->add_args();
         arg->set_name(op_arg.arg_name);
@@ -1875,7 +1876,6 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
 
 void MasterGraph::serialize(char* serialized_string) {
     // Add all the pipeline related arguments to protobuf string
-    
     rocal_proto::PipelineDef pipe;
     pipe.set_num_threads(_cpu_num_threads);
     pipe.set_batch_size(_user_batch_size);
@@ -1888,7 +1888,7 @@ void MasterGraph::serialize(char* serialized_string) {
     // Serialize all operators
     for (auto &pipe_op : _pipeline_operators) {
         rocal_proto::OperatorDef *op = pipe.add_operators();
-        op->set_name(pipe_op->name);
+        op->set_name(pipe_op->operator_name);
         op->set_module_name(pipe_op->module_name);
         // Add support to add each argument in the operator
         serialize_args_to_protobuf(op, pipe_op);
@@ -1896,8 +1896,6 @@ void MasterGraph::serialize(char* serialized_string) {
         // std::cerr << "Serialized args for op : " << pipe_op->name << "\n";
     }
 
-    // Convert the pipe.outputs to protobuffers.
-    // Protobuffers can be reused
 
     // Serialize the pipeline outputs
     for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++) {

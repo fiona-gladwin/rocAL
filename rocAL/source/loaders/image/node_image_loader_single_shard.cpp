@@ -53,46 +53,27 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
     reader_cfg.set_index_path(index_path);
     reader_cfg.set_sharding_info(sharding_info);
 
-    // Convert map to vector of strings
-    std::vector<std::string> feature_vector;
-    if (!feature_key_map.empty()) {
-        for (const auto& pair : feature_key_map) {
-            feature_vector.push_back(pair.first);  // Push key
-            feature_vector.push_back(pair.second); // Push value
-        }
-    }
-
     // Add all arguments as part of the operator
-    this->_args.push_back(Argument("shard_id", "unsigned", shard_id));
-    this->_args.push_back(Argument("shard_count", "unsigned", shard_count));
-    this->_args.push_back(Argument("cpu_num_threads", "unsigned", cpu_num_threads));
-    this->_args.push_back(Argument("source_path", "string", source_path));
-    this->_args.push_back(Argument("json_path", "string", json_path));
-    // Feature key Map
-    this->_args.push_back(Argument("feature_key_map", "map_string", feature_key_map));
-    this->_args.push_back(Argument("storage_type", "int", "StorageType", static_cast<int>(storage_type)));
-    this->_args.push_back(Argument("decoder_type", "int", "DecoderType", static_cast<int>(decoder_type)));
-    this->_args.push_back(Argument("shuffle", "bool", shuffle));
-    this->_args.push_back(Argument("loop", "bool", loop));
-    this->_args.push_back(Argument("load_batch_count", "size_t", load_batch_count));
-    this->_args.push_back(Argument("meta_data_reader", "shared_ptr", 0));
-    this->_args.push_back(Argument("decoder_keep_orig", "bool", decoder_keep_original));
-
-    // ShardingInfo to be added
-    this->_args.push_back(Argument("last_batch_policy", "int", "RocalBatchPolicy", static_cast<int>(sharding_info.last_batch_policy)));
-    this->_args.push_back(Argument("pad_last_batch_repeated", "bool", sharding_info.pad_last_batch_repeated));
-    this->_args.push_back(Argument("stick_to_shard", "bool", sharding_info.stick_to_shard));
-    this->_args.push_back(Argument("shard_size", "int", sharding_info.shard_size));
+    std::array<std::string, 22> arg_names = {
+        "shard_id", "shard_count", "cpu_num_threads", "source_path", "json_path",
+        "feature_key_map", "storage_type", "decoder_type", "shuffle", "loop",
+        "load_batch_count", "meta_data_reader", "decoder_keep_orig", 
+        "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size",
+        "sequence_length", "step", "stride", "external_file_mode", "index_path"
+    };
     
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{},
+        shard_id, shard_count, cpu_num_threads,
+        source_path, json_path, feature_key_map,
+        storage_type, decoder_type,
+        shuffle, loop, load_batch_count,
+        meta_data_reader, decoder_keep_original,
+        sharding_info.last_batch_policy,
+        sharding_info.pad_last_batch_repeated, sharding_info.stick_to_shard,
+        sharding_info.shard_size, sequence_length, step, stride,
+        external_file_mode, index_path
+    );
 
-    // this->_args.push_back(Argument("file_prefix", "char_ptr", std::string(file_prefix)));
-    this->_args.push_back(Argument("sequence_length", "unsigned", sequence_length));
-    this->_args.push_back(Argument("step", "unsigned", step));
-    this->_args.push_back(Argument("stride", "unsigned", stride));
-    this->_args.push_back(Argument("external_file_mode", "int", "ExternalSourceFileMode", static_cast<int>(external_file_mode)));
-    this->_args.push_back(Argument("index_path", "string", index_path));
-
-    
     _loader_module->initialize(reader_cfg, DecoderConfig(decoder_type),
                                mem_type,
                                _batch_size, decoder_keep_original);

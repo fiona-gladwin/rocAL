@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "decoders/image/decoder.h"
 #include "readers/image/image_reader.h"
 
-// template <typename T>
+// Argument class stores the details of each argument in the Node
 class Argument {
    public:
     std::string arg_name;   // Name of the argument
@@ -94,13 +94,6 @@ class Argument {
                 std::cout << "Type: Unknown" << arg_name << std::endl;
             }
         }
-        // else if (std::is_pointer<T>::value) {
-        //     // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
-        //     //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
-        //     //     this->_args.push_back(Argument(arg_name, arg));
-        //     //     std::cerr << "This is a float param/intparam being set..\n";
-        //     // }
-        // }
     }
 
     // Used to store the feature key map
@@ -121,6 +114,9 @@ class Argument {
     explicit inline Argument(const std::string& name, const std::shared_ptr<T>&& val)
         : arg_name(name) {
         type_name = "shared_ptr";
+
+        // For MetadataReader case store an empty value
+        // During deserialization the MetadataReader should be created and passed from the MasterGraph.
         if (name == "meta_data_reader") {
             values.push_back(static_cast<int>(0));
         }
@@ -219,59 +215,9 @@ class Node {
     pMetaDataBatch _meta_data_info;
     std::vector<Argument> _args;
 
-    // template <typename T>
-    // void create_node_argument(const std::string& arg_name, const T& arg) {
-    //     // Handle enum values--
-    //     if (std::is_enum<T>::value) {
-    //         if (std::is_same<T, DecoderType>::value) {
-    //             this->_args.push_back(Argument(arg_name, "int", "DecoderType", static_cast<int>(arg)));
-    //         } else {
-    //             std::cout << "Type: Unknown, Value: " << arg << std::endl;
-    //         }
-    //     } else if (std::is_pointer<T>::value) {
-    //         // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
-    //         //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
-    //         //     this->_args.push_back(Argument(arg_name, arg));
-    //         //     std::cerr << "This is a float param/intparam being set..\n";
-    //         // }
-    //     } else {
-    //         if (std::is_same<T, int>::value) {
-    //             this->_args.push_back(Argument(arg_name, "int", static_cast<int>(arg)));
-    //         }
-    //         else if (std::is_same<T, double>::value) {
-    //             this->_args.push_back(Argument(arg_name, "double", static_cast<double>(arg)));
-    //         }
-    //         else if (std::is_same<T, char>::value) {
-    //             this->_args.push_back(Argument(arg_name, "char", static_cast<char>(arg)));
-    //         }
-    //         else if (std::is_same<T, const char*>::value) {
-    //             // this->_args.push_back(Argument(arg_name, "char_str", std::string(arg)));
-    //         }
-    //         else if (std::is_same<T, float>::value) {
-    //             this->_args.push_back(Argument(arg_name, "float", static_cast<float>(arg)));
-    //             std::cerr << "This is a float being set..\n";
-    //         }
-    //         // else if (std::is_same<T, CustomClass>::value) {
-    //         //     std::cout << "Type: CustomClass, Value: " << arg << std::endl;
-    //         // }
-    //         // else if (std::is_same<T, std::shared_ptr<CustomClass>>::value) {
-    //         //     if (arg) {
-    //         //         std::cout << "Type: shared_ptr<CustomClass>, Value: " << *arg << std::endl;
-    //         //     } else {
-    //         //         std::cout << "Type: shared_ptr<CustomClass>, Value: nullptr" << std::endl;
-    //         //     }
-    //         // }
-    //         else {
-    //             std::cout << "Type: Unknown, Value: " << arg << std::endl;
-    //         }
-    //     }
-    
-    // }
-
     template <size_t N, size_t... Indices, typename... Args>
     void set_node_arguments(std::array<std::string, N>& arg_names, std::index_sequence<Indices ...>, Args... args) {
         // Fold expression to create Argument object for each argument in the node
-        // (create_node_argument(arg_names[Indices], args), ...);
         (this->_args.push_back(Argument(arg_names[Indices], std::forward<Args>(args))), ...);
     }
 };

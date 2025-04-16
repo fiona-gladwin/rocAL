@@ -25,12 +25,17 @@ THE SOFTWARE.
 #include <set>
 #include <any>
 #include <type_traits>
+#include <typeindex>
+#include <unordered_map>
+#include <map>
 
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
 #include "parameters/parameter_factory.h"
+#include "pipeline/commons.h"
 #include "decoders/image/decoder.h"
+#include "readers/image/image_reader.h"
 
 // template <typename T>
 class Argument {
@@ -45,6 +50,82 @@ class Argument {
     std::vector<std::any> values;   // Can change to std::variant later
     pParamCore param_core;
     
+    // unordered map, mapping the type with the string
+    std::unordered_map<std::type_index, std::string> type_names = {
+        {typeid(int), "int"},
+        {typeid(unsigned), "unsigned"},
+        {typeid(size_t), "size_t"},
+        {typeid(float), "float"},
+        {typeid(double), "double"},
+        {typeid(bool), "bool"},
+        {typeid(std::string), "string"},
+        {typeid(char *), "char_str"},
+        {typeid(const char *), "char_str"},
+        {typeid(DecoderType), "DecoderType"},
+        {typeid(StorageType), "StorageType"},
+        {typeid(ExternalSourceFileMode), "ExternalSourceFileMode"},
+        {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
+    };
+
+    template <typename T>
+    explicit inline Argument(const std::string& name, const T&& val)
+        : arg_name(name) {
+        if constexpr (std::is_enum<T>::value) {
+            type_name = "int"; // Enum types are stored as integers by default
+            
+            auto it = type_names.find(typeid(std::decay_t<T>));
+            if (it != type_names.end()) {
+                enum_type_name = it->second;
+                values.push_back(static_cast<int>(val));
+            } else {
+                std::cout << "Type: Unknown" << arg_name << std::endl;
+            }
+        } else {
+            auto it = type_names.find(typeid(std::decay_t<T>));
+            if (it != type_names.end()) {
+                type_name = it->second;
+
+                if constexpr (std::is_same<std::decay_t<T>, const char *>::value) {
+                    values.push_back(std::string(val));
+                } else {
+                    values.push_back(static_cast<std::decay_t<T>>(val));
+                }
+            } else {
+                std::cout << "Type: Unknown" << arg_name << std::endl;
+            }
+        }
+        // else if (std::is_pointer<T>::value) {
+        //     // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
+        //     //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
+        //     //     this->_args.push_back(Argument(arg_name, arg));
+        //     //     std::cerr << "This is a float param/intparam being set..\n";
+        //     // }
+        // }
+    }
+
+    // Used to store the feature key map
+    explicit inline Argument(const std::string& name, const std::map<std::string, std::string>&& val)
+        : arg_name(name) {
+        type_name = "map_string";
+        is_vector = true;
+        if (!val.empty()) {
+            for (const auto& pair : val) {
+                values.push_back(static_cast<std::string>(pair.first));  // Push key
+                values.push_back(static_cast<std::string>(pair.second)); // Push value
+            }
+        }
+    }
+
+    // Used to store the shared_ptr
+    template <typename T>
+    explicit inline Argument(const std::string& name, const std::shared_ptr<T>&& val)
+        : arg_name(name) {
+        type_name = "shared_ptr";
+        if (name == "meta_data_reader") {
+            values.push_back(static_cast<int>(0));
+        }
+    }
+
     // Contructor to initialize the arguments of in-built data types
     template <typename T>
     explicit inline Argument(std::string name, std::string type, T val)
@@ -138,58 +219,59 @@ class Node {
     pMetaDataBatch _meta_data_info;
     std::vector<Argument> _args;
 
-    template <typename T>
-    void create_node_argument(const std::string& arg_name, const T& arg) {
-        // Handle enum values--
-        if (std::is_enum<T>::value) {
-            if (std::is_same<T, DecoderType>::value) {
-                this->_args.push_back(Argument(arg_name, "int", "DecoderType", static_cast<int>(arg)));
-            } else {
-                std::cout << "Type: Unknown, Value: " << arg << std::endl;
-            }
-        } else if (std::is_pointer<T>::value) {
-            // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
-            //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
-            //     this->_args.push_back(Argument(arg_name, arg));
-            //     std::cerr << "This is a float param/intparam being set..\n";
-            // }
-        } else {
-            if (std::is_same<T, int>::value) {
-                this->_args.push_back(Argument(arg_name, "int", static_cast<int>(arg)));
-            }
-            else if (std::is_same<T, double>::value) {
-                this->_args.push_back(Argument(arg_name, "double", static_cast<double>(arg)));
-            }
-            else if (std::is_same<T, char>::value) {
-                this->_args.push_back(Argument(arg_name, "char", static_cast<char>(arg)));
-            }
-            else if (std::is_same<T, const char*>::value) {
-                // this->_args.push_back(Argument(arg_name, "char_str", std::string(arg)));
-            }
-            else if (std::is_same<T, float>::value) {
-                this->_args.push_back(Argument(arg_name, "float", static_cast<float>(arg)));
-                std::cerr << "This is a float being set..\n";
-            }
-            // else if (std::is_same<T, CustomClass>::value) {
-            //     std::cout << "Type: CustomClass, Value: " << arg << std::endl;
-            // }
-            // else if (std::is_same<T, std::shared_ptr<CustomClass>>::value) {
-            //     if (arg) {
-            //         std::cout << "Type: shared_ptr<CustomClass>, Value: " << *arg << std::endl;
-            //     } else {
-            //         std::cout << "Type: shared_ptr<CustomClass>, Value: nullptr" << std::endl;
-            //     }
-            // }
-            else {
-                std::cout << "Type: Unknown, Value: " << arg << std::endl;
-            }
-        }
+    // template <typename T>
+    // void create_node_argument(const std::string& arg_name, const T& arg) {
+    //     // Handle enum values--
+    //     if (std::is_enum<T>::value) {
+    //         if (std::is_same<T, DecoderType>::value) {
+    //             this->_args.push_back(Argument(arg_name, "int", "DecoderType", static_cast<int>(arg)));
+    //         } else {
+    //             std::cout << "Type: Unknown, Value: " << arg << std::endl;
+    //         }
+    //     } else if (std::is_pointer<T>::value) {
+    //         // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
+    //         //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
+    //         //     this->_args.push_back(Argument(arg_name, arg));
+    //         //     std::cerr << "This is a float param/intparam being set..\n";
+    //         // }
+    //     } else {
+    //         if (std::is_same<T, int>::value) {
+    //             this->_args.push_back(Argument(arg_name, "int", static_cast<int>(arg)));
+    //         }
+    //         else if (std::is_same<T, double>::value) {
+    //             this->_args.push_back(Argument(arg_name, "double", static_cast<double>(arg)));
+    //         }
+    //         else if (std::is_same<T, char>::value) {
+    //             this->_args.push_back(Argument(arg_name, "char", static_cast<char>(arg)));
+    //         }
+    //         else if (std::is_same<T, const char*>::value) {
+    //             // this->_args.push_back(Argument(arg_name, "char_str", std::string(arg)));
+    //         }
+    //         else if (std::is_same<T, float>::value) {
+    //             this->_args.push_back(Argument(arg_name, "float", static_cast<float>(arg)));
+    //             std::cerr << "This is a float being set..\n";
+    //         }
+    //         // else if (std::is_same<T, CustomClass>::value) {
+    //         //     std::cout << "Type: CustomClass, Value: " << arg << std::endl;
+    //         // }
+    //         // else if (std::is_same<T, std::shared_ptr<CustomClass>>::value) {
+    //         //     if (arg) {
+    //         //         std::cout << "Type: shared_ptr<CustomClass>, Value: " << *arg << std::endl;
+    //         //     } else {
+    //         //         std::cout << "Type: shared_ptr<CustomClass>, Value: nullptr" << std::endl;
+    //         //     }
+    //         // }
+    //         else {
+    //             std::cout << "Type: Unknown, Value: " << arg << std::endl;
+    //         }
+    //     }
     
-    }
+    // }
 
     template <size_t N, size_t... Indices, typename... Args>
     void set_node_arguments(std::array<std::string, N>& arg_names, std::index_sequence<Indices ...>, Args... args) {
-        // Fold expression to call printType for each argument
-        (create_node_argument(arg_names[Indices], args), ...);
+        // Fold expression to create Argument object for each argument in the node
+        // (create_node_argument(arg_names[Indices], args), ...);
+        (this->_args.push_back(Argument(arg_names[Indices], std::forward<Args>(args))), ...);
     }
 };

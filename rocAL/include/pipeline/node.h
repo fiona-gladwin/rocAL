@@ -24,11 +24,13 @@ THE SOFTWARE.
 #include <memory>
 #include <set>
 #include <any>
+#include <type_traits>
 
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
 #include "parameters/parameter_factory.h"
+#include "decoders/image/decoder.h"
 
 // template <typename T>
 class Argument {
@@ -136,4 +138,58 @@ class Node {
     pMetaDataBatch _meta_data_info;
     std::vector<Argument> _args;
 
+    template <typename T>
+    void create_node_argument(const std::string& arg_name, const T& arg) {
+        // Handle enum values--
+        if (std::is_enum<T>::value) {
+            if (std::is_same<T, DecoderType>::value) {
+                this->_args.push_back(Argument(arg_name, "int", "DecoderType", static_cast<int>(arg)));
+            } else {
+                std::cout << "Type: Unknown, Value: " << arg << std::endl;
+            }
+        } else if (std::is_pointer<T>::value) {
+            // if (std::is_same<typename std::remove_pointer<T>::type, FloatParam>::value || 
+            //     std::is_same<typename std::remove_pointer<T>::type, IntParam>::value) {
+            //     this->_args.push_back(Argument(arg_name, arg));
+            //     std::cerr << "This is a float param/intparam being set..\n";
+            // }
+        } else {
+            if (std::is_same<T, int>::value) {
+                this->_args.push_back(Argument(arg_name, "int", static_cast<int>(arg)));
+            }
+            else if (std::is_same<T, double>::value) {
+                this->_args.push_back(Argument(arg_name, "double", static_cast<double>(arg)));
+            }
+            else if (std::is_same<T, char>::value) {
+                this->_args.push_back(Argument(arg_name, "char", static_cast<char>(arg)));
+            }
+            else if (std::is_same<T, const char*>::value) {
+                // this->_args.push_back(Argument(arg_name, "char_str", std::string(arg)));
+            }
+            else if (std::is_same<T, float>::value) {
+                this->_args.push_back(Argument(arg_name, "float", static_cast<float>(arg)));
+                std::cerr << "This is a float being set..\n";
+            }
+            // else if (std::is_same<T, CustomClass>::value) {
+            //     std::cout << "Type: CustomClass, Value: " << arg << std::endl;
+            // }
+            // else if (std::is_same<T, std::shared_ptr<CustomClass>>::value) {
+            //     if (arg) {
+            //         std::cout << "Type: shared_ptr<CustomClass>, Value: " << *arg << std::endl;
+            //     } else {
+            //         std::cout << "Type: shared_ptr<CustomClass>, Value: nullptr" << std::endl;
+            //     }
+            // }
+            else {
+                std::cout << "Type: Unknown, Value: " << arg << std::endl;
+            }
+        }
+    
+    }
+
+    template <size_t N, size_t... Indices, typename... Args>
+    void set_node_arguments(std::array<std::string, N>& arg_names, std::index_sequence<Indices ...>, Args... args) {
+        // Fold expression to call printType for each argument
+        (create_node_argument(arg_names[Indices], args), ...);
+    }
 };

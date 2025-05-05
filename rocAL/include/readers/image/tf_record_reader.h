@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2019 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -89,9 +89,9 @@ class TFRecordReader : public Reader {
     //!< _record_name_prefix tells the reader to read only files with the prefix
     std::string _record_name_prefix;
     // protobuf message objects
-    tensorflow::Example _single_example;
-    tensorflow::Features _features;
-    tensorflow::Feature _single_feature;
+    rocal::tensorflow::Example _single_example;
+    rocal::tensorflow::Features _features;
+    rocal::tensorflow::Feature _single_feature;
     void incremenet_read_ptr();
     int release();
     Reader::Status read_image(unsigned char *buff, std::string record_file_name, uint file_size);

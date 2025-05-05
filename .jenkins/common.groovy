@@ -70,14 +70,66 @@ def runTestCommand (platform, project) {
                     export HOME=/home/jenkins
                     set -x
                     cd ${project.paths.project_build_prefix}/build
-                    mkdir -p test && cd test
                     export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocal-%p.profraw\"
                     echo \$LLVM_PROFILE_FILE
+                    cd release
+                    mkdir -p test && cd test
                     cmake /opt/rocm/share/rocal/test/
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
+                    cd ../
+                    wget http://math-ci.amd.com/userContent/computer-vision/MIVisionX-data/MIVisionX-data-main.zip
+                    unzip MIVisionX-data-main.zip
+                    export ROCAL_DATA_PATH=\$(pwd)/MIVisionX-data-main/
+                    mkdir -p rocal-unit-tests && cd rocal-unit-tests
+                    python3 -m pip install Pillow
+                    cp -r /opt/rocm/share/rocal/test/unit_tests/ .
+                    cd unit_tests/
+                    chmod +x -R testAllScripts.sh
+                    ./testAllScripts.sh
+                    cd ../../ && mkdir -p external-source-reader-test && cd external-source-reader-test
+                    cmake /opt/rocm/share/rocal/test/external_source/
+                    make -j
+                    ./external_source ../MIVisionX-data-main/rocal_data/coco/coco_10_img/images/
+                    ./external_source ../MIVisionX-data-main/rocal_data/coco/coco_10_img/images/ 1
+                    cd ../ && mkdir -p audio-tests && cd audio-tests
+                    python3 /opt/rocm/share/rocal/test/audio_tests/audio_tests.py
+                    cd ../ && mkdir -p cifar10-dataloader-test && cd cifar10-dataloader-test
+                    cmake /opt/rocm/share/rocal/test/dataloader/
+                    make -j
+                    wget https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
+                    tar xvf cifar-10-binary.tar.gz
+                    ./dataloader ./cifar-10-batches-bin/ 0 64 64 1 1
+                    ./dataloader ./cifar-10-batches-bin/ 1 64 64 1 1
+                    cd ../ && mkdir -p video-tests && cd video-tests
+                    cp -r /opt/rocm/share/rocal/test/video_tests/* .
+                    mkdir -p build && cd build
+                    cmake ..
+                    make -j
+                    ./video_tests /opt/rocm/share/rocal/test/data/videos/AMD_driving_virtual_20.mp4 1 0 0 1 3 3 1 1 1 0 1280 720 1 1 0 0 1
+                    ./video_tests /opt/rocm/share/rocal/test/data/videos/AMD_driving_virtual_20.mp4 1 1 1
+                    cd ..
+                    chmod a+x ./testScript.sh
+                    ./testScript.sh ../MIVisionX-data-main/rocal_data/video_and_sequence_samples/labelled_videos/ 2
+                    ./testScript.sh ../MIVisionX-data-main/rocal_data/video_and_sequence_samples/sequence/ 3
+                    cd ../ && mkdir -p image-augmentation-app && cd image-augmentation-app
+                    cmake /opt/rocm/share/rocal/test/image_augmentation/
+                    make -j
+                    ./image_augmentation /opt/rocm/share/rocal/test/data/images/AMD-tinyDataSet/ 0 416 416 0 1 1 1 0 1
+                    cd ../ && mkdir -p python-api-tests && cd python-api-tests
+                    export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib/
+                    export PATH=\$PATH:/opt/rocm/bin
+                    export PYTHONPATH=/opt/rocm/lib:\$PYTHONPATH
+                    python3 -m pip install opencv-python
+                    python3 /opt/rocm/share/rocal/test/python_api/prefetch_queue_depth/prefetch_queue_depth.py /opt/rocm/share/rocal/test/data/images/AMD-tinyDataSet cpu 128 8
+                    python3 /opt/rocm/share/rocal/test/python_api/prefetch_queue_depth/prefetch_queue_depth.py /opt/rocm/share/rocal/test/data/images/AMD-tinyDataSet gpu 128 8
+                    python3 /opt/rocm/share/rocal/test/python_api/external_source_reader.py cpu 128
+                    python3 /opt/rocm/share/rocal/test/python_api/external_source_reader.py gpu 128
+                    python3 /opt/rocm/share/rocal/test/python_api/numpy_reader.py --image-dataset-path ../MIVisionX-data-main/rocal_data/numpy/ --no-rocal-gpu
+                    python3 /opt/rocm/share/rocal/test/python_api/numpy_reader.py --image-dataset-path ../MIVisionX-data-main/rocal_data/numpy/ --rocal-gpu
+                    cd ../../
                     sudo ${packageManager} install lcov ${toolsPackage}
                     ${llvmLocation}/llvm-profdata merge -sparse rawdata/*.profraw -o rocal.profdata
-                    ${llvmLocation}/llvm-cov export -object ../release/lib/librocal.so --instr-profile=rocal.profdata --format=lcov > coverage.info
+                    ${llvmLocation}/llvm-cov export -object release/lib/librocal.so --instr-profile=rocal.profdata --format=lcov > coverage.info
                     lcov --remove coverage.info '/opt/*' --output-file coverage.info
                     lcov --list coverage.info
                     lcov --summary  coverage.info

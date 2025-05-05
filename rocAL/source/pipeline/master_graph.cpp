@@ -1874,7 +1874,7 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
     }
 }
 
-void MasterGraph::serialize(char* serialized_string) {
+void MasterGraph::serialize(size_t serialized_string_size) {
     // Add all the pipeline related arguments to protobuf string
     rocal_proto::PipelineDef pipe;
     pipe.set_num_threads(_cpu_num_threads);
@@ -1912,8 +1912,8 @@ void MasterGraph::serialize(char* serialized_string) {
     }
 
     // Serialize the string and return
-    std::string serialized_pipeline = pipe.SerializeAsString();
-    std::cerr << "Serialized string : " << serialized_pipeline << "\n";
+    _serialized_pipeline = pipe.SerializeAsString();
+    serialized_string_size = _serialized_pipeline.size();
 
     /*
     rocal_proto::PipelineDef deserialized_pipeline;

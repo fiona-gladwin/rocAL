@@ -167,7 +167,13 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     }
 
     /*>>>>>>>>>>>>>> Serialize the pipeline <<<<<<<<<<<<<<<<<<*/
-    rocalSerialize(handle, nullptr);
+    size_t str_size;
+    rocalSerialize(handle, str_size);
+    std::string serialized_pipe_string(str_size, '\0');
+    rocalGetSerializedString(handle, serialized_pipe_string.c_str());
+    std::cerr << "==================================================================\n";
+    std::cerr << serialized_pipe_string << "\n";
+    std::cerr << "==================================================================\n";
     
     /*>>>>>>>>>>>>>>>>>>> Diplay using OpenCV <<<<<<<<<<<<<<<<<*/
     // int h = rocalGetAugmentationBranchCount(handle) * rocalGetOutputHeight(handle) * input_batch_size;

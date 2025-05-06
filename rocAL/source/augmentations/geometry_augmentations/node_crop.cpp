@@ -91,6 +91,10 @@ void CropNode::init(unsigned int crop_h, unsigned int crop_w) {
     _crop_param->x1 = 0;
     _crop_param->y1 = 0;
     _crop_param->set_fixed_crop(0.5, 0.5);  // for center_crop
+
+    // Add all arguments as part of the Node
+    std::array<std::string, 2> arg_names = {"crop_h", "crop_w"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, crop_h, crop_w);
 }
 
 void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatParam *x_drift, FloatParam *y_drift) {
@@ -99,6 +103,10 @@ void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatP
     _crop_param->set_crop_height_factor(core(crop_h_factor));
     _crop_param->set_crop_width_factor(core(crop_w_factor));
     _crop_param->set_random();
+
+    // Add all arguments as part of the Node
+    std::array<std::string, 4> arg_names = {"crop_h_factor", "crop_w_factor", "x_drift", "y_drift"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, crop_h_factor, crop_w_factor, x_drift, y_drift);
 }
 
 // Create vx_tensor for the crop coordinates

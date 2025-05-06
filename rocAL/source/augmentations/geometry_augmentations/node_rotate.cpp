@@ -59,6 +59,10 @@ void RotateNode::init(float angle, RocalResizeInterpolationType interpolation_ty
 void RotateNode::init(FloatParam *angle, RocalResizeInterpolationType interpolation_type) {
     _angle.set_param(core(angle));
     _interpolation_type = static_cast<int>(interpolation_type);
+
+    // Add all arguments as part of the Node
+    std::array<std::string, 2> arg_names = {"angle", "interpolation_type"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, angle, interpolation_type);
 }
 
 void RotateNode::update_node() {

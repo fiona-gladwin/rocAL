@@ -65,6 +65,7 @@ class Argument {
         {typeid(StorageType), "StorageType"},
         {typeid(ExternalSourceFileMode), "ExternalSourceFileMode"},
         {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
+        {typeid(RocalResizeInterpolationType), "RocalResizeInterpolationType"},
     };
 
     template <typename T>

@@ -78,6 +78,10 @@ void CropNode::init(unsigned int crop_h, unsigned int crop_w, float x_drift, flo
     FloatParam *y_drift_param = ParameterFactory::instance()->create_single_value_float_param(y_drift);
     _crop_param->set_x_drift_factor(core(x_drift_param));
     _crop_param->set_y_drift_factor(core(y_drift_param));
+
+    // Add all arguments as part of the Node
+    std::array<std::string, 4> arg_names = {"crop_h", "crop_w", "x_drift", "y_drift"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, crop_h, crop_w, x_drift, y_drift);
 }
 
 // This init is used only for centre crop

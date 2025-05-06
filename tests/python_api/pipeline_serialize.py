@@ -17,7 +17,9 @@ gpu_id = 0
 def image_decoder_pipeline(device="cpu", path=image_dir):
     jpegs, labels = fn.readers.file(file_root=path)
     images = fn.decoders.image(jpegs, file_root=path, device=device, output_type=types.RGB, shard_id=0, num_shards=1, random_shuffle=False)
-    return fn.brightness(images)
+    brightness_op = fn.brightness(images)
+    crop_op = fn.crop(brightness_op, crop=[100, 100])
+    return fn.rotate(crop_op, angle=30.0)
 
 def main():
     print ('Optional arguments: <cpu/gpu image_folder>')
@@ -34,7 +36,7 @@ def main():
     pipe = image_decoder_pipeline(batch_size=bs, num_threads=1, device_id=gpu_id, rocal_cpu=rocal_cpu, tensor_layout=types.NHWC, 
                                 reverse_channels=True, mean = [0, 0, 0], std=[255,255,255], device=rocal_device, path=img_folder)
     pipe.build()
-    serialized_pipeline = pipe.serialize()
+    serialized_pipeline = pipe.serialize(filename="serialize_pipe.txt")
 
 if __name__ == '__main__':
     main()

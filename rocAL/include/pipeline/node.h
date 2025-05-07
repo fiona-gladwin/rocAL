@@ -37,6 +37,13 @@ THE SOFTWARE.
 #include "decoders/image/decoder.h"
 #include "readers/image/image_reader.h"
 
+// Custom type traits to check the vector types
+template <typename T>
+struct is_vector_type : std::false_type {};
+
+template <typename T, typename Alloc>
+struct is_vector_type<std::vector<T, Alloc>> : std::true_type {};
+
 // Argument class stores the details of each argument in the Node
 class Argument {
    public:
@@ -66,6 +73,7 @@ class Argument {
         {typeid(ExternalSourceFileMode), "ExternalSourceFileMode"},
         {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
         {typeid(RocalResizeInterpolationType), "RocalResizeInterpolationType"},
+        {typeid(RocalResizeScalingMode), "RocalResizeScalingMode"},
     };
 
     template <typename T>
@@ -78,6 +86,19 @@ class Argument {
             if (it != type_names.end()) {
                 enum_type_name = it->second;
                 values.push_back(static_cast<int>(val));
+            } else {
+                std::cout << "Type: Unknown" << arg_name << std::endl;
+            }
+        } else if constexpr (is_vector_type<T>::value) {
+            using ElementType = typename std::decay_t<T>::value_type;
+            auto it = type_names.find(typeid(ElementType));
+            if (it != type_names.end()) {
+                type_name = it->second;                
+                is_vector = true;
+                for (const auto& v : val) {
+                    // values.push_back(v);  // Store std::string as std::any
+                    values.push_back(static_cast<ElementType>(v));
+                }
             } else {
                 std::cout << "Type: Unknown" << arg_name << std::endl;
             }

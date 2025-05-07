@@ -93,6 +93,10 @@ void ResizeNode::init(unsigned dest_width, unsigned dest_height, RocalResizeScal
         _max_width = max_size[0];
         _max_height = max_size[1];
     }
+
+    // Add all arguments as part of the Node
+    std::array<std::string, 5> arg_names = {"dest_width", "dest_height", "scaling_mode", "max_size", "interpolation_type"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, dest_width, dest_height, scaling_mode, max_size, interpolation_type);
 }
 
 void ResizeNode::adjust_out_roi_size() {

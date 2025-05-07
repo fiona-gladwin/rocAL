@@ -1868,8 +1868,26 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
             else {
                 THROW("Invalid type specified for the Argument " + op_arg.arg_name);
             }
-        } else {
+        } else if (op_arg.is_vector) {
             // TODO - VECTOR BASED PROCESSING
+            for (auto& v : op_arg.values) {
+                if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
+                    arg->add_ints(std::any_cast<int>(v));
+                } else if (op_arg.type_name == "float") {
+                    arg->add_floats(std::any_cast<float>(v));
+                } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
+                    arg->add_strings(std::any_cast<std::string>(v));
+                } else if (op_arg.type_name == "bool") {
+                    arg->add_bools(std::any_cast<bool>(v));
+                } else if (op_arg.type_name == "unsigned") {
+                    arg->add_uints(std::any_cast<unsigned>(v)); // Use unsigned int instead of uint
+                } else if (op_arg.type_name == "size_t") {
+                    arg->add_uints(std::any_cast<size_t>(v)); // Use unsigned int instead of uint
+                } 
+                else {
+                    THROW("Invalid type specified for the Argument " + op_arg.arg_name);
+                }    
+            }
         }
     }
 }

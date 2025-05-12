@@ -1010,8 +1010,13 @@ void MasterGraph::output_routine() {
                 }
             }
             _process_time.start();
-            _graph->process();
-            _process_time.end();
+            for (auto& graph : _graphs) {
+                graph->schedule();
+            }
+            for (auto& graph : _graphs) {
+                graph->wait();
+            }
+           _process_time.end();
 
             auto write_roi_buffers = write_buffers.second;   // Obtain ROI buffers from ring buffer
             for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++)

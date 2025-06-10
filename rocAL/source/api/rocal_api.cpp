@@ -22,11 +22,15 @@ THE SOFTWARE.
 
 #include "rocal_api.h"
 
+#include <google/protobuf/message.h>
+#include <google/protobuf/io/coded_stream.h>
+
 #include <exception>
 #include <string>
 
 #include "pipeline/commons.h"
 #include "pipeline/context.h"
+#include "rocal.pb.h"
 
 RocalStatus ROCAL_API_CALL
 rocalRelease(RocalContext p_context) {
@@ -117,6 +121,45 @@ rocalSerialize(RocalContext rocal_context, size_t serialized_string_size) {
         return ROCAL_RUNTIME_ERROR;
     }
     return ROCAL_OK;
+}
+
+RocalContext ROCAL_API_CALL
+rocalDeserialize(const char* serialized_pipeline) {
+    RocalContext context = nullptr;
+    try {
+        // context->master_graph->serialize(serialized_string_size);
+        // Parse from the serialized string.
+        rocal_proto::PipelineDef pipe;
+        auto serialized_string_size = strlen(serialized_pipeline);
+        google::protobuf::io::CodedInputStream coded_input(
+        reinterpret_cast<const uint8_t *>(serialized_pipeline), serialized_string_size);
+        coded_input.SetTotalBytesLimit(serialized_string_size);
+        pipe.ParseFromCodedStream(&coded_input);
+
+        // Get the pipeline related info
+        auto batch_size = pipe.batch_size();
+        int32_t device_id = 0, prefetch_queue_depth = 3;
+        int64_t num_threads, seed;
+        bool rocal_cpu = true;
+        if (pipe.has_device_id())
+            device_id = pipe.device_id();
+        if (pipe.has_num_threads())
+            num_threads = pipe.num_threads();
+        if (pipe.has_seed())
+            seed = pipe.seed();
+        if (pipe.has_rocal_cpu())
+            rocal_cpu = pipe.rocal_cpu();
+        if (pipe.has_prefetch_queue_depth())
+            prefetch_queue_depth = pipe.prefetch_queue_depth();
+
+        RocalAffinity affinity = rocal_cpu ? RocalAffinity::CPU : RocalAffinity::GPU;
+        // Create the context
+        context = new Context(batch_size, affinity, std::max(device_id, 0), num_threads, prefetch_queue_depth, RocalTensorDataType::FP32);  // Need to set dtype in protobuf/just use default value
+
+    } catch (const std::exception& e) {
+        ERR(STR("Failed to init the Rocal context, ") + STR(e.what()))
+    }
+    return context;
 }
 
 RocalStatus ROCAL_API_CALL

@@ -83,7 +83,7 @@ do
     for ((rgb=rgb_start;rgb<=rgb_end;rgb++))
     do 
         # FileSource Reader
-        ./unit_tests 0 "$image_path" "${output_path}LensCorrection_${rgb_name[$rgb]}_${device_name}" $width $height 45 $device $rgb 0 $display
+        ./unit_tests 0 "$image_path" "${output_path}LensCorrection_${rgb_name[$rgb]}_${device_name}" $width $height 18 $device $rgb 0 $display
         ./unit_tests 0 "$image_path" "${output_path}Exposure_${rgb_name[$rgb]}_${device_name}" $width $height 46 $device $rgb 0 $display
         ./unit_tests 0 "$image_path" "${output_path}Flip_${rgb_name[$rgb]}_${device_name}" $width $height 47 $device $rgb 0 $display
 
@@ -95,7 +95,7 @@ do
         # coco detection
         ./unit_tests 2 "$coco_detection_path" "${output_path}Gamma_${rgb_name[$rgb]}_${device_name}" $width $height 33 $device $rgb 0 $display
         ./unit_tests 2 "$coco_detection_path" "${output_path}Contrast_${rgb_name[$rgb]}_${device_name}" $width $height 34 $device $rgb 0 $display
-        # ./unit_tests 2 "$coco_detection_path" "${output_path}Vignette_${rgb_name[$rgb]}_${device_name}" $width $height 38 $device $rgb 0 $display
+        ./unit_tests 2 "$coco_detection_path" "${output_path}Vignette_${rgb_name[$rgb]}_${device_name}" $width $height 38 $device $rgb 0 $display
 
         # coco detection + partial decoder
         ./unit_tests 3 "$coco_detection_path" "${output_path}Snow_${rgb_name[$rgb]}_${device_name}_coco_partial" $width $height 41 $device $rgb 0 $display
@@ -109,7 +109,7 @@ do
 
         # tf detection
         ./unit_tests 5 "$tf_detection_path" "${output_path}SNPNoise_${rgb_name[$rgb]}_${device_name}" $width $height 40 $device $rgb 0 $display
-        # ./unit_tests 5 "$tf_detection_path" "${output_path}ColorTemp_${rgb_name[$rgb]}_${device_name}" $width $height 43 $device $rgb 0 $display
+        ./unit_tests 5 "$tf_detection_path" "${output_path}ColorTemp_${rgb_name[$rgb]}_${device_name}" $width $height 43 $device $rgb 0 $display
         ./unit_tests 5 "$tf_detection_path" "${output_path}Fog_${rgb_name[$rgb]}_${device_name}" $width $height 44 $device $rgb 0 $display
 
         # caffe classification
@@ -119,7 +119,7 @@ do
 
         # caffe detection
         ./unit_tests 7 "$caffe_detection_path" "${output_path}WarpAffine_${rgb_name[$rgb]}_${device_name}" $width $height 37 $device $rgb 0 $display
-        ./unit_tests 7 "$caffe_detection_path" "${output_path}Blur_${rgb_name[$rgb]}_${device_name}" $width $height 35 $device $rgb 0 $display
+        ./unit_tests 7 "$caffe_detection_path" "${output_path}Blur_${rgb_name[$rgb]}_${device_name}" $width $height 7 $device $rgb 0 $display
         ./unit_tests 7 "$caffe_detection_path" "${output_path}Rain_${rgb_name[$rgb]}_${device_name}" $width $height 42 $device $rgb 0 $display
 
         # caffe2 classification
@@ -129,17 +129,17 @@ do
 
         # caffe2 detection
         ./unit_tests 9 "$caffe2_detection_path" "${output_path}FishEye_${rgb_name[$rgb]}_${device_name}" $width $height 10 $device $rgb 0 $display
-        # ./unit_tests 9 "$caffe2_detection_path" "${output_path}Pixelate_${rgb_name[$rgb]}_${device_name}" $width $height 19 $device $rgb 0 $display
+        ./unit_tests 9 "$caffe2_detection_path" "${output_path}Pixelate_${rgb_name[$rgb]}_${device_name}" $width $height 19 $device $rgb 0 $display
         ./unit_tests 9 "$caffe2_detection_path" "${output_path}CropCenterCMN_${rgb_name[$rgb]}_${device_name}" $width $height 55 $device $rgb 0 $display
 
         # COCO Keypoints
         ./unit_tests 10 "$coco_keypoints_path" "${output_path}SNP_${rgb_name[$rgb]}_${device_name}" 640 480 14 $device $rgb 0 $display
-        ./unit_tests 10 "$coco_keypoints_path" "${output_path}Snow_${rgb_name[$rgb]}_${device_name}" 640 480 15 $device $rgb 0 $display
-        ./unit_tests 10 "$coco_keypoints_path" "${output_path}Rain_${rgb_name[$rgb]}_${device_name}" 640 480 17 $device $rgb 0 $display
+        ./unit_tests 10 "$coco_keypoints_path" "${output_path}Rain_${rgb_name[$rgb]}_${device_name}" 640 480 15 $device $rgb 0 $display
+        ./unit_tests 10 "$coco_keypoints_path" "${output_path}Fog_${rgb_name[$rgb]}_${device_name}" 640 480 17 $device $rgb 0 $display
 
         # mxnet 
-        # ./unit_tests 11 "$mxnet_path" "${output_path}Jitter_${rgb_name[$rgb]}_${device_name}" $width $height 39 $device $rgb 0 $display
-        # ./unit_tests 11 "$mxnet_path" "${output_path}Pixelate_${rgb_name[$rgb]}_${device_name}" $width $height 19 $device $rgb 0 $display
+        ./unit_tests 11 "$mxnet_path" "${output_path}Jitter_${rgb_name[$rgb]}_${device_name}" $width $height 39 $device $rgb 0 $display
+        ./unit_tests 11 "$mxnet_path" "${output_path}Pixelate_${rgb_name[$rgb]}_${device_name}" $width $height 19 $device $rgb 0 $display
         ./unit_tests 11 "$mxnet_path" "${output_path}CropMirrorNormalize_${rgb_name[$rgb]}_${device_name}_mxnet" $width $height 25 $device $rgb 0 $display
 
         # Webdataset
@@ -188,17 +188,17 @@ do
         # code coverage tests
         ./unit_tests 14 "$image_path" "${output_path}BrightnessRandom_${rgb_name[$rgb]}_${device_name}" $width $height 3 $device $rgb 1 $display
         ./unit_tests 15 "$coco_detection_path" "${output_path}FlipRandom_${rgb_name[$rgb]}_${device_name}" $width $height 6 $device $rgb 1 $display
-        ./unit_tests 16 "$coco_detection_path" "${output_path}CropResizeRandom_${rgb_name[$rgb]}_${device_name}" $width $height 1 $device $rgb 1 $display
-        ./unit_tests 16 "$coco_detection_path" "${output_path}RotateRandom_${rgb_name[$rgb]}_${device_name}" $width $height 2 $device $rgb 1 $display
+        ./unit_tests 16 "$coco_keypoints_path" "${output_path}CropResizeRandom_${rgb_name[$rgb]}_${device_name}" $width $height 1 $device $rgb 1 $display
+        ./unit_tests 16 "$coco_keypoints_path" "${output_path}RotateRandom_${rgb_name[$rgb]}_${device_name}" $width $height 2 $device $rgb 1 $display
         ./unit_tests 17 "$caffe_classification_path" "${output_path}GammaRandom_${rgb_name[$rgb]}_${device_name}" $width $height 4 $device $rgb 1 $display
         ./unit_tests 18 "$caffe2_classification_path" "${output_path}ContrastRandom_${rgb_name[$rgb]}_${device_name}" $width $height 5 $device $rgb 1 $display
         ./unit_tests 19 "$mxnet_path" "${output_path}BlurRandom_${rgb_name[$rgb]}_${device_name}" $width $height 7 $device $rgb 1 $display
         ./unit_tests 20 "$numpy_data_path" "${output_path}BlendRandom_${rgb_name[$rgb]}_${device_name}" $width $height 8 $device $rgb 1 $display
         ./unit_tests 21 "$image_path" "${output_path}WarpAffineRandom_${rgb_name[$rgb]}_${device_name}" $width $height 9 $device $rgb 1 $display
-        ./unit_tests 0 "$image_path" "${output_path}SNPNoise_${rgb_name[$rgb]}_${device_name}" $width $height 13 $device $rgb 1 $display
-        ./unit_tests 0 "$image_path" "${output_path}Snow_${rgb_name[$rgb]}_${device_name}" $width $height 14 $device $rgb 1 $display
-        ./unit_tests 0 "$image_path" "${output_path}Rain_${rgb_name[$rgb]}_${device_name}" $width $height 15 $device $rgb 1 $display
-        ./unit_tests 0 "$image_path" "${output_path}FogRandom_${rgb_name[$rgb]}_${device_name}" $width $height 17 $device $rgb 1 $display
+        ./unit_tests 22 "$caffe_classification_path" "${output_path}SNPNoise_${rgb_name[$rgb]}_${device_name}" $width $height 13 $device $rgb 1 $display
+        ./unit_tests 23 "$caffe2_classification_path" "${output_path}Snow_${rgb_name[$rgb]}_${device_name}" $width $height 14 $device $rgb 1 $display
+        ./unit_tests 24 "$tf_classification_path" "${output_path}Rain_${rgb_name[$rgb]}_${device_name}" $width $height 15 $device $rgb 1 $display
+        ./unit_tests 25 "$webdataset_tar_path" "${output_path}FogRandom_${rgb_name[$rgb]}_${device_name}" $width $height 17 $device $rgb 1 $display
         ./unit_tests 0 "$image_path" "${output_path}LensCorrectionRandom_${rgb_name[$rgb]}_${device_name}" $width $height 18 $device $rgb 1 $display
         ./unit_tests 0 "$image_path" "${output_path}ExposureRandom_${rgb_name[$rgb]}_${device_name}" $width $height 20 $device $rgb 1 $display
         ./unit_tests 0 "$image_path" "${output_path}HueRandom_${rgb_name[$rgb]}_${device_name}" $width $height 21 $device $rgb 1 $display
@@ -211,6 +211,7 @@ do
         ./unit_tests 2 "$coco_detection_path" "${output_path}SSDRandomCrop_${rgb_name[$rgb]}_${device_name}" $width $height 54 $device $rgb 1 $display
         ./unit_tests 2 "$coco_detection_path" "${output_path}ResizeMirrorNormalize_${rgb_name[$rgb]}_${device_name}" $width $height 56 $device $rgb 1 $display
         ./unit_tests 2 "$coco_detection_path" "${output_path}RandomCrop_${rgb_name[$rgb]}_${device_name}" $width $height 59 $device $rgb 1 $display
+        ./unit_tests 2 "$coco_detection_path" "${output_path}ROIResize_${rgb_name[$rgb]}_${device_name}" $width $height 60 $device $rgb 1 $display
 
     done
 done

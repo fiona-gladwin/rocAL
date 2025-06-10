@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 - 2025 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,25 +19,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#include "decoders/video/video_decoder_factory.h"
 
-#include "decoders/video/ffmpeg_video_decoder.h"
-#include "decoders/video/rocdec_video_decoder.h"
-#include "decoders/video/video_decoder.h"
+#include "augmentations/arithmetic_augmentations/node_log1p.h"
 
-#include "pipeline/commons.h"
+#include <vx_ext_rpp.h>
 
-#ifdef ROCAL_VIDEO
-std::shared_ptr<VideoDecoder> create_video_decoder(DecoderConfig config) {
-    switch (config.type()) {
-        case DecoderType::FFMPEG_SW_DECODE:
-            return std::make_shared<FFmpegVideoDecoder>();
-#if ENABLE_ROCDECODE
-        case DecoderType::ROCDEC_VIDEO_DECODE:
-            return std::make_shared<RocDecVideoDecoder>(config.get_hip_stream());
-#endif
-        default:
-            THROW("Unsupported decoder type " + TOSTR(config.type()));
-    }
+#include "pipeline/exception.h"
+
+Log1pNode::Log1pNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) : Node(inputs, outputs) {}
+
+void Log1pNode::create_node() {
+    if (_node)
+        return;
+    int input_layout = static_cast<int>(_inputs[0]->info().layout());
+    vx_scalar input_layout_vx = vxCreateScalar(vxGetContext((vx_reference)_graph->get()), VX_TYPE_INT32, &input_layout);
+    _node = vxExtRppLog1p(_graph->get(), _inputs[0]->handle(), _inputs[0]->get_roi_tensor(), _outputs[0]->handle(), input_layout_vx);
+    vx_status status;
+    if ((status = vxGetStatus((vx_reference)_node)) != VX_SUCCESS)
+        THROW("Adding the (vxExtRppLog1p) node failed: " + TOSTR(status))
 }
-#endif

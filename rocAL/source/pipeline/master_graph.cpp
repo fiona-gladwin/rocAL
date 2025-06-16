@@ -1738,6 +1738,7 @@ void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::Operator
             for (auto& dim : node_output->info().dims())
                 output->add_dims(dim);
             output->set_num_dims(node_output->info().num_of_dims());
+            output->set_is_argument_input(false);
         }
     } else if (pipe_op->module_name != "reader") {
         for (auto& node_input : pipe_op->node->input()) {
@@ -1750,6 +1751,7 @@ void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::Operator
             for (auto& dim : node_input->info().dims())
                 input->add_dims(dim);
             input->set_num_dims(node_input->info().num_of_dims());
+            input->set_is_argument_input(true);
         }
         for (auto& node_output : pipe_op->node->output()) {
             rocal_proto::InputOutput *output = opdef->add_outputs();
@@ -1761,6 +1763,7 @@ void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::Operator
             for (auto& dim : node_output->info().dims())
                 output->add_dims(dim);
             output->set_num_dims(node_output->info().num_of_dims());
+            output->set_is_argument_input(false);
         }
     }
 }
@@ -1840,6 +1843,7 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
         rocal_proto::Arguments *arg = opdef->add_args();
         arg->set_name(op_arg.arg_name);
         arg->set_type(op_arg.type_name);
+        arg->set_is_vector(op_arg.is_vector);
 
         if (op_arg.type_name == "nullptr") continue; // TODOSER - During deserialize Nullptr needs to be handled
         if (op_arg.enum_type_name != "")
@@ -1892,7 +1896,7 @@ void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, st
     }
 }
 
-void MasterGraph::serialize(size_t serialized_string_size) {
+void MasterGraph::serialize(size_t &serialized_string_size) {
     // Add all the pipeline related arguments to protobuf string
     rocal_proto::PipelineDef pipe;
     pipe.set_num_threads(_cpu_num_threads);
@@ -1927,6 +1931,7 @@ void MasterGraph::serialize(size_t serialized_string_size) {
         for (auto& dim : pipe_output->info().dims())
             output->add_dims(dim);
         output->set_num_dims(pipe_output->info().num_of_dims());
+        output->set_is_argument_input(false);
     }
 
     // Serialize the string and return

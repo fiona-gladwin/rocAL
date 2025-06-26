@@ -124,8 +124,8 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     rocalSetSeed(0);
 
     // // Creating uniformly distributed random objects to override some of the default augmentation parameters
-    // RocalIntParam color_temp_adj = rocalCreateIntParameter(-50);
-    // RocalIntParam mirror = rocalCreateIntParameter(1);
+    RocalIntParam color_temp_adj = rocalCreateIntParameter(-50);
+    RocalIntParam mirror = rocalCreateIntParameter(1);
 
     /*>>>>>>>>>>>>>>>>>>> Graph description <<<<<<<<<<<<<<<<<<<*/
 
@@ -149,7 +149,9 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
 
     RocalTensor input = decoded_output;
     // RocalTensor input = rocalResize(handle, decoded_output, resize_w, resize_h, false); // uncomment when processing images of different size
-    RocalTensor output = rocalBrightness(handle, input, true);;
+    // RocalTensor output = rocalBrightness(handle, input, true);
+    RocalTensor output = rocalBrightnessFixed(handle, input, 0.5, 0.5, true);
+
 
     // Calling the API to verify and build the augmentation graph
     rocalVerify(handle);
@@ -169,34 +171,55 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     /*>>>>>>>>>>>>>> Serialize the pipeline <<<<<<<<<<<<<<<<<<*/
     size_t str_size;
     rocalSerialize(handle, str_size);
+    std::cerr << "String size : ------------------------------>>>>>>>>>>>>> " << str_size << "\n";
     std::string serialized_pipe_string(str_size, '\0');
     rocalGetSerializedString(handle, serialized_pipe_string.c_str());
     std::cerr << "==================================================================\n";
     std::cerr << serialized_pipe_string << "\n";
     std::cerr << "==================================================================\n";
+
+    // perform deserialize
+    auto second_handle = rocalDeserialize(serialized_pipe_string.c_str(), str_size);
     
+    // Calling the API to verify and build the augmentation graph
+    rocalVerify(second_handle);
+    if (rocalGetStatus(second_handle) != ROCAL_OK) {
+        std::cout << "Could not verify the augmentation graph " << rocalGetErrorMessage(handle);
+        return -1;
+    }
+
+    auto number_of_output = rocalGetAugmentationBranchCount(second_handle);
+    std::cout << "\n\nAugmented copies count " << number_of_outputs << "\n";
+
+    if (number_of_output != 1) {
+        std::cout << "More than 1 output set in the pipeline";
+        return -1;
+    }
+
     /*>>>>>>>>>>>>>>>>>>> Diplay using OpenCV <<<<<<<<<<<<<<<<<*/
-    // int h = rocalGetAugmentationBranchCount(handle) * rocalGetOutputHeight(handle) * input_batch_size;
-    // int w = rocalGetOutputWidth(handle);
-    // int p = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? 3 : 1);
-    // const unsigned number_of_cols = 1;  // 1920 / w;
-    // auto cv_color_format = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? CV_8UC3 : CV_8UC1);
-    // cv::Mat mat_output(h, w, cv_color_format);
-    // cv::Mat mat_input(h, w, cv_color_format);
-    // cv::Mat mat_color;
-    // int col_counter = 0;
-    // if (DISPLAY)
-    //     cv::namedWindow("output", CV_WINDOW_AUTOSIZE);
-    // printf("Remaining images %lu \n", rocalGetRemainingImages(handle));
+    int h = rocalGetAugmentationBranchCount(second_handle) * rocalGetOutputHeight(second_handle) * input_batch_size;
+    int w = rocalGetOutputWidth(second_handle);
+    int p = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? 3 : 1);
+    const unsigned number_of_cols = 1;  // 1920 / w;
+    auto cv_color_format = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? CV_8UC3 : CV_8UC1);
+    cv::Mat mat_output(h, w, cv_color_format);
+    cv::Mat mat_input(h, w, cv_color_format);
+    cv::Mat mat_color;
+    int col_counter = 0;
+    if (DISPLAY)
+        cv::namedWindow("output", CV_WINDOW_AUTOSIZE);
+    printf("Remaining images %lu \n", rocalGetRemainingImages(second_handle));
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
-    // int index = 0;
-    /*
+    int index = 0;
+
+// >>>>>>>>>>>>>>>>>>> Fist handle case
+
     while (rocalGetRemainingImages(handle) >= input_batch_size) {
         index++;
         if (rocalRun(handle) != 0)
             break;
         int image_name_length[input_batch_size];
-        switch (pipeline_type) {
+        /*switch (pipeline_type) {
             case 1: {   // classification pipeline
                 RocalTensorList labels = rocalGetImageLabels(handle);
                 int *label_id = reinterpret_cast<int *>(labels->at(0)->buffer());  // The labels are present contiguously in memory
@@ -307,11 +330,161 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
                 std::cout << "Not a valid pipeline type ! Exiting!\n";
                 return -1;
             }
-        }
+        }*/
         auto last_colot_temp = rocalGetIntValue(color_temp_adj);
         rocalUpdateIntParameter(last_colot_temp + 1, color_temp_adj);
 
         rocalCopyToOutput(handle, mat_input.data, h * w * p);
+
+        std::vector<int> compression_params;
+        compression_params.push_back(IMWRITE_PNG_COMPRESSION);
+        compression_params.push_back(9);
+
+        mat_input.copyTo(mat_output(cv::Rect(col_counter * w, 0, w, h)));
+        std::string out_filename = std::string(outName) + ".png";  // in case the user specifies non png filename
+        if (display_all)
+            out_filename = std::string(outName) + "_p1" + std::to_string(index) + ".png";  // in case the user specifies non png filename
+
+        if (color_format == RocalImageColor::ROCAL_COLOR_RGB24) {
+            cv::cvtColor(mat_output, mat_color, CV_RGB2BGR);
+            if (DISPLAY)
+                cv::imshow("output", mat_output);
+            else
+                cv::imwrite(out_filename, mat_color, compression_params);
+        } else {
+            if (DISPLAY)
+                cv::imshow("output", mat_output);
+            else
+                cv::imwrite(out_filename, mat_output, compression_params);
+        }
+        col_counter = (col_counter + 1) % number_of_cols;
+    }
+    
+
+// >>>>>>>>>>>>>> Second handle case
+
+
+    while (rocalGetRemainingImages(second_handle) >= input_batch_size) {
+        index++;
+        if (rocalRun(second_handle) != 0)
+            break;
+        int image_name_length[input_batch_size];
+        /*switch (pipeline_type) {
+            case 1: {   // classification pipeline
+                RocalTensorList labels = rocalGetImageLabels(second_handle);
+                int *label_id = reinterpret_cast<int *>(labels->at(0)->buffer());  // The labels are present contiguously in memory
+                int img_size = rocalGetImageNameLen(second_handle, image_name_length);
+                std::vector<char> img_name(img_size);
+                std::vector<int> label_one_hot_encoded(input_batch_size * num_of_classes);
+                rocalGetImageName(second_handle, img_name.data());
+                if (num_of_classes != 0) {
+                    rocalGetOneHotImageLabels(second_handle, label_one_hot_encoded.data(), num_of_classes, RocalOutputMemType::ROCAL_MEMCPY_HOST);
+                }
+                std::cerr << "\nImage name:" << img_name.data() << "\n";
+                for (unsigned int i = 0; i < input_batch_size; i++) {
+                    std::cerr << "Label id: " << label_id[i] << std::endl;
+                    if(num_of_classes != 0)
+                    {
+                        std::cout << "One Hot Encoded labels:"<<"\t";
+                        for (int j = 0; j < num_of_classes; j++)
+                        {
+                            int idx_value = label_one_hot_encoded[(i*num_of_classes)+j];
+                            if(idx_value == 0)
+                                std::cout << idx_value << "\t";
+                            else
+                            {
+                                std::cout << idx_value << "\t";
+                            }
+                        }
+                    }
+                    std::cout << "\n";
+                }
+            } break;
+            case 2: {   // detection pipeline
+                int img_size = rocalGetImageNameLen(second_handle, image_name_length);
+                std::vector<char> img_name(img_size);
+                rocalGetImageName(second_handle, img_name.data());
+                std::cerr << "\nImage name:" << img_name.data();
+                RocalTensorList bbox_labels = rocalGetBoundingBoxLabel(second_handle);
+                RocalTensorList bbox_coords = rocalGetBoundingBoxCords(second_handle);
+                for (unsigned i = 0; i < bbox_labels->size(); i++) {
+                    int *labels_buffer = reinterpret_cast<int *>(bbox_labels->at(i)->buffer());
+                    float *bbox_buffer = reinterpret_cast<float *>(bbox_coords->at(i)->buffer());
+                    std::cerr << "\nBBOX Labels : ";
+                    for (unsigned j = 0; j < bbox_labels->at(i)->dims().at(0); j++)
+                        std::cerr << labels_buffer[j] << " ";
+                    std::cerr << "\nBBOX Count: " << bbox_coords->at(i)->dims().at(0) << "\n";
+                    for (unsigned j = 0, j4 = 0; j < bbox_coords->at(i)->dims().at(0); j++, j4 = j * 4)
+                        std::cerr << bbox_buffer[j4] << " " << bbox_buffer[j4 + 1] << " " << bbox_buffer[j4 + 2] << " " << bbox_buffer[j4 + 3] << "\n";
+                }
+                int img_sizes_batch[input_batch_size * 2];
+                rocalGetImageSizes(second_handle, img_sizes_batch);
+                for (int i = 0; i < (int)input_batch_size; i++) {
+                    std::cout << "\nwidth:" << img_sizes_batch[i * 2];
+                    std::cout << "\nHeight:" << img_sizes_batch[(i * 2) + 1];
+                }
+            } break;
+            case 3: {   // keypoints pipeline
+                int size = input_batch_size;
+                RocalJointsData *joints_data;
+                rocalGetJointsDataPtr(second_handle, &joints_data);
+                for (int i = 0; i < size; i++) {
+                    std::cout << "ImageID: " << joints_data->image_id_batch[i] << std::endl;
+                    std::cout << "AnnotationID: " << joints_data->annotation_id_batch[i] << std::endl;
+                    std::cout << "ImagePath: " << joints_data->image_path_batch[i] << std::endl;
+                    std::cout << "Center: " << joints_data->center_batch[i][0] << " " << joints_data->center_batch[i][1] << std::endl;
+                    std::cout << "Scale: " << joints_data->scale_batch[i][0] << " " << joints_data->scale_batch[i][1] << std::endl;
+                    std::cout << "Score: " << joints_data->score_batch[i] << std::endl;
+                    std::cout << "Rotation: " << joints_data->rotation_batch[i] << std::endl;
+
+                    for (int k = 0; k < 17; k++) {
+                        std::cout << "x : " << joints_data->joints_batch[i][k][0] << " , y : " << joints_data->joints_batch[i][k][1] << " , v : " << joints_data->joints_visibility_batch[i][k][0] << std::endl;
+                    }
+                }
+            } break;
+            case 4: {   // webdataset pipeline
+                int img_size = rocalGetImageNameLen(second_handle, image_name_length);
+                std::vector<char> img_name(img_size);
+                rocalGetImageName(second_handle, img_name.data());
+                std::cout << "\n Image name: " << img_name.data() << "\n \n";
+                RocalMetaData ascii_sample_contents = rocalGetAsciiDatas(second_handle);
+                std::vector<std::vector<std::vector<uint8_t>>> ext_componenet_list;
+                for(uint ext = 0; ext < ascii_sample_contents->size(); ext++) {
+                    RocalTensorList ext_ascii_values_batch = ascii_sample_contents->at(ext);
+                    std::vector<std::vector<uint8_t>> component_list;
+                    std::vector<uint8_t> ascii_components_array;
+                    for (uint i = 0; i < ext_ascii_values_batch->size(); i++) {
+                        if (ext_ascii_values_batch->at(i)->buffer() !=  nullptr) {
+                            uint8_t* buffer = reinterpret_cast<uint8_t*>(ext_ascii_values_batch->at(i)->buffer());
+                            size_t length = ext_ascii_values_batch->at(i)->dims().at(0);
+                            ascii_components_array.assign(buffer, buffer + length);
+                        } else {
+                            ascii_components_array = std::vector<uint8_t>{};
+                        }
+                        component_list.push_back(ascii_components_array);
+                    }
+                    ext_componenet_list.push_back(component_list);
+                }
+                for (size_t i = 0; i < ext_componenet_list.size(); ++i) {
+                    std::cout << " Meta Data Component " << i + 1 << ":" << std::endl;
+                    for (size_t j = 0; j < ext_componenet_list[i].size(); ++j) {
+                        std::cout << "  Value " << j + 1 << ": ";
+                        for (const auto& value : ext_componenet_list[i][j]) {
+                            std::cout << static_cast<uint8_t>(value) << " ";
+                        }
+                        std::cout << std::endl;
+                    }
+                }
+            } break;
+            default: {
+                std::cout << "Not a valid pipeline type ! Exiting!\n";
+                return -1;
+            }
+        }*/
+        auto last_colot_temp = rocalGetIntValue(color_temp_adj);
+        rocalUpdateIntParameter(last_colot_temp + 1, color_temp_adj);
+
+        rocalCopyToOutput(second_handle, mat_input.data, h * w * p);
 
         std::vector<int> compression_params;
         compression_params.push_back(IMWRITE_PNG_COMPRESSION);
@@ -336,7 +509,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
         }
         col_counter = (col_counter + 1) % number_of_cols;
     }
-    */
+    
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     auto dur = duration_cast<microseconds>(t2 - t1).count();
     auto rocal_timing = rocalGetTimingInfo(handle);
@@ -346,6 +519,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     std::cout << "Transfer time " << rocal_timing.transfer_time << std::endl;
     std::cout << "Total Elapsed Time " << dur / 1000000 << " sec " << dur % 1000000 << " us " << std::endl;
     rocalRelease(handle);
+    rocalRelease(second_handle);
     // mat_input.release();
     // mat_output.release();
     if (!output)

@@ -57,6 +57,27 @@ class Argument {
     std::vector<std::any> values;   // Can change to std::variant later
     pParamCore param_core;
     
+    template <typename T>
+    T Get() const {
+        std::cerr << "Type name -> " << type_name << "\n";
+        if (!is_vector) {
+            return std::any_cast<T>(values[0]);
+        } else if (is_vector) {
+            return std::any_cast<T>(values);
+        } else {
+            THROW("Undefined")
+        }
+    }
+
+    template<>
+    std::map<std::string, std::string> Get<std::map<std::string, std::string>>() const {
+        std::map<std::string, std::string> feature_map;
+        for (int i = 0; i < values.size(); i+=2) {
+            feature_map[std::any_cast<std::string>(values[i])] = std::any_cast<std::string>(values[i + 1]);
+        }
+        return feature_map;
+    }
+
     // unordered map, mapping the type with the string
     std::unordered_map<std::type_index, std::string> type_names = {
         {typeid(int), "int"},
@@ -204,6 +225,8 @@ class Argument {
         }
         extract_param(param->type, pParamCore(core(param)));
     }
+
+    Argument() {}
 };
 
 class Node {

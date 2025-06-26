@@ -154,6 +154,7 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size)
         RocalAffinity affinity = rocal_cpu ? RocalAffinity::CPU : RocalAffinity::GPU;
         // Create the context
         context = new Context(batch_size, affinity, std::max(device_id, 0), num_threads, prefetch_queue_depth, RocalTensorDataType::FP32);  // Need to set dtype in protobuf/just use default value
+        static_cast<Context*>(context)->master_graph->deserialize(&pipe);
 
     } catch (const std::exception& e) {
         ERR(STR("Failed to init the Rocal context, ") + STR(e.what()))

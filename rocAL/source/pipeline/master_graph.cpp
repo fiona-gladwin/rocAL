@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "meta_data/meta_data_graph_factory.h"
 #include "meta_data/randombboxcrop_meta_data_reader_factory.h"
 #include "augmentations/node_copy.h"
+#include "augmentations/color_augmentations/node_brightness.h"
 
 using half_float::half;
 
@@ -1948,4 +1949,214 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
     std::cerr << "Batch size : " << deserialized_pipeline.batch_size() << "\n";
     std::cerr << "Num Threads : " << deserialized_pipeline.num_threads() << "\n";
     */
+}
+
+void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {
+    for (const auto& proto_arg : opdef.args()) {
+        Argument arg;
+        arg.arg_name = proto_arg.name();
+        arg.type_name = proto_arg.has_type() ? proto_arg.type() : "";
+        arg.enum_type_name = proto_arg.has_instance_name() ? proto_arg.instance_name() : "";
+        arg.is_vector = proto_arg.is_vector();
+        arg.is_parameter = proto_arg.has_param();
+
+        // Handle parameters
+        if (arg.type_name == "map_string") {
+            for (const auto& s : proto_arg.strings()) {
+                arg.values.push_back(s);
+            }
+        }
+
+        // if (arg.is_parameter) {
+        //     const auto& param = proto_arg.param();
+        //     if (param.param_val_int_size() > 0) {
+        //         if (arg.enum_type_name == "SimpleParameter") {
+        //             auto sp = new SimpleParameter<int>(param.param_val_int(0));
+        //             arg.param_core = static_cast<pParamCore>(sp);
+        //         } else if (arg.enum_type_name == "UniformRand") {
+        //             auto ur = new UniformRand<int>(param.param_val_int(0), param.param_val_int(1));
+        //             arg.param_core = static_cast<pParamCore>(ur);
+        //         } else if (arg.enum_type_name == "CustomRand") {
+        //             std::vector<int> values(param.param_val_int().begin(), param.param_val_int().end());
+        //             std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+        //             auto cr = new CustomRand<int>(values, freqs, param.size());
+        //             arg.param_core = static_cast<pParamCore>(cr);
+        //         }
+        //         arg.type_name = "int";
+        //     } else if (param.param_val_float_size() > 0) {
+        //         if (arg.enum_type_name == "SimpleParameter") {
+        //             auto sp = new SimpleParameter<float>(param.param_val_float(0));
+        //             arg.param_core = static_cast<pParamCore>(sp);
+        //         } else if (arg.enum_type_name == "UniformRand") {
+        //             auto ur = new UniformRand<float>(param.param_val_float(0), param.param_val_float(1));
+        //             arg.param_core = static_cast<pParamCore>(ur);
+        //         } else if (arg.enum_type_name == "CustomRand") {
+        //             std::vector<float> values(param.param_val_float().begin(), param.param_val_float().end());
+        //             std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+        //             auto cr = new CustomRand<float>(values, freqs, param.size());
+        //             arg.param_core = static_cast<pParamCore>(cr);
+        //         }
+        //         arg.type_name = "float";
+        //     } else {
+        //         arg.is_null_ptr = true;
+        //     }
+        //     continue;
+        // }
+
+        // Handle non-parameter arguments
+        else if (arg.type_name == "int" || arg.type_name == "shared_ptr") {
+            for (auto i : proto_arg.ints()) {
+                arg.values.push_back(static_cast<int>(i));
+            }
+        } else if (arg.type_name == "float") {
+            for (auto f : proto_arg.floats()) {
+                arg.values.push_back(f);
+            }
+        } else if (arg.type_name == "char_str" || arg.type_name == "string") {
+            for (const auto& s : proto_arg.strings()) {
+                arg.values.push_back(s);
+            }
+        } else if (arg.type_name == "bool") {
+            for (auto b : proto_arg.bools()) {
+                arg.values.push_back(b);
+            }
+        } else if (arg.type_name == "unsigned") {
+            for (auto u : proto_arg.uints()) {
+                arg.values.push_back(static_cast<unsigned>(u));
+            }
+        } else if (arg.type_name == "size_t") {
+            for (auto u : proto_arg.uints()) {
+                arg.values.push_back(static_cast<size_t>(u));
+            }
+        } else if (arg.type_name == "nullptr") {
+            arg.is_null_ptr = true;
+        } else {
+            THROW("Invalid or unsupported type while deserializing: " + arg.type_name);
+        }
+
+        arguments.push_back(std::move(arg));
+    }
+}
+
+Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &output, bool is_loader_output) {
+    if (output.is_argument_input())
+        THROW("The tensor is an input, it is already created in the pipeline")
+
+    if (!_pipeline_tensors.empty() && _pipeline_tensors.find(output.name()) != _pipeline_tensors.end()) {
+        THROW("The tensor is already created and present in the pipeline")
+    }
+    // dims
+    std::vector<size_t> dims;
+    for (auto& dim : output.dims()) {
+        dims.push_back(dim);
+    } 
+    if (!dims.size())
+        THROW("Empty tensor dims")
+    // mem type
+    auto mem_type = static_cast<RocalMemType>(output.device());
+    auto data_type = static_cast<RocalTensorDataType>(output.dtype());
+    auto layout = static_cast<RocalTensorlayout>(output.layout());
+    auto color_format = static_cast<RocalColorFormat>(output.color_format());
+    
+    auto info = TensorInfo(dims, mem_type, data_type, layout, color_format);
+    Tensor *out = nullptr;
+    
+    // only for loader
+    if (is_loader_output) {
+        out = this->create_loader_output_tensor(info);
+        _pipeline_tensors[output.name()] = out;
+        std::cerr << "Writing to pipe tensor -> " << output.name() << "\n";
+    } else {
+        out = this->create_tensor(info, false);
+        _pipeline_tensors[output.name()] = out;
+    }
+    return out;
+}
+
+bool compare_string(const std::string& op_name, const std::string& op_name_target) {
+    size_t underscore_pos = op_name.find('_');
+    std::string prefix = (underscore_pos != std::string::npos) ? op_name.substr(0, underscore_pos) : op_name;
+    return prefix == op_name_target;
+}
+
+void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
+    std::cerr << "Master Graph deserialize called\n" << pipe_def->operators_size() << "\n";
+    for (auto& op_def : pipe_def->operators()) {
+        // Check the name of the operator
+        std::cerr << "Operator Name : " << op_def.name() << "\n";
+        
+        if (op_def.has_module_name()) {
+            if (op_def.module_name() == "reader") {
+                std::cerr << "Reader\n";
+                if (compare_string(op_def.name(), "LabelReader")) {
+                    // add_node
+                    create_label_reader(op_def.args()[0].strings(0).c_str(), static_cast<MetaDataReaderType>(op_def.args()[1].ints(0)));
+                    // Create the input and output tensors
+                }
+            } else if (op_def.module_name() == "loader") {
+                // fetch the output tensor details and create it
+                auto output_tensor = create_operator_output(op_def.outputs()[0], true);
+                auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
+
+                std::vector<Argument> args_list;
+                deserialize_args_from_protobuf(op_def, args_list);
+                
+                // fetch all the arguments and pass it to the init function inside the loader
+                // In the loader recall the init function
+                loader_node->init(args_list, _meta_data_reader);
+                
+            } else {
+            if (compare_string(op_def.name(), "brightness")) {
+                std::cerr << "Brightness is being called>>>>>>>>>>>>\n";
+                Tensor *input_tensor = nullptr;
+                if (op_def.inputs_size() == 1) {
+                    if (_pipeline_tensors.find(op_def.inputs()[0].name()) != _pipeline_tensors.end()) {
+                        input_tensor = _pipeline_tensors[op_def.inputs()[0].name()];
+                        std::cerr << "Writing to pipe tensor in -> " << op_def.inputs()[0].name() << "\n";
+                    }
+                } else {
+                    // To be done later.
+                }
+                Tensor* output_tensor = nullptr;
+                if (input_tensor) {
+                    // TODO - Need to check if all the input info and the output info details matches if not create a new one
+                    output_tensor = create_tensor(input_tensor->info(), false);
+                    if (op_def.outputs_size() == 1) {
+                        _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;
+                        std::cerr << "Writing to pipe tensor -> " << op_def.outputs()[0].name() << "\n";
+                    }
+                } else {
+                    THROW("Input not available for this Augmentation Node -> " + op_def.name())
+                }
+                auto node = this->add_node<BrightnessNode>({input_tensor}, {output_tensor});
+
+                std::vector<Argument> args_list;
+                deserialize_args_from_protobuf(op_def, args_list);
+                
+                // fetch all the arguments and pass it to the init function inside the loader
+                // In the loader recall the init function
+                node->init(args_list);
+            }
+        }
+        }
+
+
+        // Create the input and output tensors
+        // Call the add Node for operator
+        // Extract args and call the init.
+    }
+
+    for (const auto& pair : _pipeline_tensors) {
+        std::cerr << "Pipeline tensors name : " << pair.first << "\n";
+    }
+
+    // Check for the pipeline outputs and set is output as true
+    for (auto&pipe_out : pipe_def->pipe_outputs()) {
+        std::cerr << "Pipeline output name : " << pipe_out.name() << "\n";
+        if (_pipeline_tensors.find(pipe_out.name()) != _pipeline_tensors.end()) {
+            this->set_output(_pipeline_tensors[pipe_out.name()]);
+        } else {
+            THROW("The required output tensor is not present in the reconstructed pipeline")
+        }
+    }
 }

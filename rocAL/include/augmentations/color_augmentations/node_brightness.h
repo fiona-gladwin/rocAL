@@ -33,6 +33,7 @@ class BrightnessNode : public Node {
 
     void init(float alpha, float beta);
     void init(FloatParam *alpha_param, FloatParam *beta_param);
+    void init(std::vector<Argument> &arguments);
     std::string node_name() override { return "brightness"; }
 
    protected:

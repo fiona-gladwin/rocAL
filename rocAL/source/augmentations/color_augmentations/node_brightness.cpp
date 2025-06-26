@@ -65,6 +65,10 @@ void BrightnessNode::init(FloatParam *alpha, FloatParam *beta) {
     _args.push_back(Argument("beta", beta));
 }
 
+void BrightnessNode::init(std::vector<Argument> &arguments) {
+    this->init(arguments[0].Get<float>(), arguments[1].Get<float>());
+}
+
 void BrightnessNode::update_node() {
     _alpha.update_array();
     _beta.update_array();

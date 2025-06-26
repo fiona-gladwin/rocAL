@@ -175,6 +175,9 @@ class MasterGraph {
     void serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op);
     void serialize_inputs_and_outputs_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op);
     std::string get_serialized_string() { return _serialized_pipeline; }    
+    void deserialize(rocal_proto::PipelineDef *pipe_def);
+    Tensor *create_operator_output(const rocal_proto::InputOutput &output, bool is_loader_output = false);
+    void deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments);
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif
@@ -200,6 +203,7 @@ class MasterGraph {
     std::list<std::shared_ptr<Node>> _root_nodes;                                 //!< List of all root nodes (image/video loaders)
     std::list<std::shared_ptr<Node>> _meta_data_nodes;                            //!< List of nodes where meta data has to be updated after augmentation
     std::map<Tensor *, std::shared_ptr<Node>> _tensor_map;                        //!< key: tensor, value : Parent node
+    std::map<std::string, Tensor *> _pipeline_tensors;                        
     void *_output_tensor_buffer = nullptr;                                        //!< In the GPU processing case , is used to convert the U8 samples to float32 before they are being transfered back to host
     TensorListVector _metadata_output_tensor_list;                                //!< Keeps a list of all the Metadata output TensorList
     TensorListVector _bbox_encoded_output;                                        //!< Keeps a list of label and bounding box metadata TensorList for box encoder

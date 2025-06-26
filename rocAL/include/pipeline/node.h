@@ -95,6 +95,7 @@ class Argument {
         {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
         {typeid(RocalResizeInterpolationType), "RocalResizeInterpolationType"},
         {typeid(RocalResizeScalingMode), "RocalResizeScalingMode"},
+        {typeid(RocalMemType), "RocalMemType"},
     };
 
     template <typename T>

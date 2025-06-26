@@ -52,10 +52,10 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     reader_cfg.set_sharding_info(sharding_info);
 
 
-    std::array<std::string, 22> arg_names = {
+    std::array<std::string, 23> arg_names = {
         "internal_shard_count", "cpu_num_threads", "source_path",
         "json_path", "feature_key_map", "storage_type", "decoder_type",
-        "shuffle", "loop", "load_batch_count", "meta_data_reader", "decoder_keep_orig",
+        "shuffle", "loop", "load_batch_count", "mem_type","meta_data_reader", "decoder_keep_orig",
         "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size",
         "file_prefix", "sequence_length", "step", "stride",
         "external_file_mode", "index_path"
@@ -63,7 +63,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
 
     set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, internal_shard_count, 
                        cpu_num_threads, source_path, json_path, feature_key_map, storage_type, 
-                       decoder_type, shuffle, loop, load_batch_count, meta_data_reader, decoder_keep_orig, 
+                       decoder_type, shuffle, loop, load_batch_count, mem_type, meta_data_reader, decoder_keep_orig, 
                        sharding_info.last_batch_policy, sharding_info.pad_last_batch_repeated, 
                        sharding_info.stick_to_shard, sharding_info.shard_size, file_prefix,
                        sequence_length, step, stride, external_file_mode, index_path);

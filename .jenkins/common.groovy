@@ -107,6 +107,10 @@ def runTestCommand (platform, project) {
                     make -j
                     ./video_tests /opt/rocm/share/rocal/test/data/videos/AMD_driving_virtual_20.mp4 1 0 0 1 3 3 1 1 1 0 1280 720 1 1 0 0 1
                     ./video_tests /opt/rocm/share/rocal/test/data/videos/AMD_driving_virtual_20.mp4 1 1 1
+                    ./video_tests ../../MIVisionX-data-main/rocal_data/video_and_sequence_samples/labelled_videos/ 2 0 0 1 3 3 1 1 1 0 640 480 1 0 0 0 0
+                    ./video_tests ../../MIVisionX-data-main/rocal_data/video_and_sequence_samples/sequence/ 4 0 0 1 3 3 1 1 1 0 1280 720 1 0 0 0 0
+                    ./video_tests ../../MIVisionX-data-main/rocal_data/video_and_sequence_samples/labelled_videos/ 5 0 0 1 3 3 1 1 1 0 640 480 1 0 0 0 0
+                    ./video_tests /opt/rocm/share/rocal/test/data/videos/AMD_driving_virtual_20.mp4 6 1 1
                     cd ..
                     chmod a+x ./testScript.sh
                     ./testScript.sh ../MIVisionX-data-main/rocal_data/video_and_sequence_samples/labelled_videos/ 2
@@ -115,6 +119,10 @@ def runTestCommand (platform, project) {
                     cmake /opt/rocm/share/rocal/test/image_augmentation/
                     make -j
                     ./image_augmentation /opt/rocm/share/rocal/test/data/images/AMD-tinyDataSet/ 0 416 416 0 1 1 1 0 1
+                    cd ../ && mkdir -p multiple-dataloaders-test && cd multiple-dataloaders-test
+                    cmake /opt/rocm/share/rocal/test/multiple_dataloaders_test/
+                    make -j
+                    ./multiple_dataloaders_test ../MIVisionX-data-main/rocal_data/numpy/ dataloader_op 
                     cd ../ && mkdir -p python-api-tests && cd python-api-tests
                     export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib/
                     export PATH=\$PATH:/opt/rocm/bin

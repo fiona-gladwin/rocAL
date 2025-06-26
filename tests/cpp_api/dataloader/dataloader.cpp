@@ -91,7 +91,10 @@ int main(int argc, const char **argv) {
     // create Cifar10 meta data reader
     rocalCreateTextCifar10LabelReader(handle, folderPath1, "data_batch");
     RocalTensor input0;
-    input0 = rocalRawCIFAR10Source(handle, folderPath1, color_format, false, decode_width, decode_height, "data_batch_", false);
+    if (processing_device)
+        input0 = rocalRawCIFAR10Source(handle, folderPath1, color_format, false, decode_width, decode_height, "data_batch_", false);
+    else
+        input0 = rocalRawCIFAR10SourceSingleShard(handle, folderPath1, color_format, 0, 1, false, false, false, decode_width, decode_height, "data_batch_");
 
     if (rocalGetStatus(handle) != ROCAL_OK) {
         std::cout << "rawCIFAR10 source could not initialize : " << rocalGetErrorMessage(handle) << std::endl;
@@ -107,7 +110,7 @@ int main(int argc, const char **argv) {
     RocalTensor input2 = rocalCropResize(handle, input0, resize_w, resize_h, false, rand_crop_area);
     for(int i = 0 ; i < aug_depth; i++)
     {
-        input2 = rocalBlurFixed(handle, input2, 17.25, (i == (aug_depth -1)) ? true:false );
+        input2 = rocalBlur(handle, input2, (i == (aug_depth -1)) ? true:false );
     }
 
     RocalTensor input4 = rocalColorTemp(handle, input0, false, color_temp_adj);
@@ -124,9 +127,7 @@ int main(int argc, const char **argv) {
 
     RocalTensor input9 = rocalBlend(handle, input7, input8, false);
 
-    RocalTensor input10 = rocalLensCorrection(handle, input9, false);
-
-    rocalExposure(handle, input10, true);
+    rocalExposure(handle, input9, true);
 #else
     // uncomment the following to add augmentation if needed
     // just do one augmentation to test

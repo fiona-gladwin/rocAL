@@ -124,13 +124,12 @@ rocalSerialize(RocalContext rocal_context, size_t &serialized_string_size) {
 }
 
 RocalContext ROCAL_API_CALL
-rocalDeserialize(const char* serialized_pipeline) {
+rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size) {
     RocalContext context = nullptr;
     try {
         // context->master_graph->serialize(serialized_string_size);
         // Parse from the serialized string.
         rocal_proto::PipelineDef pipe;
-        auto serialized_string_size = strlen(serialized_pipeline);
         google::protobuf::io::CodedInputStream coded_input(
         reinterpret_cast<const uint8_t *>(serialized_pipeline), serialized_string_size);
         coded_input.SetTotalBytesLimit(serialized_string_size);

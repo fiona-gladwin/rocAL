@@ -1867,7 +1867,7 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
 }
 
 
-void MasterGraph::serialize(size_t serialized_string_size) {
+void MasterGraph::serialize(size_t &serialized_string_size) {
     // Add all the pipeline related arguments to protobuf string
     rocal_proto::PipelineDef pipe;
     pipe.set_num_threads(_cpu_num_threads);
@@ -1902,6 +1902,7 @@ void MasterGraph::serialize(size_t serialized_string_size) {
         for (auto& dim : pipe_output->info().dims())
             output->add_dims(dim);
         output->set_num_dims(pipe_output->info().num_of_dims());
+        output->set_is_argument_input(false);
     }
 
     // Serialize the string and return

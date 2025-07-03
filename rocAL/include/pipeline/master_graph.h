@@ -153,7 +153,7 @@ class MasterGraph {
                              RocalTensorlayout layout, bool eos);
     void set_external_source_reader_flag() { _external_source_reader = true; }
     size_t bounding_box_batch_count(pMetaDataBatch meta_data_batch);
-    void serialize(size_t serialized_string_size);
+    void serialize(size_t &serialized_string_size);
     std::string get_serialized_string() { return _serialized_pipeline; }
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }

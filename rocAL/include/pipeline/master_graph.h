@@ -52,7 +52,7 @@ THE SOFTWARE.
 #endif
 #include "meta_data/randombboxcrop_meta_data_reader.h"
 #include "rocal_api_types.h"
-#include "rocal.pb.h"
+#include "pipeline/pipe_op.h"
 
 #define MAX_STRING_LENGTH 100
 #define MAX_OBJECTS 50                // Setting an arbitrary value 50.(Max number of objects/image in COCO dataset is 93)
@@ -80,24 +80,6 @@ const __m256i avx_pkdMaskG = _mm256_setr_epi32(0x80808001, 0x80808004, 0x8080800
 const __m256i avx_pkdMaskB = _mm256_setr_epi32(0x80808002, 0x80808005, 0x80808008, 0x8080800B, 0x80808002,
                                                0x80808005, 0x80808008, 0x8080800B);
 #endif
-
-// Stores the information for the operator in the pipeline
-class PipelineOperator {
-   public:
-    explicit inline PipelineOperator(std::string op_name, std::string op_module_name,
-                                     std::shared_ptr<Node> op_node = nullptr) {
-        operator_name = op_name;
-        module_name = op_module_name;
-        node = op_node;
-    }
-    void set_arguments(std::vector<Argument> op_arguments) {
-        arguments = op_arguments;
-    }
-    std::string operator_name;  // Name of the Node/operator
-    std::string module_name;    // Denotes the type of operator i.e loader/reader/augmentation
-    std::vector<Argument> arguments;
-    std::shared_ptr<Node> node;
-};
 
 class MasterGraph {
    public:
@@ -172,9 +154,7 @@ class MasterGraph {
     void set_external_source_reader_flag() { _external_source_reader = true; }
     size_t bounding_box_batch_count(pMetaDataBatch meta_data_batch);
     void serialize(size_t &serialized_string_size);
-    void serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op);
-    void serialize_inputs_and_outputs_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op);
-    std::string get_serialized_string() { return _serialized_pipeline; }    
+    std::string get_serialized_string() { return _serialized_pipeline; }
     void deserialize(rocal_proto::PipelineDef *pipe_def);
     Tensor *create_operator_output(const rocal_proto::InputOutput &output, bool is_loader_output = false);
     void deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments);

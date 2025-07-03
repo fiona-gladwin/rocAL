@@ -1867,176 +1867,6 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
     }
 }
 
-void MasterGraph::serialize_inputs_and_outputs_to_protobuf(rocal_proto::OperatorDef *opdef, 
-                                                            std::shared_ptr<PipelineOperator> pipe_op) {
-    if (pipe_op->module_name == "loader") {
-        for (auto& node_output : pipe_op->node->output()) {
-            rocal_proto::InputOutput *output = opdef->add_outputs();
-            output->set_name(node_output->tensor_name());
-            output->set_device(static_cast<int>(node_output->info().mem_type()));
-            output->set_dtype(static_cast<int>(node_output->info().data_type()));
-            output->set_layout(static_cast<int>(node_output->info().layout()));
-            output->set_color_format(static_cast<int>(node_output->info().color_format()));
-            for (auto& dim : node_output->info().dims())
-                output->add_dims(dim);
-            output->set_num_dims(node_output->info().num_of_dims());
-            output->set_is_argument_input(false);
-        }
-    } else if (pipe_op->module_name != "reader") {
-        for (auto& node_input : pipe_op->node->input()) {
-            rocal_proto::InputOutput *input = opdef->add_inputs();
-            input->set_name(node_input->tensor_name());
-            input->set_device(static_cast<int>(node_input->info().mem_type()));
-            input->set_dtype(static_cast<int>(node_input->info().data_type()));
-            input->set_layout(static_cast<int>(node_input->info().layout()));
-            input->set_color_format(static_cast<int>(node_input->info().color_format()));
-            for (auto& dim : node_input->info().dims())
-                input->add_dims(dim);
-            input->set_num_dims(node_input->info().num_of_dims());
-            input->set_is_argument_input(true);
-        }
-        for (auto& node_output : pipe_op->node->output()) {
-            rocal_proto::InputOutput *output = opdef->add_outputs();
-            output->set_name(node_output->tensor_name());
-            output->set_device(static_cast<int>(node_output->info().mem_type()));
-            output->set_dtype(static_cast<int>(node_output->info().data_type()));
-            output->set_layout(static_cast<int>(node_output->info().layout()));
-            output->set_color_format(static_cast<int>(node_output->info().color_format()));
-            for (auto& dim : node_output->info().dims())
-                output->add_dims(dim);
-            output->set_num_dims(node_output->info().num_of_dims());
-            output->set_is_argument_input(false);
-        }
-    }
-}
-
-void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument &op_arg) {
-    if (op_arg.enum_type_name == "SimpleParameter") {
-        if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
-            auto simple_param = dynamic_cast<SimpleParameter<int> *>(param_core);
-            // Fetch and add values to the parameter class
-            parameter->add_param_val_int(simple_param->get());
-        } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
-            auto simple_param = dynamic_cast<SimpleParameter<float> *>(param_core);
-            parameter->add_param_val_float(simple_param->get());
-        }
-    } else if (op_arg.enum_type_name == "UniformRand") {
-        if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
-            auto uniform_param = dynamic_cast<UniformRand<int> *>(param_core);
-            // Fetch and add values to the parameter class
-            auto uniform_range = uniform_param->get_start_and_end();
-            parameter->add_param_val_int(uniform_range.first);
-            parameter->add_param_val_int(uniform_range.second);
-        } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
-            auto uniform_param = dynamic_cast<UniformRand<float> *>(param_core);
-            // Fetch and add values to the parameter class
-            auto uniform_range = uniform_param->get_start_and_end();
-            parameter->add_param_val_float(uniform_range.first);
-            parameter->add_param_val_float(uniform_range.second);
-        }
-    } else if (op_arg.enum_type_name == "CustomRand") {
-        if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int>*>(op_arg.param_core);
-            auto random_param = dynamic_cast<CustomRand<int> *>(param_core);
-            // Fetch and add values to the parameter class
-            auto values_vec = random_param->get_values();
-            // Get values
-            for (auto& val : values_vec) {
-                parameter->add_param_val_int(val);
-            }
-            auto frequency_vec = random_param->get_frequencies();
-            for (auto& val : frequency_vec) {
-                parameter->add_frequency(val);
-            }
-            parameter->set_size(random_param->size());
-        } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float>*>(op_arg.param_core);
-            auto random_param = dynamic_cast<CustomRand<float> *>(param_core);
-            // Fetch and add values to the parameter class
-            auto values_vec = random_param->get_values();
-            // Get values
-            for (auto& val : values_vec) {
-                parameter->add_param_val_float(val);
-            }
-            auto frequency_vec = random_param->get_frequencies();
-            for (auto& val : frequency_vec) {
-                parameter->add_frequency(val);
-            }
-            parameter->set_size(random_param->size());
-        }
-    }
-}
-
-void MasterGraph::serialize_args_to_protobuf(rocal_proto::OperatorDef *opdef, std::shared_ptr<PipelineOperator> pipe_op) {
-    
-    std::vector<Argument> arguments_list;
-    
-    if (pipe_op->module_name == "reader") {
-        arguments_list = pipe_op->arguments;
-    } else {
-        arguments_list = pipe_op->node->get_args_list();
-    }
-    // Iterate through each argument to store in the protobuffers
-    for (auto& op_arg : arguments_list) {
-        rocal_proto::Arguments *arg = opdef->add_args();
-        arg->set_name(op_arg.arg_name);
-        arg->set_type(op_arg.type_name);
-        arg->set_is_vector(op_arg.is_vector);
-
-        if (op_arg.type_name == "nullptr") continue; // TODOSER - During deserialize Nullptr needs to be handled
-        if (op_arg.enum_type_name != "")
-            arg->set_instance_name(op_arg.enum_type_name);
-
-        if (op_arg.is_parameter) {
-            rocal_proto::Parameter *param = arg->mutable_param();
-            serialize_parameter_to_protobuf(param, op_arg);
-        }
-        // Add each value to the arg based on the type
-        else if (!op_arg.is_vector && op_arg.values.size() == 1) {
-            std::cerr << op_arg.arg_name << " - " << op_arg.type_name << "<<\n";
-            if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
-                arg->add_ints(std::any_cast<int>(op_arg.values[0]));
-            } else if (op_arg.type_name == "float") {
-                arg->add_floats(std::any_cast<float>(op_arg.values[0]));
-            } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
-                arg->add_strings(std::any_cast<std::string>(op_arg.values[0]));
-            } else if (op_arg.type_name == "bool") {
-                arg->add_bools(std::any_cast<bool>(op_arg.values[0]));
-            } else if (op_arg.type_name == "unsigned") {
-                arg->add_uints(std::any_cast<unsigned>(op_arg.values[0])); // Use unsigned int instead of uint
-            } else if (op_arg.type_name == "size_t") {
-                arg->add_uints(std::any_cast<size_t>(op_arg.values[0])); // Use unsigned int instead of uint
-            } 
-            else {
-                THROW("Invalid type specified for the Argument " + op_arg.arg_name);
-            }
-        } else if (op_arg.is_vector) {
-            // TODO - VECTOR BASED PROCESSING
-            for (auto& v : op_arg.values) {
-                if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
-                    arg->add_ints(std::any_cast<int>(v));
-                } else if (op_arg.type_name == "float") {
-                    arg->add_floats(std::any_cast<float>(v));
-                } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
-                    arg->add_strings(std::any_cast<std::string>(v));
-                } else if (op_arg.type_name == "bool") {
-                    arg->add_bools(std::any_cast<bool>(v));
-                } else if (op_arg.type_name == "unsigned") {
-                    arg->add_uints(std::any_cast<unsigned>(v)); // Use unsigned int instead of uint
-                } else if (op_arg.type_name == "size_t") {
-                    arg->add_uints(std::any_cast<size_t>(v)); // Use unsigned int instead of uint
-                } 
-                else {
-                    THROW("Invalid type specified for the Argument " + op_arg.arg_name);
-                }    
-            }
-        }
-    }
-}
 
 void MasterGraph::serialize(size_t &serialized_string_size) {
     // Add all the pipeline related arguments to protobuf string
@@ -2055,8 +1885,8 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
         op->set_name(pipe_op->operator_name);
         op->set_module_name(pipe_op->module_name);
         // Add support to add each argument in the operator
-        serialize_args_to_protobuf(op, pipe_op);
-        serialize_inputs_and_outputs_to_protobuf(op, pipe_op);
+        pipe_op->serialize_pipeop_args_to_protobuf(op);
+        pipe_op->serialize_pipeop_inputs_and_outputs_to_protobuf(op);
         // std::cerr << "Serialized args for op : " << pipe_op->name << "\n";
     }
 
@@ -2079,17 +1909,6 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
     // Serialize the string and return
     _serialized_pipeline = pipe.SerializeAsString();
     serialized_string_size = _serialized_pipeline.size();
-
-    /*
-    rocal_proto::PipelineDef deserialized_pipeline;
-    google::protobuf::io::CodedInputStream coded_input(
-        reinterpret_cast<const uint8_t *>(serialized_pipeline.c_str()), serialized_pipeline.size());
-    coded_input.SetTotalBytesLimit(serialized_pipeline.size());
-    deserialized_pipeline.ParseFromCodedStream(&coded_input);
-
-    std::cerr << "Batch size : " << deserialized_pipeline.batch_size() << "\n";
-    std::cerr << "Num Threads : " << deserialized_pipeline.num_threads() << "\n";
-    */
 }
 
 void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {

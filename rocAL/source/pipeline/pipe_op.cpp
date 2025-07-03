@@ -22,42 +22,33 @@ THE SOFTWARE.
 
 #include "pipeline/pipe_op.h"
 
+void set_tensor_proto(rocal_proto::InputOutput *in_out_proto, Tensor *tensor, bool is_input = false) {
+    in_out_proto->set_name(tensor->tensor_name());
+    in_out_proto->set_device(static_cast<int>(tensor->info().mem_type()));
+    in_out_proto->set_dtype(static_cast<int>(tensor->info().data_type()));
+    in_out_proto->set_layout(static_cast<int>(tensor->info().layout()));
+    in_out_proto->set_color_format(static_cast<int>(tensor->info().color_format()));
+    for (auto& dim : tensor->info().dims())
+        in_out_proto->add_dims(dim);
+    in_out_proto->set_num_dims(tensor->info().num_of_dims());
+    in_out_proto->set_is_argument_input(is_input);
+}
+
 void PipelineOperator::serialize_pipeop_inputs_and_outputs_to_protobuf(rocal_proto::OperatorDef *opdef) {
-    if (this->module_name == "loader") {
-        for (auto& node_output : this->node->output()) {
-            rocal_proto::InputOutput *output = opdef->add_outputs();
-            output->set_name(node_output->tensor_name());
-            output->set_device(static_cast<int>(node_output->info().mem_type()));
-            output->set_dtype(static_cast<int>(node_output->info().data_type()));
-            output->set_layout(static_cast<int>(node_output->info().layout()));
-            output->set_color_format(static_cast<int>(node_output->info().color_format()));
-            for (auto& dim : node_output->info().dims())
-                output->add_dims(dim);
-            output->set_num_dims(node_output->info().num_of_dims());
-        }
-    } else if (this->module_name != "reader") {
-        for (auto& node_input : this->node->input()) {
-            rocal_proto::InputOutput *input = opdef->add_inputs();
-            input->set_name(node_input->tensor_name());
-            input->set_device(static_cast<int>(node_input->info().mem_type()));
-            input->set_dtype(static_cast<int>(node_input->info().data_type()));
-            input->set_layout(static_cast<int>(node_input->info().layout()));
-            input->set_color_format(static_cast<int>(node_input->info().color_format()));
-            for (auto& dim : node_input->info().dims())
-                input->add_dims(dim);
-            input->set_num_dims(node_input->info().num_of_dims());
-        }
-        for (auto& node_output : this->node->output()) {
-            rocal_proto::InputOutput *output = opdef->add_outputs();
-            output->set_name(node_output->tensor_name());
-            output->set_device(static_cast<int>(node_output->info().mem_type()));
-            output->set_dtype(static_cast<int>(node_output->info().data_type()));
-            output->set_layout(static_cast<int>(node_output->info().layout()));
-            output->set_color_format(static_cast<int>(node_output->info().color_format()));
-            for (auto& dim : node_output->info().dims())
-                output->add_dims(dim);
-            output->set_num_dims(node_output->info().num_of_dims());
-        }
+
+    if (this->module_name == "reader")
+        return; // Readers do not have tensor outputs, hence return
+
+    // Serialize input tensors to protobuffers
+    for (auto& node_input : this->node->input()) {
+        rocal_proto::InputOutput *input = opdef->add_inputs();
+        set_tensor_proto(input, node_input, true);
+    }
+
+    // Serialize output tensors to protobuffers
+    for (auto& node_output : this->node->output()) {
+        rocal_proto::InputOutput *output = opdef->add_outputs();
+        set_tensor_proto(output, node_output);
     }
 }
 
@@ -136,6 +127,7 @@ void PipelineOperator::serialize_pipeop_args_to_protobuf(rocal_proto::OperatorDe
         rocal_proto::Arguments *arg = opdef->add_args();
         arg->set_name(op_arg.arg_name);
         arg->set_type(op_arg.type_name);
+        arg->set_is_vector(op_arg.is_vector);
 
         if (op_arg.type_name == "nullptr") continue; // TODOSER - During deserialize Nullptr needs to be handled
         if (op_arg.enum_type_name != "")

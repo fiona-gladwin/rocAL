@@ -2033,10 +2033,30 @@ Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &outp
     return out;
 }
 
-bool compare_string(const std::string& op_name, const std::string& op_name_target) {
+inline bool compare_string(const std::string& op_name, const std::string& op_name_target) {
     size_t underscore_pos = op_name.find('_');
     std::string prefix = (underscore_pos != std::string::npos) ? op_name.substr(0, underscore_pos) : op_name;
     return prefix == op_name_target;
+}
+
+std::shared_ptr<Node> MasterGraph::add_loader_node(std::string node_name, const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
+
+    if (compare_string(node_name, "ImageLoaderNode")) {
+#if ENABLE_HIP || ENABLE_OPENCL
+        auto node = NodeFactory::instance().create("ImageLoaderNode", outputs[0], (void *)_device.resources());
+#else
+        auto node = NodeFactory::instance().create("ImageLoaderNode", outputs[0], nullptr);
+#endif
+        auto loader_module = node->get_loader_module();
+        loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
+        _loader_modules.emplace_back(loader_module);
+        node->set_graph_id(_loaders_count++);
+        _root_nodes.push_back(node);
+        for (auto &output : outputs)
+            _tensor_map.insert(std::make_pair(output, node));
+
+        return node;
+    }
 }
 
 void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
@@ -2056,14 +2076,16 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
             } else if (op_def.module_name() == "loader") {
                 // fetch the output tensor details and create it
                 auto output_tensor = create_operator_output(op_def.outputs()[0], true);
-                auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
+                // auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
+
+                auto loader_node = this->add_loader_node(op_def.name(), {}, {output_tensor});
 
                 std::vector<Argument> args_list;
                 deserialize_args_from_protobuf(op_def, args_list);
                 
                 // fetch all the arguments and pass it to the init function inside the loader
                 // In the loader recall the init function
-                loader_node->init(args_list, _meta_data_reader);
+                loader_node->initalize_args(args_list, _meta_data_reader);
                 
             } else {
             if (compare_string(op_def.name(), "brightness")) {

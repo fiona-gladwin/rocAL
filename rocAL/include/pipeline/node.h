@@ -30,7 +30,8 @@ THE SOFTWARE.
 #include <map>
 
 #include "pipeline/graph.h"
-#include "meta_data/meta_data_graph.h"
+#include "loaders/loader_module.h"
+// #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
 #include "parameters/parameter_factory.h"
 #include "pipeline/commons.h"
@@ -251,6 +252,8 @@ class Node {
     int get_graph_id() { return _graph_id; }
     virtual std::string node_name() { return ""; }
     std::vector<Argument> get_args_list() { return _args; }
+    virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
+    virtual void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
 
    protected:
     virtual void create_node() = 0;
@@ -271,3 +274,52 @@ class Node {
         (this->_args.push_back(Argument(arg_names[Indices], std::forward<Args>(args))), ...);
     }
 };
+
+class NodeFactory {
+public:
+    using LoaderCreator = std::function<std::shared_ptr<Node>(Tensor*, void*)>;
+
+    static NodeFactory& instance() {
+        static NodeFactory factory;
+        return factory;
+    }
+
+    void register_node(const std::string& name, LoaderCreator creator) {
+        _registry[name] = std::move(creator);
+    }
+
+    std::shared_ptr<Node> create(const std::string& name, Tensor* output_tensor, void *dev_resource) const {
+        auto it = _registry.find(name);
+        if (it != _registry.end()) {
+            return it->second(output_tensor, dev_resource);
+        } else {
+            THROW("The given node not found in the registry" + name)
+        }
+    }
+
+private:
+    std::map<std::string, LoaderCreator> _registry;
+};
+
+// template<typename T>
+// class NodeRegistrar {
+// public:
+//     NodeRegistrar(const std::string& name) {
+//         NodeFactory::instance().register_node(name, []() -> std::shared_ptr<Node> {
+//             return std::make_shared<T>();
+//         });
+//     }
+// };
+
+// Macro to define static registrar for the class
+// #define REGISTER_NODE(CLASS_NAME) \
+//     static struct NodeRegistrar<CLASS_NAME> _##CLASS_NAME##_registrar(#CLASS_NAME);
+
+#define REGISTER_NODE(CLASS_NAME) \
+    static struct CLASS_NAME##_NodeRegistrar { \
+        CLASS_NAME##_NodeRegistrar() { \
+            NodeFactory::instance().register_node(#CLASS_NAME, [](Tensor *output, void *dev_resources) { \
+                return std::make_shared<CLASS_NAME>(output, dev_resources); \
+            }); \
+        } \
+    } _##CLASS_NAME##_registrar;

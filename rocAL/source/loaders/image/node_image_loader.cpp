@@ -74,7 +74,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     _loader_module->start_loading();
 }
 
-void ImageLoaderNode::init(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) {
+void ImageLoaderNode::initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) {
     std::cerr << "Arguments count : " << arguments.size() << "\n";
     // auto shard_cnt = arguments[0].Get<unsigned>();
     this->init(arguments[0].Get<unsigned>(), arguments[1].Get<unsigned>(), arguments[2].Get<std::string>(),

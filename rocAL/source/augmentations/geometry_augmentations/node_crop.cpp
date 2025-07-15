@@ -109,6 +109,11 @@ void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatP
     set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, crop_h_factor, crop_w_factor, x_drift, y_drift);
 }
 
+void CropNode::initalize_args(std::vector<Argument> &arguments) {
+    std::cerr << "CropNode initialize args is getting called>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
+    this->init(arguments[0].Get<unsigned>(), arguments[1].Get<unsigned>(), arguments[2].Get<float>(), arguments[3].Get<float>());
+}
+
 // Create vx_tensor for the crop coordinates
 void CropNode::create_crop_tensor() {
     const vx_size num_of_dims = 2;

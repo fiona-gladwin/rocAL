@@ -37,7 +37,8 @@ class CropNode : public Node {
     unsigned int get_dst_width() { return _outputs[0]->info().max_shape()[0]; }
     unsigned int get_dst_height() { return _outputs[0]->info().max_shape()[1]; }
     std::shared_ptr<RocalCropParam> get_crop_param() { return _crop_param; }
-    std::string node_name() override { return "crop"; }
+    std::string node_name() override { return "CropNode"; }
+    void initalize_args(std::vector<Argument> &arguments) override;
 
    protected:
     void create_node() override;
@@ -49,3 +50,4 @@ class CropNode : public Node {
    private:
     std::shared_ptr<RocalCropParam> _crop_param;
 };
+REGISTER_NODE(CropNode)

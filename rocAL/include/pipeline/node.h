@@ -278,6 +278,7 @@ class Node {
 class NodeFactory {
 public:
     using LoaderCreator = std::function<std::shared_ptr<Node>(Tensor*, void*)>;
+    using AugmentationCreator = std::function<std::shared_ptr<Node>(const std::vector<Tensor *>&, const std::vector<Tensor *>&)>;
 
     static NodeFactory& instance() {
         static NodeFactory factory;
@@ -286,6 +287,10 @@ public:
 
     void register_loader_node(const std::string& name, LoaderCreator creator) {
         _loader_registry[name] = std::move(creator);
+    }
+
+    void register_node(const std::string& name, AugmentationCreator creator) {
+        _registry[name] = std::move(creator);
     }
 
     std::shared_ptr<Node> create_loader_node(const std::string& name, Tensor* output_tensor, void *dev_resource) const {
@@ -297,8 +302,18 @@ public:
         }
     }
 
+    std::shared_ptr<Node> create_node(const std::string& name, const std::vector<Tensor *>& inputs, const std::vector<Tensor *>& outputs) const {
+        auto it = _registry.find(name);
+        if (it != _registry.end()) {
+            return it->second(inputs, outputs);
+        } else {
+            THROW("The given node not found in the registry" + name)
+        }
+    }
+
 private:
     std::map<std::string, LoaderCreator> _loader_registry;
+    std::map<std::string, AugmentationCreator> _registry;
 };
 
 // template<typename T>
@@ -320,6 +335,15 @@ private:
         CLASS_NAME##_NodeRegistrar() { \
             NodeFactory::instance().register_loader_node(#CLASS_NAME, [](Tensor *output, void *dev_resources) { \
                 return std::make_shared<CLASS_NAME>(output, dev_resources); \
+            }); \
+        } \
+    } _##CLASS_NAME##_registrar;
+
+#define REGISTER_NODE(CLASS_NAME) \
+    static struct CLASS_NAME##_NodeRegistrar { \
+        CLASS_NAME##_NodeRegistrar() { \
+            NodeFactory::instance().register_node(#CLASS_NAME, [](const std::vector<Tensor *>& inputs, const std::vector<Tensor *>& outputs) { \
+                return std::make_shared<CLASS_NAME>(inputs, outputs); \
             }); \
         } \
     } _##CLASS_NAME##_registrar;

@@ -2039,24 +2039,29 @@ inline bool compare_string(const std::string& op_name, const std::string& op_nam
     return prefix == op_name_target;
 }
 
+inline std::string get_node_name(const std::string& op_name) {
+    size_t underscore_pos = op_name.find('_');
+    std::string prefix = (underscore_pos != std::string::npos) ? op_name.substr(0, underscore_pos) : op_name;
+    return prefix;
+}
+
 std::shared_ptr<Node> MasterGraph::add_loader_node(std::string node_name, const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
-
-    if (compare_string(node_name, "ImageLoaderNode")) {
+    auto loader_node_name = get_node_name(node_name);
+    std::shared_ptr<Node> node = nullptr;
 #if ENABLE_HIP || ENABLE_OPENCL
-        auto node = NodeFactory::instance().create("ImageLoaderNode", outputs[0], (void *)_device.resources());
+    node = NodeFactory::instance().create(loader_node_name, outputs[0], (void *)_device.resources());
 #else
-        auto node = NodeFactory::instance().create("ImageLoaderNode", outputs[0], nullptr);
+    node = NodeFactory::instance().create(loader_node_name, outputs[0], nullptr);
 #endif
-        auto loader_module = node->get_loader_module();
-        loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
-        _loader_modules.emplace_back(loader_module);
-        node->set_graph_id(_loaders_count++);
-        _root_nodes.push_back(node);
-        for (auto &output : outputs)
-            _tensor_map.insert(std::make_pair(output, node));
+    auto loader_module = node->get_loader_module();
+    loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
+    _loader_modules.emplace_back(loader_module);
+    node->set_graph_id(_loaders_count++);
+    _root_nodes.push_back(node);
+    for (auto &output : outputs)
+        _tensor_map.insert(std::make_pair(output, node));
 
-        return node;
-    }
+    return node;
 }
 
 void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {

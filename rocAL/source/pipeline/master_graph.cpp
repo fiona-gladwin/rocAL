@@ -2045,6 +2045,30 @@ inline std::string get_node_name(const std::string& op_name) {
     return prefix;
 }
 
+inline bool check_tensor_info(const TensorInfo& input_info, const rocal_proto::InputOutput &output) {
+    
+    if (input_info.num_of_dims() != output.dims_size())
+        return false;
+    for (int i = 0; i < input_info.num_of_dims(); i++) {
+        if (input_info.dims()[i] != output.dims(i))
+            return false;
+    }
+
+    if (input_info.mem_type() != static_cast<RocalMemType>(output.device()))
+        return false;
+    
+    if (input_info.data_type() != static_cast<RocalTensorDataType>(output.dtype()))
+        return false;
+
+    if (input_info.layout() != static_cast<RocalTensorlayout>(output.layout()))
+        return false;
+    
+    if (input_info.color_format() != static_cast<RocalColorFormat>(output.color_format()))
+        return false;
+
+    return true;
+}
+
 std::shared_ptr<Node> MasterGraph::add_node(std::string node_name, const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs, bool is_loader_node) {
     
     std::shared_ptr<Node> node = nullptr;
@@ -2129,10 +2153,17 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 Tensor* output_tensor = nullptr;
                 if (input_tensor) {
                     // TODO - Need to check if all the input info and the output info details matches if not create a new one
-                    output_tensor = create_tensor(input_tensor->info(), false);
                     if (op_def.outputs_size() == 1) {
+
+                        if (input_tensor && check_tensor_info(input_tensor->info(), op_def.outputs()[0])) {
+                            output_tensor = create_tensor(input_tensor->info(), false);
+                        } else {
+                            output_tensor = create_operator_output(op_def.outputs()[0], false);
+                        }
                         _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;
                         std::cerr << "Writing to pipe tensor -> " << op_def.outputs()[0].name() << "\n";
+                    } else {
+                        // TODO - Handle multiple outputs
                     }
                 } else {
                     THROW("Input not available for this Augmentation Node -> " + op_def.name())

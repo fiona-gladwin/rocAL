@@ -284,13 +284,13 @@ public:
         return factory;
     }
 
-    void register_node(const std::string& name, LoaderCreator creator) {
-        _registry[name] = std::move(creator);
+    void register_loader_node(const std::string& name, LoaderCreator creator) {
+        _loader_registry[name] = std::move(creator);
     }
 
-    std::shared_ptr<Node> create(const std::string& name, Tensor* output_tensor, void *dev_resource) const {
-        auto it = _registry.find(name);
-        if (it != _registry.end()) {
+    std::shared_ptr<Node> create_loader_node(const std::string& name, Tensor* output_tensor, void *dev_resource) const {
+        auto it = _loader_registry.find(name);
+        if (it != _loader_registry.end()) {
             return it->second(output_tensor, dev_resource);
         } else {
             THROW("The given node not found in the registry" + name)
@@ -298,7 +298,7 @@ public:
     }
 
 private:
-    std::map<std::string, LoaderCreator> _registry;
+    std::map<std::string, LoaderCreator> _loader_registry;
 };
 
 // template<typename T>
@@ -315,10 +315,10 @@ private:
 // #define REGISTER_NODE(CLASS_NAME) \
 //     static struct NodeRegistrar<CLASS_NAME> _##CLASS_NAME##_registrar(#CLASS_NAME);
 
-#define REGISTER_NODE(CLASS_NAME) \
+#define REGISTER_LOADER_NODE(CLASS_NAME) \
     static struct CLASS_NAME##_NodeRegistrar { \
         CLASS_NAME##_NodeRegistrar() { \
-            NodeFactory::instance().register_node(#CLASS_NAME, [](Tensor *output, void *dev_resources) { \
+            NodeFactory::instance().register_loader_node(#CLASS_NAME, [](Tensor *output, void *dev_resources) { \
                 return std::make_shared<CLASS_NAME>(output, dev_resources); \
             }); \
         } \

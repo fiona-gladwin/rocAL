@@ -55,4 +55,4 @@ class ImageLoaderNode : public Node {
     std::shared_ptr<ImageLoaderSharded> _loader_module = nullptr;
 };
 
-REGISTER_NODE(ImageLoaderNode)
+REGISTER_LOADER_NODE(ImageLoaderNode)

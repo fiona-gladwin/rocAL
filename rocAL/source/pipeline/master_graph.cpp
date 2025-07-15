@@ -2049,9 +2049,9 @@ std::shared_ptr<Node> MasterGraph::add_loader_node(std::string node_name, const 
     auto loader_node_name = get_node_name(node_name);
     std::shared_ptr<Node> node = nullptr;
 #if ENABLE_HIP || ENABLE_OPENCL
-    node = NodeFactory::instance().create(loader_node_name, outputs[0], (void *)_device.resources());
+    node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], (void *)_device.resources());
 #else
-    node = NodeFactory::instance().create(loader_node_name, outputs[0], nullptr);
+    node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], nullptr);
 #endif
     auto loader_module = node->get_loader_module();
     loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);

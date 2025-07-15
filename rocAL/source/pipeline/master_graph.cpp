@@ -2045,21 +2045,46 @@ inline std::string get_node_name(const std::string& op_name) {
     return prefix;
 }
 
-std::shared_ptr<Node> MasterGraph::add_loader_node(std::string node_name, const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
-    auto loader_node_name = get_node_name(node_name);
+std::shared_ptr<Node> MasterGraph::add_node(std::string node_name, const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs, bool is_loader_node) {
+    
     std::shared_ptr<Node> node = nullptr;
+
+    if (is_loader_node) {
+        auto loader_node_name = get_node_name(node_name);
 #if ENABLE_HIP || ENABLE_OPENCL
-    node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], (void *)_device.resources());
+        node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], (void *)_device.resources());
 #else
-    node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], nullptr);
+        node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], nullptr);
 #endif
-    auto loader_module = node->get_loader_module();
-    loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
-    _loader_modules.emplace_back(loader_module);
-    node->set_graph_id(_loaders_count++);
-    _root_nodes.push_back(node);
-    for (auto &output : outputs)
-        _tensor_map.insert(std::make_pair(output, node));
+        auto loader_module = node->get_loader_module();
+        loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
+        _loader_modules.emplace_back(loader_module);
+        node->set_graph_id(_loaders_count++);
+        _root_nodes.push_back(node);
+        
+        // Add each opertor to the pipeline operators list
+        _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "loader", node));
+
+        for (auto &output : outputs)
+            _tensor_map.insert(std::make_pair(output, node));
+    } else {
+        node = NodeFactory::instance().create_node(node_name, inputs, outputs);
+        _nodes.push_back(node);
+
+        _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "augmentation", node));
+
+        for (auto &input : inputs) {
+            if (_tensor_map.find(input) == _tensor_map.end())
+                THROW("Input tensor is invalid, cannot be found among output of previously created nodes")
+
+            auto parent_node = _tensor_map.find(input)->second;
+            parent_node->add_next(node);
+            node->add_previous(parent_node);
+        }
+
+        for (auto &output : outputs)
+            _tensor_map.insert(std::make_pair(output, node));
+    }
 
     return node;
 }
@@ -2083,7 +2108,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 auto output_tensor = create_operator_output(op_def.outputs()[0], true);
                 // auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
 
-                auto loader_node = this->add_loader_node(op_def.name(), {}, {output_tensor});
+                auto loader_node = this->add_node(op_def.name(), {}, {output_tensor}, true);
 
                 std::vector<Argument> args_list;
                 deserialize_args_from_protobuf(op_def, args_list);

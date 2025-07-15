@@ -2050,11 +2050,10 @@ std::shared_ptr<Node> MasterGraph::add_node(std::string node_name, const std::ve
     std::shared_ptr<Node> node = nullptr;
 
     if (is_loader_node) {
-        auto loader_node_name = get_node_name(node_name);
 #if ENABLE_HIP || ENABLE_OPENCL
-        node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], (void *)_device.resources());
+        node = NodeFactory::instance().create_loader_node(node_name, outputs[0], (void *)_device.resources());
 #else
-        node = NodeFactory::instance().create_loader_node(loader_node_name, outputs[0], nullptr);
+        node = NodeFactory::instance().create_loader_node(node_name, outputs[0], nullptr);
 #endif
         auto loader_module = node->get_loader_module();
         loader_module->set_prefetch_queue_depth(_prefetch_queue_depth);
@@ -2108,7 +2107,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 auto output_tensor = create_operator_output(op_def.outputs()[0], true);
                 // auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
 
-                auto loader_node = this->add_node(op_def.name(), {}, {output_tensor}, true);
+                auto loader_node = this->add_node(get_node_name(op_def.name()), {}, {output_tensor}, true);
 
                 std::vector<Argument> args_list;
                 deserialize_args_from_protobuf(op_def, args_list);
@@ -2118,38 +2117,35 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 loader_node->initalize_args(args_list, _meta_data_reader);
                 
             } else {
-                if (compare_string(op_def.name(), "BrightnessNode")) {
-                    std::cerr << "Brightness is being called>>>>>>>>>>>>\n";
-                    Tensor *input_tensor = nullptr;
-                    if (op_def.inputs_size() == 1) {
-                        if (_pipeline_tensors.find(op_def.inputs()[0].name()) != _pipeline_tensors.end()) {
-                            input_tensor = _pipeline_tensors[op_def.inputs()[0].name()];
-                            std::cerr << "Writing to pipe tensor in -> " << op_def.inputs()[0].name() << "\n";
-                        }
-                    } else {
-                        // To be done later.
+                Tensor *input_tensor = nullptr;
+                if (op_def.inputs_size() == 1) {
+                    if (_pipeline_tensors.find(op_def.inputs()[0].name()) != _pipeline_tensors.end()) {
+                        input_tensor = _pipeline_tensors[op_def.inputs()[0].name()];
+                        std::cerr << "Writing to pipe tensor in -> " << op_def.inputs()[0].name() << "\n";
                     }
-                    Tensor* output_tensor = nullptr;
-                    if (input_tensor) {
-                        // TODO - Need to check if all the input info and the output info details matches if not create a new one
-                        output_tensor = create_tensor(input_tensor->info(), false);
-                        if (op_def.outputs_size() == 1) {
-                            _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;
-                            std::cerr << "Writing to pipe tensor -> " << op_def.outputs()[0].name() << "\n";
-                        }
-                    } else {
-                        THROW("Input not available for this Augmentation Node -> " + op_def.name())
-                    }
-                    // auto node = this->add_node<BrightnessNode>({input_tensor}, {output_tensor});
-                    auto node = this->add_node("BrightnessNode", {input_tensor}, {output_tensor});
-
-                    std::vector<Argument> args_list;
-                    deserialize_args_from_protobuf(op_def, args_list);
-                    
-                    // fetch all the arguments and pass it to the init function inside the loader
-                    // In the loader recall the init function
-                    node->initalize_args(args_list);
+                } else {
+                    // To be done later.
                 }
+                Tensor* output_tensor = nullptr;
+                if (input_tensor) {
+                    // TODO - Need to check if all the input info and the output info details matches if not create a new one
+                    output_tensor = create_tensor(input_tensor->info(), false);
+                    if (op_def.outputs_size() == 1) {
+                        _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;
+                        std::cerr << "Writing to pipe tensor -> " << op_def.outputs()[0].name() << "\n";
+                    }
+                } else {
+                    THROW("Input not available for this Augmentation Node -> " + op_def.name())
+                }
+                // auto node = this->add_node<BrightnessNode>({input_tensor}, {output_tensor});
+                auto node = this->add_node(get_node_name(op_def.name()), {input_tensor}, {output_tensor});
+
+                std::vector<Argument> args_list;
+                deserialize_args_from_protobuf(op_def, args_list);
+                
+                // fetch all the arguments and pass it to the init function inside the loader
+                // In the loader recall the init function
+                node->initalize_args(args_list);
             }
         }
 

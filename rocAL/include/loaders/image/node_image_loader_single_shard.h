@@ -42,6 +42,7 @@ class ImageLoaderSingleShardNode : public Node {
 
     std::shared_ptr<LoaderModule> get_loader_module() override;
     std::string node_name() override { return "ImageLoaderSingleShardNode"; }
+    void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) override;
 
    protected:
     void create_node() override{};
@@ -50,3 +51,4 @@ class ImageLoaderSingleShardNode : public Node {
    private:
     std::shared_ptr<ImageLoader> _loader_module = nullptr;
 };
+REGISTER_NODE(ImageLoaderSingleShardNode)

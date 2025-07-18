@@ -287,16 +287,16 @@ public:
     }
 
     void register_loader_node(const std::string& name, LoaderCreator creator) {
-        _loader_registry[name] = std::move(creator);
+        _loader_node_registry[name] = std::move(creator);
     }
 
     void register_node(const std::string& name, AugmentationCreator creator) {
-        _registry[name] = std::move(creator);
+        _node_registry[name] = std::move(creator);
     }
 
     std::shared_ptr<Node> create_loader_node(const std::string& name, Tensor* output_tensor, void *dev_resource) const {
-        auto it = _loader_registry.find(name);
-        if (it != _loader_registry.end()) {
+        auto it = _loader_node_registry.find(name);
+        if (it != _loader_node_registry.end()) {
             return it->second(output_tensor, dev_resource);
         } else {
             THROW("The given node not found in the registry" + name)
@@ -304,8 +304,8 @@ public:
     }
 
     std::shared_ptr<Node> create_node(const std::string& name, const std::vector<Tensor *>& inputs, const std::vector<Tensor *>& outputs) const {
-        auto it = _registry.find(name);
-        if (it != _registry.end()) {
+        auto it = _node_registry.find(name);
+        if (it != _node_registry.end()) {
             return it->second(inputs, outputs);
         } else {
             THROW("The given node not found in the registry" + name)
@@ -313,8 +313,8 @@ public:
     }
 
 private:
-    std::map<std::string, LoaderCreator> _loader_registry;
-    std::map<std::string, AugmentationCreator> _registry;
+    std::map<std::string, LoaderCreator> _loader_node_registry;
+    std::map<std::string, AugmentationCreator> _node_registry;
 };
 
 // template<typename T>

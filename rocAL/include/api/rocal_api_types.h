@@ -524,4 +524,16 @@ struct DistortionCoeffs {
     float k3;
 };
 
+/*! \brief  rocAL RocalPipelineParams struct
+ * \ingroup group_rocal_types
+ */
+struct RocalPipelineParams {
+    size_t batch_size;
+    size_t num_threads;
+    size_t prefetch_queue_depth;
+    int device_id;
+    bool rocal_cpu;
+    unsigned seed;
+};
+
 #endif  // MIVISIONX_ROCAL_API_TYPES_H

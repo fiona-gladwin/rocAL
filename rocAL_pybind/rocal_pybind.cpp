@@ -294,6 +294,7 @@ PYBIND11_MODULE(rocal_pybind, m) {
     m.def("rocalVerify", &rocalVerify);
     m.def("rocalRun", &rocalRun, py::return_value_policy::reference);
     m.def("rocalRelease", &rocalRelease, py::return_value_policy::reference);
+    m.def("rocalDeserialize", &rocalDeserialize, py::return_value_policy::reference);
     m.def("rocalSerialize", [](RocalContext context) {
         size_t size;
         rocalSerialize(context, size);

@@ -1874,7 +1874,7 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
     pipe.set_num_threads(_cpu_num_threads);
     pipe.set_batch_size(_user_batch_size);
     pipe.set_device_id(_gpu_id);
-    // pipe.set_seed();
+    pipe.set_seed(ParameterFactory::instance()->get_seed());
     pipe.set_rocal_cpu(_mem_type == RocalMemType::HOST ? true : false);
     pipe.set_prefetch_queue_depth(_prefetch_queue_depth);
 

@@ -150,6 +150,8 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size)
             rocal_cpu = pipe.rocal_cpu();
         if (pipe.has_prefetch_queue_depth())
             prefetch_queue_depth = pipe.prefetch_queue_depth();
+        if (pipe.has_seed())
+            rocalSetSeed(pipe.seed());
 
         RocalAffinity affinity = rocal_cpu ? RocalAffinity::CPU : RocalAffinity::GPU;
         // Create the context

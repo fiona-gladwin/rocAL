@@ -85,6 +85,6 @@ extern "C" RocalStatus ROCAL_API_CALL rocalSerialize(RocalContext rocal_context,
 
 extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedString(RocalContext rocal_context, const char* serialized_string);
 
-extern "C" RocalContext rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size);
+extern "C" RocalContext rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size, RocalPipelineParams& pipe_params);
 
 #endif

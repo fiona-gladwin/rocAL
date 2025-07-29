@@ -528,12 +528,12 @@ struct DistortionCoeffs {
  * \ingroup group_rocal_types
  */
 struct RocalPipelineParams {
-    size_t batch_size;
-    size_t num_threads;
-    size_t prefetch_queue_depth;
-    int device_id;
-    bool rocal_cpu;
-    unsigned seed;
+    size_t batch_size = 1;
+    size_t num_threads = 1;
+    size_t prefetch_queue_depth = 3;
+    int device_id = 0;
+    bool rocal_cpu = true;
+    unsigned seed = 1;
 };
 
 #endif  // MIVISIONX_ROCAL_API_TYPES_H

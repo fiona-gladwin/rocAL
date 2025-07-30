@@ -47,7 +47,8 @@ rocalCreate(
     int gpu_id,
     size_t cpu_thread_count,
     size_t prefetch_queue_depth,
-    RocalTensorOutputType output_tensor_data_type) {
+    RocalTensorOutputType output_tensor_data_type,
+    bool enable_checkpointing) {
     RocalContext context = nullptr;
     try {
         auto translate_process_mode = [](RocalProcessMode process_mode) {
@@ -74,7 +75,7 @@ rocalCreate(
         };
         if (gpu_id < 0)
             ERR(STR("Negative GPU device ID passed to context creation. Setting GPU device ID to 0"));
-        context = new Context(batch_size, translate_process_mode(affinity), std::max(gpu_id, 0), cpu_thread_count, prefetch_queue_depth, translate_output_data_type(output_tensor_data_type));
+        context = new Context(batch_size, translate_process_mode(affinity), std::max(gpu_id, 0), cpu_thread_count, prefetch_queue_depth, translate_output_data_type(output_tensor_data_type), enable_checkpointing);
         // Reset seed in case it's being randomized during context creation
     } catch (const std::exception& e) {
         ERR(STR("Failed to init the Rocal context, ") + STR(e.what()))
@@ -154,7 +155,7 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
         RocalAffinity affinity = pipe_params.rocal_cpu ? RocalAffinity::CPU : RocalAffinity::GPU;
         // Create the context
         context = new Context(pipe_params.batch_size, affinity, std::max(pipe_params.device_id, 0),
-                              pipe_params.num_threads, pipe_params.prefetch_queue_depth, RocalTensorDataType::FP32);  // Need to set dtype in protobuf/just use default value
+                              pipe_params.num_threads, pipe_params.prefetch_queue_depth, RocalTensorDataType::FP32, false);  // Need to set dtype in protobuf/just use default value
         static_cast<Context*>(context)->master_graph->deserialize(&pipe);
 
     } catch (const std::exception& e) {

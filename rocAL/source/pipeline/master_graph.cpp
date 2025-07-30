@@ -96,7 +96,7 @@ MasterGraph::~MasterGraph() {
     release();
 }
 
-MasterGraph::MasterGraph(size_t batch_size, RocalAffinity affinity, size_t cpu_thread_count, int gpu_id, size_t prefetch_queue_depth, RocalTensorDataType output_tensor_data_type) : _ring_buffer(prefetch_queue_depth),
+MasterGraph::MasterGraph(size_t batch_size, RocalAffinity affinity, size_t cpu_thread_count, int gpu_id, size_t prefetch_queue_depth, RocalTensorDataType output_tensor_data_type, bool enable_checkpointing) : _ring_buffer(prefetch_queue_depth),
                                                                                                                                                                                      _graph(nullptr),
                                                                                                                                                                                      _affinity(affinity),
                                                                                                                                                                                      _cpu_num_threads(cpu_thread_count),
@@ -119,7 +119,8 @@ MasterGraph::MasterGraph(size_t batch_size, RocalAffinity affinity, size_t cpu_t
                                                                                                                                                                                      _box_encoder_gpu(nullptr),
 #endif
                                                                                                                                                                                      _rb_block_if_empty_time("Ring Buffer Block IF Empty Time"),
-                                                                                                                                                                                     _rb_block_if_full_time("Ring Buffer Block IF Full Time") {
+                                                                                                                                                                                     _rb_block_if_full_time("Ring Buffer Block IF Full Time"),
+                                                                                                                                                                                     _is_checkpointing_enabled(enable_checkpointing) {
     try {
         vx_status status;
         vxRegisterLogCallback(NULL, log_callback, vx_false_e);

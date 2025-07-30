@@ -88,7 +88,7 @@ class MasterGraph {
                         NO_MORE_DATA = 2,
                         NOT_IMPLEMENTED = 3,
                         INVALID_ARGUMENTS };
-    MasterGraph(size_t batch_size, RocalAffinity affinity, size_t cpu_thread_count, int gpu_id, size_t prefetch_queue_depth, RocalTensorDataType output_tensor_data_type);
+    MasterGraph(size_t batch_size, RocalAffinity affinity, size_t cpu_thread_count, int gpu_id, size_t prefetch_queue_depth, RocalTensorDataType output_tensor_data_type, bool enable_checkpointing);
     ~MasterGraph();
     Status reset();
     size_t remaining_count();
@@ -252,6 +252,7 @@ class MasterGraph {
     std::vector<std::shared_ptr<PipelineOperator>> _pipeline_operators;
     int _op_idx = 0;
     std::string _serialized_pipeline;  // Stores the serialized string of the pipeline
+    bool _is_checkpointing_enabled = false;
 };
 
 template <typename T>

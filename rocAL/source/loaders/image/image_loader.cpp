@@ -38,6 +38,8 @@ ImageLoader::ImageLoader(void *dev_resources) : _circ_buff(dev_resources),
     _is_initialized = false;
     _remaining_image_count = 0;
     _device_id = 0;
+    _iteration_count = 0;
+    _epoch_count = 0;
 #if ENABLE_HIP
     DeviceResourcesHip *hipres = static_cast<DeviceResourcesHip *>(dev_resources);
     _hip_stream = hipres->hip_stream;
@@ -89,6 +91,11 @@ void ImageLoader::reset() {
     // Emptying the internal circular buffer
     _circ_buff.reset();
 
+    // Reset is called after each epoch, hence increase the epoch count
+    // Set the ieration_count to 0
+    _epoch_count++;
+    _iteration_count = 0;
+    
     // resetting the reader thread to the start of the media
     _image_counter = 0;
     _image_loader->reset();
@@ -144,6 +151,7 @@ void ImageLoader::initialize(ReaderConfig reader_cfg, DecoderConfig decoder_cfg,
     _image_loader = std::make_shared<ImageReadAndDecode>();
     size_t shard_count = reader_cfg.get_shard_count();
     int device_id = reader_cfg.get_shard_id();
+    _is_checkpointing_enabled = reader_cfg.is_checkpointing_enabled();
 #if ENABLE_HIP
     // Set stream in decoder config, to be used by rocJpeg decoder for scaling
     if (decoder_cfg._type == DecoderType::ROCJPEG_DEC) {
@@ -199,6 +207,13 @@ ImageLoader::load_routine() {
         if (!_internal_thread_running)
             break;
 
+        // TODO - Save state
+        if (_is_checkpointing_enabled) {
+            _decoded_data_info._loader_state._epoch_number = _epoch_count;
+            _decoded_data_info._loader_state._iteration_number = _iteration_count;
+            // _decoded_data_info._loader_state._rng = _image_loader->get_rng_state();
+        }
+        // The initial state needs to be saved so 
         auto load_status = LoaderModuleStatus::NO_MORE_DATA_TO_READ;
         {
             load_status = _image_loader->load(data,
@@ -219,6 +234,7 @@ ImageLoader::load_routine() {
                 _circ_buff.set_decoded_data_info(_decoded_data_info);
                 _circ_buff.push();
                 _image_counter += _output_tensor->info().batch_size();
+                _iteration_count++;
             }
         }
         if (load_status != LoaderModuleStatus::OK) {

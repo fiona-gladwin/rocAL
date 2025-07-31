@@ -92,4 +92,7 @@ class ImageLoader : public LoaderModule {
 #if ENABLE_HIP
     hipStream_t _hip_stream = nullptr;
 #endif
+    bool _is_checkpointing_enabled = false;
+    int64_t _epoch_count = 0;
+    int64_t _iteration_count = 0; 
 };

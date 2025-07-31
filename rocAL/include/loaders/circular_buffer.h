@@ -31,6 +31,13 @@ THE SOFTWARE.
 #include "pipeline/commons.h"
 #include "device/device_manager.h"
 #include "device/device_manager_hip.h"
+
+struct LoaderState {
+    int64_t _epoch_number;
+    int64_t _iteration_number;
+    std::default_random_engine _rng;
+};
+
 struct DecodedDataInfo {
     std::vector<std::string> _data_names;
     std::vector<uint32_t> _roi_width;
@@ -40,6 +47,7 @@ struct DecodedDataInfo {
     std::vector<uint32_t> _audio_samples; //! Amplitude of an audio signal at a specific point in time
     std::vector<uint32_t> _audio_channels; //! Number of audio channels in an audio signal
     std::vector<float> _audio_sample_rates; //! The number of samples of audio carried per second
+    LoaderState _loader_state;
 };
 
 struct CropImageInfo {

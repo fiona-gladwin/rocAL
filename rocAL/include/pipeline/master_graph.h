@@ -159,6 +159,7 @@ class MasterGraph {
     void deserialize(rocal_proto::PipelineDef *pipe_def);
     Tensor *create_operator_output(const rocal_proto::InputOutput &output, bool is_loader_output = false);
     void deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments);
+    bool is_checkpointing_enabled() { return _checkpointing_enabled; }
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif
@@ -252,7 +253,7 @@ class MasterGraph {
     std::vector<std::shared_ptr<PipelineOperator>> _pipeline_operators;
     int _op_idx = 0;
     std::string _serialized_pipeline;  // Stores the serialized string of the pipeline
-    bool _is_checkpointing_enabled = false;
+    bool _checkpointing_enabled = false;
 };
 
 template <typename T>

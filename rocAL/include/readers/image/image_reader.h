@@ -110,6 +110,7 @@ struct ReaderConfig {
     }
     void set_files_list(const std::vector<std::string> &files) { _file_names = files; }
     void set_seed(unsigned seed) { _seed = seed; }
+    void enable_checkpointing(bool enable_checkpointing) { _checkpointing_enabled = enable_checkpointing; }
     size_t get_shard_count() { return _shard_count; }
     size_t get_shard_id() { return _shard_id; }
     size_t get_cpu_num_threads() { return _cpu_num_threads; }
@@ -134,6 +135,7 @@ struct ReaderConfig {
     std::shared_ptr<MetaDataReader> meta_data_reader() { return _meta_data_reader; }
     ExternalSourceFileMode mode() { return _file_mode; }
     const ShardingInfo& get_sharding_info() { return _sharding_info; }
+    bool is_checkpointing_enabled() { return _checkpointing_enabled; }
 
    private:
     StorageType _type = StorageType::FILE_SYSTEM;
@@ -160,7 +162,7 @@ struct ReaderConfig {
     VideoProperties _video_prop;
 #endif
     std::string _index_path = "";
-
+    bool _checkpointing_enabled = false;
 };
 
 // MXNet image recordio struct - used to read the contents from the MXNet recordIO files.

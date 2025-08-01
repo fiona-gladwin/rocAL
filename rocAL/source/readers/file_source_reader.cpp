@@ -58,9 +58,11 @@ Reader::Status FileSourceReader::initialize(ReaderConfig desc) {
     ret = subfolder_reading();
     _curr_file_idx = _shard_start_idx_vector[_shard_id]; // shard's start_idx would vary for every shard in the vector
     // shuffle dataset if set
-    if (ret == Reader::Status::OK && _shuffle)
-        std::random_shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
-                            _file_names.begin() + _shard_end_idx_vector[_shard_id]);
+    if (ret == Reader::Status::OK && _shuffle) {
+        std::mt19937 e(_seed);
+        std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
+                     _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
+    }
 
     return ret;
 }
@@ -127,9 +129,11 @@ int FileSourceReader::release() {
 }
 
 void FileSourceReader::reset() {
-    if (_shuffle)
-        std::random_shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
-                            _file_names.begin() + _shard_start_idx_vector[_shard_id] + actual_shard_size_without_padding());
+    if (_shuffle) {
+        std::mt19937 e(_seed);
+        std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
+                     _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
+    }
 
     if (_stick_to_shard == false)  // Pick elements from the next shard - hence increment shard_id
         increment_shard_id();      // Should work for both single and multiple shards

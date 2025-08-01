@@ -29,7 +29,7 @@ ImageLoaderNode::ImageLoaderNode(Tensor *output, void *device_resources) : Node(
 }
 
 void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threads, const std::string &source_path, const std::string &json_path, const std::map<std::string, std::string> feature_key_map, StorageType storage_type, DecoderType decoder_type,
-                           bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type, std::shared_ptr<MetaDataReader> meta_data_reader, bool decoder_keep_orig, const ShardingInfo& sharding_info, bool enable_checkpointing, const char *file_prefix,
+                           bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type, std::shared_ptr<MetaDataReader> meta_data_reader, bool decoder_keep_orig, const ShardingInfo& sharding_info, bool enable_checkpointing, unsigned seed, const char *file_prefix,
                            unsigned sequence_length, unsigned step, unsigned stride, ExternalSourceFileMode external_file_mode, const std::string &index_path) {
     if (!_loader_module)
         THROW("ERROR: loader module is not set for ImageLoaderNode, cannot initialize")
@@ -51,7 +51,7 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     reader_cfg.set_index_path(index_path);
     reader_cfg.set_sharding_info(sharding_info);
     reader_cfg.enable_checkpointing(enable_checkpointing);
-
+    reader_cfg.set_seed(seed);
 
     std::array<std::string, 24> arg_names = {
         "internal_shard_count", "cpu_num_threads", "source_path",

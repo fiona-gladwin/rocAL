@@ -54,6 +54,7 @@ Reader::Status FileSourceReader::initialize(ReaderConfig desc) {
     _pad_last_batch_repeated = _sharding_info.pad_last_batch_repeated;
     _stick_to_shard = _sharding_info.stick_to_shard;
     _shard_size = _sharding_info.shard_size;
+    _seed = desc.seed();
     ret = subfolder_reading();
     _curr_file_idx = _shard_start_idx_vector[_shard_id]; // shard's start_idx would vary for every shard in the vector
     // shuffle dataset if set

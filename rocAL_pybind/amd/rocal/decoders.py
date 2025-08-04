@@ -31,7 +31,7 @@ from amd.rocal.pipeline import Pipeline
 def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations_file='', index_path ='', shard_id=0, num_shards=1, random_shuffle=False,
           output_type=types.RGB, decoder_type=types.DECODER_TJPEG, device=None,
           decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000,
-          last_batch_policy=types.LAST_BATCH_FILL, pad_last_batch=True, stick_to_shard=True, shard_size=-1):
+          last_batch_policy=types.LAST_BATCH_FILL, pad_last_batch=True, stick_to_shard=True, shard_size=-1, seed=0):
     """!Decodes images using different readers and decoders.
 
         @param inputs                   list of input images.
@@ -73,7 +73,8 @@ def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations
             "max_width": max_decoded_width,
             "max_height": max_decoded_height,
             "dec_type": decoder_type,
-            "sharding_info": sharding_info}
+            "sharding_info": sharding_info,
+            "seed": seed}
         decoded_image = b.cocoImageDecoderShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
 
@@ -175,7 +176,8 @@ def image(*inputs, user_feature_key_map=None, path='', file_root='', annotations
             "max_width": max_decoded_width,
             "max_height": max_decoded_height,
             "dec_type": decoder_type,
-            "sharding_info": sharding_info}
+            "sharding_info": sharding_info,
+            "seed": seed}
         decoded_image = b.imageDecoderShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
 
@@ -221,7 +223,7 @@ def image_random_crop(*inputs, user_feature_key_map=None, path='', file_root='',
                       random_shuffle=False, num_attempts=10, output_type=types.RGB, random_area=[0.08, 1.0],
                       random_aspect_ratio=[0.8, 1.25], decode_size_policy=types.USER_GIVEN_SIZE_ORIG,
                       max_decoded_width=1000, max_decoded_height=1000, decoder_type=types.DECODER_TJPEG,
-                      last_batch_policy=types.LAST_BATCH_FILL, pad_last_batch=True, stick_to_shard=True, shard_size=-1):
+                      last_batch_policy=types.LAST_BATCH_FILL, pad_last_batch=True, stick_to_shard=True, shard_size=-1, seed=0):
     """!Applies random cropping to images using different readers and decoders.
 
         @param inputs                  list of input images.
@@ -335,7 +337,8 @@ def image_random_crop(*inputs, user_feature_key_map=None, path='', file_root='',
             "decode_size_policy": decode_size_policy,
             "max_width": max_decoded_width,
             "max_height": max_decoded_height,
-            "sharding_info": sharding_info}
+            "sharding_info": sharding_info,
+            "seed":seed}
         crop_output_image = b.fusedDecoderCropShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
 
@@ -344,7 +347,8 @@ def image_random_crop(*inputs, user_feature_key_map=None, path='', file_root='',
 
 def image_slice(*inputs, file_root='', path='', annotations_file='', shard_id=0, num_shards=1, random_shuffle=False,
                 random_aspect_ratio=[0.75, 1.33333], random_area=[0.08, 1.0], num_attempts=100, output_type=types.RGB,
-                decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000, last_batch_policy=types.LAST_BATCH_FILL, pad_last_batch=True, stick_to_shard=True, shard_size=-1):
+                decode_size_policy=types.USER_GIVEN_SIZE_ORIG, max_decoded_width=1000, max_decoded_height=1000, last_batch_policy=types.LAST_BATCH_FILL,
+                pad_last_batch=True, stick_to_shard=True, shard_size=-1, seed=0):
     """!Slices images randomly using different readers and decoders.
 
         @param inputs                 list of input images.
@@ -444,7 +448,8 @@ def image_slice(*inputs, file_root='', path='', annotations_file='', shard_id=0,
             "decode_size_policy": decode_size_policy,
             "max_width": max_decoded_width,
             "max_height": max_decoded_height,
-            "sharding_info": sharding_info}
+            "sharding_info": sharding_info,
+            "seed": seed}
         image_decoder_slice = b.fusedDecoderCropShard(
             Pipeline._current_pipeline._handle, *(kwargs_pybind.values()))
     return (image_decoder_slice)

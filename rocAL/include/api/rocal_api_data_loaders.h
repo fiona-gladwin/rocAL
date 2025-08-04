@@ -171,7 +171,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalJpegCOCOFileSource(RocalContext conte
                                                               RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                               unsigned max_width = 0, unsigned max_height = 0,
                                                               RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG,
-                                                              RocalShardingInfo rocal_sharding_info = RocalShardingInfo());
+                                                              RocalShardingInfo rocal_sharding_info = RocalShardingInfo(), unsigned seed = 0);
 
 /*! \brief JPEG image reader and partial decoder. It allocates the resources and objects required to read and decode COCO Jpeg images stored on the file systems. It has internal sharding capability to load/decode in parallel is user wants. If images are not Jpeg compressed they will be ignored.
  * \ingroup group_rocal_data_loaders
@@ -266,7 +266,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalJpegCOCOFileSourceSingleShard(RocalCo
                                                                          RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                                          unsigned max_width = 0, unsigned max_height = 0,
                                                                          RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG,
-                                                                         RocalShardingInfo rocal_sharding_info = RocalShardingInfo());
+                                                                         RocalShardingInfo rocal_sharding_info = RocalShardingInfo(), unsigned seed = 0);
 
 /*! \brief Creates JPEG image reader and decoder for Caffe LMDB records. It allocates the resources and objects required to read and decode Jpeg images stored in Caffe LMDB Records. It has internal sharding capability to load/decode in parallel is user wants. If images are not Jpeg compressed they will be ignored.
  * \ingroup group_rocal_data_loaders
@@ -471,7 +471,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalFusedJpegCrop(RocalContext context,
                                                          bool loop = false,
                                                          RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                          unsigned max_width = 0, unsigned max_height = 0,
-                                                         RocalShardingInfo rocal_sharding_info = RocalShardingInfo());
+                                                         RocalShardingInfo rocal_sharding_info = RocalShardingInfo(), unsigned seed = 0);
 
 /*! \brief Creates JPEG image reader and partial decoder. It allocates the resources and objects required to read and decode Jpeg images stored on the file systems. It accepts external sharding information to load a singe shard. only
  * \ingroup group_rocal_data_loaders
@@ -503,7 +503,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalFusedJpegCropSingleShard(RocalContext
                                                                     bool loop = false,
                                                                     RocalImageSizeEvaluationPolicy decode_size_policy = ROCAL_USE_MOST_FREQUENT_SIZE,
                                                                     unsigned max_width = 0, unsigned max_height = 0,
-                                                                    RocalShardingInfo rocal_sharding_info = RocalShardingInfo());
+                                                                    RocalShardingInfo rocal_sharding_info = RocalShardingInfo(), unsigned seed = 0);
 
 /*! \brief Creates TensorFlow records JPEG image reader and decoder. It allocates the resources and objects required to read and decode Jpeg images stored on the file systems. It has internal sharding capability to load/decode in parallel is user wants. If images are not Jpeg compressed they will be ignored.
  * \ingroup group_rocal_data_loaders

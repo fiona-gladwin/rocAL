@@ -53,6 +53,7 @@ Reader::Status COCOFileSourceReader::initialize(ReaderConfig desc) {
     _loop = desc.loop();
     _shuffle = desc.shuffle();
     _meta_data_reader = desc.meta_data_reader();
+    _seed = desc.seed();
 
     if (_json_path == "") {
         std::cout << "\n _json_path has to be set manually";
@@ -94,9 +95,11 @@ Reader::Status COCOFileSourceReader::initialize(ReaderConfig desc) {
         }
     } else {
         // shuffle dataset if set
-        if (ret == Reader::Status::OK && _shuffle)
-            std::random_shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
-                                _file_names.begin() + _shard_end_idx_vector[_shard_id]);
+        if (ret == Reader::Status::OK && _shuffle) {
+            std::mt19937 e(_seed);
+            std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
+                         _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
+        }
     }
     return ret;
 }
@@ -207,8 +210,9 @@ void COCOFileSourceReader::reset() {
         _file_names = _sorted_file_names;
         if (_shuffle) shuffle_with_aspect_ratios();
     } else if (_shuffle) {
-        std::random_shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
-                            _file_names.begin() + _shard_end_idx_vector[_shard_id]);
+        std::mt19937 e(_seed);
+        std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
+                     _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
     }
     if (_stick_to_shard == false) // Pick elements from the next shard - hence increment shard_id
         increment_shard_id();     // Should work for both single and multiple shards

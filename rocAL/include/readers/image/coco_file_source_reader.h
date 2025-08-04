@@ -85,4 +85,5 @@ class COCOFileSourceReader : public Reader {
     void incremenet_read_ptr();
     int release();
     void shuffle_with_aspect_ratios();
+    unsigned _seed;
 };

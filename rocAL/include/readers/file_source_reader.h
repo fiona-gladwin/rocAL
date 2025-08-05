@@ -77,7 +77,7 @@ class FileSourceReader : public Reader {
     DIR *_src_dir;
     DIR *_sub_dir;
     struct dirent *_entity;
-    std::vector<std::string> _file_names;
+    std::vector<std::string> _file_names, _backup_file_names;
     FILE *_current_fPtr;
     unsigned _current_file_size;
     std::string _last_id;
@@ -89,4 +89,6 @@ class FileSourceReader : public Reader {
     //! Pair containing the last batch policy and pad_last_batch_repeated values for deciding what to do with last batch
     Reader::Status generate_file_names();         // Function that would generate _file_names containing all the samples in the dataset
     unsigned _seed;
+    bool _is_checkpointing_enabled = false;
+    unsigned _epoch_counter;
 };

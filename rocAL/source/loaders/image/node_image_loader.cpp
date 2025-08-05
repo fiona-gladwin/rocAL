@@ -53,12 +53,12 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
     reader_cfg.enable_checkpointing(enable_checkpointing);
     reader_cfg.set_seed(seed);
 
-    std::array<std::string, 24> arg_names = {
+    std::array<std::string, 25> arg_names = {
         "internal_shard_count", "cpu_num_threads", "source_path",
         "json_path", "feature_key_map", "storage_type", "decoder_type",
         "shuffle", "loop", "load_batch_count", "mem_type","meta_data_reader", "decoder_keep_orig",
         "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size", "enable_checkpointing",
-        "file_prefix", "sequence_length", "step", "stride",
+        "seed", "file_prefix", "sequence_length", "step", "stride",
         "external_file_mode", "index_path"
     };
 
@@ -66,8 +66,8 @@ void ImageLoaderNode::init(unsigned internal_shard_count, unsigned cpu_num_threa
                        cpu_num_threads, source_path, json_path, feature_key_map, storage_type, 
                        decoder_type, shuffle, loop, load_batch_count, mem_type, meta_data_reader, decoder_keep_orig, 
                        sharding_info.last_batch_policy, sharding_info.pad_last_batch_repeated, 
-                       sharding_info.stick_to_shard, sharding_info.shard_size, enable_checkpointing, file_prefix,
-                       sequence_length, step, stride, external_file_mode, index_path);
+                       sharding_info.stick_to_shard, sharding_info.shard_size, enable_checkpointing, seed,
+                       file_prefix, sequence_length, step, stride, external_file_mode, index_path);
 
     _loader_module->initialize(reader_cfg, DecoderConfig(decoder_type),
                                mem_type,
@@ -82,7 +82,7 @@ void ImageLoaderNode::initalize_args(std::vector<Argument> &arguments, std::shar
                arguments[3].Get<std::string>(), arguments[4].Get<std::map<std::string, std::string>>(), static_cast<StorageType>(arguments[5].Get<int>()),
                static_cast<DecoderType>(arguments[6].Get<int>()), arguments[7].Get<bool>(), arguments[8].Get<bool>(), arguments[9].Get<size_t>(), static_cast<RocalMemType>(arguments[10].Get<int>()), 
                meta_data_reader, arguments[12].Get<bool>(), ShardingInfo(static_cast<RocalBatchPolicy>(arguments[13].Get<int>()), arguments[14].Get<bool>(), arguments[15].Get<bool>(), arguments[16].Get<int32_t>()), arguments[17].Get<bool>(),
-               arguments[18].Get<std::string>().c_str(), arguments[19].Get<unsigned>(), arguments[20].Get<unsigned>(), arguments[21].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[22].Get<int>()), arguments[23].Get<std::string>());
+               arguments[18].Get<unsigned>(), arguments[19].Get<std::string>().c_str(), arguments[20].Get<unsigned>(), arguments[21].Get<unsigned>(), arguments[22].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[23].Get<int>()), arguments[24].Get<std::string>());
 }
 
 std::shared_ptr<LoaderModule> ImageLoaderNode::get_loader_module() {

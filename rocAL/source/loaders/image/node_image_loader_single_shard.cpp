@@ -55,12 +55,12 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
     reader_cfg.set_seed(seed);
 
     // Add all arguments as part of the operator
-    std::array<std::string, 23> arg_names = {
+    std::array<std::string, 24> arg_names = {
         "shard_id", "shard_count", "cpu_num_threads", "source_path", "json_path",
         "storage_type", "decoder_type", "shuffle", "loop",
         "load_batch_count", "mem_type", "meta_data_reader", "decoder_keep_original", 
-        "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size", "feature_key_map"
-        "sequence_length", "step", "stride", "external_file_mode", "index_path"
+        "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size", "seed",
+        "feature_key_map", "sequence_length", "step", "stride", "external_file_mode", "index_path"
     };
     
     set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{},
@@ -71,7 +71,7 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
         meta_data_reader, decoder_keep_original,
         sharding_info.last_batch_policy,
         sharding_info.pad_last_batch_repeated, sharding_info.stick_to_shard,
-        sharding_info.shard_size, feature_key_map, sequence_length, step, stride,
+        sharding_info.shard_size, seed, feature_key_map, sequence_length, step, stride,
         external_file_mode, index_path
     );
 
@@ -93,8 +93,8 @@ void ImageLoaderSingleShardNode::initalize_args(std::vector<Argument> &arguments
             static_cast<DecoderType>(arguments[6].Get<int>()), arguments[7].Get<bool>(), arguments[8].Get<bool>(),
             arguments[9].Get<size_t>(), static_cast<RocalMemType>(arguments[10].Get<int>()), meta_data_reader, arguments[12].Get<bool>(),
             ShardingInfo(static_cast<RocalBatchPolicy>(arguments[13].Get<int>()), arguments[14].Get<bool>(), arguments[15].Get<bool>(), arguments[16].Get<int32_t>()),
-            arguments[17].Get<std::map<std::string, std::string>>(), arguments[18].Get<unsigned>(), arguments[19].Get<unsigned>(),
-            arguments[20].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[21].Get<int>()), arguments[22].Get<std::string>());
+            arguments[17].Get<unsigned>(), arguments[18].Get<std::map<std::string, std::string>>(), arguments[19].Get<unsigned>(), arguments[20].Get<unsigned>(),
+            arguments[21].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[22].Get<int>()), arguments[23].Get<std::string>());
 }
 
 ImageLoaderSingleShardNode::~ImageLoaderSingleShardNode() {

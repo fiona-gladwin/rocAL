@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include <random>
 #include <any>
 #include <map>
-#include "pipeline/pipe_op.h"
 
 class OperatorCheckpoint {
    public:
@@ -39,9 +38,10 @@ class OperatorCheckpoint {
 
 class Checkpoint {
    public:
-    void AddOperatorCheckpoint(PipelineOperator op) {
-        _name_to_id[op.operator_name] = _op_cpts.size();
-        _op_cpts.emplace_back(OperatorCheckpoint(op.operator_name));
+    OperatorCheckpoint& AddOperatorCheckpoint(std::string op_name) {
+        _name_to_id[op_name] = _op_cpts.size();
+        _op_cpts.emplace_back(OperatorCheckpoint(op_name));
+        return _op_cpts.back();
     }
 
     OperatorCheckpoint& GetOperatorCheckpoint(std::string op_name) {
@@ -50,5 +50,5 @@ class Checkpoint {
    private:
     std::vector<OperatorCheckpoint> _op_cpts;
     std::map<std::string, int, std::less<>> _name_to_id;
-    size_t _iteration_number = 0;
+    // size_t _iteration_number = 0;
 };

@@ -973,7 +973,7 @@ void MasterGraph::output_routine() {
             auto full_batch_data_names = _loader_module->get_id();
             auto decode_data_info = _loader_module->get_decode_data_info();
             auto crop_image_info = _loader_module->get_crop_image_info();
-
+            
             if (full_batch_data_names.size() != _user_batch_size)
                 WRN("Master Graph: Names count does not equal batch_size" + TOSTR(full_batch_data_names.size()))
 
@@ -1010,6 +1010,13 @@ void MasterGraph::output_routine() {
                     _meta_data_graph->process(_augmented_meta_data, output_meta_data);
                 }
             }
+
+            // Create the checkpoint
+            // Store the checkpoint in the ring buffer
+            auto iter_data = _ring_buffer.get_iteration_data();
+            iter_data->iteration_number = _iteration_number++;
+            iter_data->ckpt = this->create_checkpoint();
+
             _process_time.start();
             _graph->process();
             _process_time.end();
@@ -2200,4 +2207,17 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
             THROW("The required output tensor is not present in the reconstructed pipeline")
         }
     }
+}
+
+std::shared_ptr<Checkpoint> MasterGraph::create_checkpoint() {
+    auto ckpt = std::make_shared<Checkpoint>();
+
+    for(auto &pipe_op : _pipeline_operators) {
+        auto op_ckpt = ckpt->AddOperatorCheckpoint(pipe_op->operator_name);
+        if (pipe_op->node) {
+            pipe_op->node->SaveState(op_ckpt);
+        }
+    }
+
+    return ckpt;
 }

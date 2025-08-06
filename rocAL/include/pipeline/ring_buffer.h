@@ -33,8 +33,16 @@ THE SOFTWARE.
 #include "device/device_manager.h"
 #include "device/device_manager_hip.h"
 #include "meta_data/meta_data.h"
+#include "pipeline/checkpoint.h"
 
 using MetaDataNamePair = std::pair<ImageNameBatch, pMetaDataBatch>;
+
+class IterationData {
+   public:
+    int64_t iteration_number;
+    std::shared_ptr<Checkpoint> ckpt;
+};
+
 class RingBuffer {
    public:
     explicit RingBuffer(unsigned buffer_depth);
@@ -58,6 +66,7 @@ class RingBuffer {
     std::vector<void *> get_meta_write_buffers();
     void set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
     void rellocate_meta_data_buffer(void *buffer, size_t buffer_size, unsigned buff_idx);
+    std::shared_ptr<IterationData>& get_iteration_data();
     void reset();
     void pop();
     void push();
@@ -98,4 +107,5 @@ class RingBuffer {
     std::mutex _names_buff_lock;
     const size_t MEM_ALIGNMENT = 256;
     bool _box_encoder = false;
+    std::vector<std::shared_ptr<IterationData>> _iteration_data;
 };

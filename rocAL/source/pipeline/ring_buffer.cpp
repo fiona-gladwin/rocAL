@@ -29,7 +29,8 @@ RingBuffer::RingBuffer(unsigned buffer_depth) : BUFF_DEPTH(buffer_depth),
                                                 _dev_roi_buffers(buffer_depth),
                                                 _host_roi_buffers(buffer_depth),
                                                 _dev_bbox_buffer(buffer_depth),
-                                                _dev_labels_buffer(buffer_depth) {
+                                                _dev_labels_buffer(buffer_depth),
+                                                _iteration_data(buffer_depth) {
     reset();
 }
 
@@ -90,6 +91,11 @@ std::vector<void *> RingBuffer::get_meta_write_buffers() {
     return _host_meta_data_buffers[_write_ptr];
 }
 
+std::shared_ptr<IterationData>& RingBuffer::get_iteration_data() {
+    block_if_full();
+    return _iteration_data[_write_ptr];
+}
+
 void RingBuffer::unblock_reader() {
     // Wake up the reader thread in case it's waiting for a load
     _wait_for_load.notify_all();
@@ -117,6 +123,12 @@ void RingBuffer::init(RocalMemType mem_type, void *devres, std::vector<size_t> &
     auto sub_buffer_count = sub_buffer_size.size();
     if (BUFF_DEPTH < 2)
         THROW("Error internal buffer size for the ring buffer should be greater than one")
+
+
+    // Allocate the Iteration data
+    for (auto& iter_data : _iteration_data) {
+        iter_data = std::make_shared<IterationData>();
+    }
 
 #if ENABLE_OPENCL
     DeviceResources *dev_ocl = static_cast<DeviceResources *>(_dev);

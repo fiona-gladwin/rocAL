@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <unordered_map>
 #include <map>
 
+#include "pipeline/checkpoint.h"
 #include "pipeline/graph.h"
 #include "loaders/loader_module.h"
 // #include "meta_data/meta_data_graph.h"
@@ -255,6 +256,7 @@ class Node {
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
     virtual void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
     virtual void initalize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
+    virtual void SaveState(OperatorCheckpoint& op_ckpt) {}
 
    protected:
     virtual void create_node() = 0;

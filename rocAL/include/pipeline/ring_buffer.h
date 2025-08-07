@@ -67,6 +67,7 @@ class RingBuffer {
     void set_meta_data(ImageNameBatch names, pMetaDataBatch meta_data);
     void rellocate_meta_data_buffer(void *buffer, size_t buffer_size, unsigned buff_idx);
     std::shared_ptr<IterationData>& get_iteration_data();
+    void init_iteration_data();
     void reset();
     void pop();
     void push();

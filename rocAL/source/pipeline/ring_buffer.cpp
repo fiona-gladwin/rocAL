@@ -29,8 +29,7 @@ RingBuffer::RingBuffer(unsigned buffer_depth) : BUFF_DEPTH(buffer_depth),
                                                 _dev_roi_buffers(buffer_depth),
                                                 _host_roi_buffers(buffer_depth),
                                                 _dev_bbox_buffer(buffer_depth),
-                                                _dev_labels_buffer(buffer_depth),
-                                                _iteration_data(buffer_depth) {
+                                                _dev_labels_buffer(buffer_depth) {
     reset();
 }
 
@@ -123,12 +122,6 @@ void RingBuffer::init(RocalMemType mem_type, void *devres, std::vector<size_t> &
     auto sub_buffer_count = sub_buffer_size.size();
     if (BUFF_DEPTH < 2)
         THROW("Error internal buffer size for the ring buffer should be greater than one")
-
-
-    // Allocate the Iteration data
-    for (auto& iter_data : _iteration_data) {
-        iter_data = std::make_shared<IterationData>();
-    }
 
 #if ENABLE_OPENCL
     DeviceResources *dev_ocl = static_cast<DeviceResources *>(_dev);
@@ -428,4 +421,13 @@ MetaDataNamePair &RingBuffer::get_meta_data() {
     if (_level != _meta_ring_buffer.size())
         THROW("ring buffer internals error, image and metadata sizes not the same " + TOSTR(_level) + " != " + TOSTR(_meta_ring_buffer.size()))
     return _meta_ring_buffer.front();
+}
+
+void RingBuffer::init_iteration_data() {
+    _iteration_data.resize(BUFF_DEPTH);
+
+    // Allocate the Iteration data
+    for (auto& iter_data : _iteration_data) {
+        iter_data = std::make_shared<IterationData>();
+    }
 }

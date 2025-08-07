@@ -291,6 +291,7 @@ MasterGraph::build() {
 #else
     _ring_buffer.init(_mem_type, nullptr, _internal_tensor_list.data_size(), _internal_tensor_list.roi_size());
 #endif
+    if (_checkpointing_enabled) _ring_buffer.init_iteration_data();
     if (_is_box_encoder) _ring_buffer.initBoxEncoderMetaData(_mem_type, _user_batch_size * _num_anchors * 4 * sizeof(float), _user_batch_size * _num_anchors * sizeof(int));
     
     // Check if at least one loader module is created
@@ -1013,9 +1014,11 @@ void MasterGraph::output_routine() {
 
             // Create the checkpoint
             // Store the checkpoint in the ring buffer
-            auto iter_data = _ring_buffer.get_iteration_data();
-            iter_data->iteration_number = _iteration_number++;
-            iter_data->ckpt = this->create_checkpoint();
+            if (_checkpointing_enabled) {
+                auto iter_data = _ring_buffer.get_iteration_data();
+                iter_data->iteration_number = _iteration_number++;
+                iter_data->ckpt = this->create_checkpoint();
+            }
 
             _process_time.start();
             _graph->process();

@@ -2218,7 +2218,7 @@ std::shared_ptr<Checkpoint> MasterGraph::create_checkpoint() {
     for(auto &pipe_op : _pipeline_operators) {
         auto op_ckpt = ckpt->AddOperatorCheckpoint(pipe_op->operator_name);
         if (pipe_op->node) {
-            pipe_op->node->SaveState(op_ckpt);
+            pipe_op->node->save_state(op_ckpt);
         }
     }
 

@@ -31,6 +31,9 @@ class OperatorCheckpoint {
    public:
     OperatorCheckpoint(std::string name) : _operator_name(name) {
     }
+    std::any& get_state() {
+        return _state;
+    }
    private:
     const std::string _operator_name;
     std::any _state;
@@ -48,7 +51,7 @@ class Checkpoint {
         return _op_cpts[_name_to_id[op_name]];
     }
    private:
-    std::vector<OperatorCheckpoint> _op_cpts;
+    std::vector<OperatorCheckpoint> _op_cpts; // Can this be a shared ptr
     std::map<std::string, int, std::less<>> _name_to_id;
     // size_t _iteration_number = 0;
 };

@@ -300,6 +300,7 @@ ImageLoader::update_output_image() {
         _output_cropped_img_info = _circ_buff.get_cropped_image_info();
     }
     _output_names = _output_decoded_data_info._data_names;
+    _current_loader_state = _output_decoded_data_info._loader_state;
     _output_tensor->update_tensor_roi(_output_decoded_data_info._roi_width, _output_decoded_data_info._roi_height);
     _circ_buff.pop();
     if (!_loop)
@@ -355,4 +356,8 @@ void ImageLoader::feed_external_input(const std::vector<std::string>& input_imag
     _external_source_reader = true;
     _external_input_eos = eos;
     _image_loader->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
+}
+
+LoaderState ImageLoader::get_loader_state() {
+    return _current_loader_state;
 }

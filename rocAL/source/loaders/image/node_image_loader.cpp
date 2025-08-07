@@ -94,3 +94,7 @@ std::shared_ptr<LoaderModule> ImageLoaderNode::get_loader_module() {
 ImageLoaderNode::~ImageLoaderNode() {
     _loader_module = nullptr;
 }
+
+void ImageLoaderNode::save_state(OperatorCheckpoint& op_ckpt) {
+    op_ckpt.get_state() = _loader_module->get_loader_state();
+}

@@ -256,7 +256,7 @@ class Node {
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
     virtual void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
     virtual void initalize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
-    virtual void SaveState(OperatorCheckpoint& op_ckpt) {}
+    virtual void save_state(OperatorCheckpoint& op_ckpt) {}
 
    protected:
     virtual void create_node() = 0;

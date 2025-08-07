@@ -56,6 +56,7 @@ class ImageLoader : public LoaderModule {
     void feed_external_input(const std::vector<std::string>& input_images_names, const std::vector<unsigned char*>& input_buffer,
                              const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height, unsigned int channels, ExternalSourceFileMode mode, bool eos) override;
     size_t last_batch_padded_size() override;
+    LoaderState get_loader_state() override;
 
    private:
     bool is_out_of_data();
@@ -94,5 +95,6 @@ class ImageLoader : public LoaderModule {
 #endif
     bool _is_checkpointing_enabled = false;
     int64_t _epoch_count = 0;
-    int64_t _iteration_count = 0; 
+    int64_t _iteration_count = 0;
+    LoaderState _current_loader_state;
 };

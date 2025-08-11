@@ -31,8 +31,12 @@ class OperatorCheckpoint {
    public:
     OperatorCheckpoint(std::string name) : _operator_name(name) {
     }
-    std::any& get_state() {
+    std::any& GetMutableCheckpointState() {
         return _state;
+    }
+    template<typename T> 
+    const T& GetOperatorCheckpointState() const {
+        return std::any_cast<const T&>(_state);
     }
    private:
     const std::string _operator_name;
@@ -47,8 +51,8 @@ class Checkpoint {
         return _op_cpts.back();
     }
 
-    std::shared_ptr<OperatorCheckpoint>& GetOperatorCheckpoint(std::string op_name) {
-        return _op_cpts[_name_to_id[op_name]];
+    const std::shared_ptr<OperatorCheckpoint>& GetOperatorCheckpoint(std::string op_name) {
+        return const_cast<std::shared_ptr<OperatorCheckpoint>&>(_op_cpts[_name_to_id[op_name]]);
     }
    private:
     std::vector<std::shared_ptr<OperatorCheckpoint>> _op_cpts; // Can this be a shared ptr

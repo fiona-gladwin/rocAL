@@ -96,5 +96,13 @@ ImageLoaderNode::~ImageLoaderNode() {
 }
 
 void ImageLoaderNode::save_state(std::shared_ptr<OperatorCheckpoint>& op_ckpt) {
-    op_ckpt->get_state() = _loader_module->get_loader_state();
+    op_ckpt->GetMutableCheckpointState() = _loader_module->get_loader_state();
+}
+
+std::string ImageLoaderNode::serialize_state(const std::shared_ptr<OperatorCheckpoint>& op_ckpt) {
+    auto loader_state = op_ckpt->GetOperatorCheckpointState<LoaderState>();
+    rocal_proto::LoaderState proto_state;
+    proto_state.set_current_epoch(loader_state._epoch_number);
+    proto_state.set_age(loader_state._iteration_number);
+    return proto_state.SerializeAsString();
 }

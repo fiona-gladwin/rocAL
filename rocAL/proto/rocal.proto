@@ -83,3 +83,17 @@ message PipelineDef {
   repeated OperatorDef operators = 7;
   repeated InputOutput pipe_outputs = 8;
 }
+
+message Checkpoint {
+  message OpCheckpoint {
+    optional string operator_name = 1;
+    optional bytes operator_state = 2;
+  }
+
+  repeated OpCheckpoint cpts = 1;
+}
+
+message LoaderState {
+  optional int32 current_epoch = 1;
+  optional int32 age = 2;
+}

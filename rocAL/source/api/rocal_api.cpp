@@ -184,3 +184,37 @@ rocalGetSerializedString(RocalContext rocal_context, const char* serialized_stri
     }
     return ROCAL_OK;
 }
+
+RocalStatus ROCAL_API_CALL
+rocalCheckpoint(RocalContext rocal_context, size_t &serialized_ckpt_string_size) {
+    auto context = static_cast<Context*>(rocal_context);
+    try {
+        context->master_graph->get_serialized_checkpoint(serialized_ckpt_string_size);
+    } catch (const std::exception& e) {
+        context->capture_error(e.what());
+        ERR(e.what())
+        return ROCAL_RUNTIME_ERROR;
+    }
+    return ROCAL_OK;
+}
+
+// RocalStatus ROCAL_API_CALL
+// rocalGetSerializedCheckpointString(RocalContext rocal_context, const char* serialized_ckpt_string) {
+//     auto context = static_cast<Context*>(rocal_context);
+//     try {
+//         if (!serialized_string) {
+//             THROW("String copy failed, Invalid pointer passed for serialize")
+//         }
+
+//         auto pipe_ckpt_string = context->master_graph->get_serialized_checkpoint_string();
+//         if (pipe_ckpt_string.empty())
+//             THROW("Serialized string is empty, Invoke rocalSerialize before obtaining the string")
+//         std::memcpy(const_cast<char*>(serialized_ckpt_string), pipe_ckpt_string.c_str(), pipe_ckpt_string.size() + 1);
+
+//     } catch (const std::exception& e) {
+//         context->capture_error(e.what());
+//         ERR(e.what())
+//         return ROCAL_RUNTIME_ERROR;
+//     }
+//     return ROCAL_OK;    
+// }

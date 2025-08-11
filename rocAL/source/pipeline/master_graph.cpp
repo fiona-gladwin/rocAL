@@ -2224,3 +2224,18 @@ std::shared_ptr<Checkpoint> MasterGraph::create_checkpoint() {
 
     return ckpt;
 }
+
+void MasterGraph::get_serialized_checkpoint(size_t &serialized_ckpt_string_size) {
+    rocal_proto::Checkpoint checkpoint;
+    auto ckpt = _ring_buffer.get_current_checkpoint();
+
+    for(auto &pipe_op : _pipeline_operators) {
+        auto op_ckpt = checkpoint.add_cpts();
+        op_ckpt->set_operator_name(pipe_op->operator_name);
+        if (pipe_op->node) {
+            op_ckpt->set_operator_state(pipe_op->node->serialize_state(ckpt->GetOperatorCheckpoint(pipe_op->operator_name)));
+        }
+    }
+    _serialized_checkpoint = checkpoint.SerializeAsString();
+    serialized_ckpt_string_size = _serialized_checkpoint.size();
+}

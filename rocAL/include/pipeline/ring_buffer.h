@@ -68,6 +68,7 @@ class RingBuffer {
     void rellocate_meta_data_buffer(void *buffer, size_t buffer_size, unsigned buff_idx);
     std::shared_ptr<IterationData>& get_iteration_data();
     void init_iteration_data();
+    std::shared_ptr<Checkpoint> get_current_checkpoint();
     void reset();
     void pop();
     void push();

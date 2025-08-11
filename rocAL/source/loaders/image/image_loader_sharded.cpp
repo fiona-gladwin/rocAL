@@ -178,6 +178,6 @@ void ImageLoaderSharded::feed_external_input(const std::vector<std::string>& inp
         loader->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
 }
 
-LoaderState ImageLoaderSharded::get_loader_state() {
+const LoaderState& ImageLoaderSharded::get_loader_state() {
     return _loaders[_loader_idx]->get_loader_state();
 }

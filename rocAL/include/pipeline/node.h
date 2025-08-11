@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "pipeline/commons.h"
 #include "decoders/image/decoder.h"
 #include "readers/image/image_reader.h"
+#include "rocal.pb.h"
 
 // Custom type traits to check the vector types
 template <typename T>
@@ -257,6 +258,7 @@ class Node {
     virtual void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
     virtual void initalize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
     virtual void save_state(std::shared_ptr<OperatorCheckpoint>& op_ckpt) {}
+    virtual std::string serialize_state(const std::shared_ptr<OperatorCheckpoint>& op_ckpt) { return ""; }
 
    protected:
     virtual void create_node() = 0;

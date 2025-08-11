@@ -358,6 +358,6 @@ void ImageLoader::feed_external_input(const std::vector<std::string>& input_imag
     _image_loader->feed_external_input(input_images_names, input_buffer, roi_xywh, max_width, max_height, channels, mode, eos);
 }
 
-LoaderState ImageLoader::get_loader_state() {
-    return _current_loader_state;
+const LoaderState& ImageLoader::get_loader_state() {
+    return const_cast<LoaderState &>(_current_loader_state);
 }

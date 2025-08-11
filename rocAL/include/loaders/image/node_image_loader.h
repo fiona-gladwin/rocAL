@@ -46,7 +46,7 @@ class ImageLoaderNode : public Node {
     void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) override;
     std::shared_ptr<LoaderModule> get_loader_module() override;
     std::string node_name() override { return "ImageLoaderNode"; }
-    void save_state(OperatorCheckpoint& op_ckpt) override;
+    void save_state(std::shared_ptr<OperatorCheckpoint>& op_ckpt) override;
 
    protected:
     void create_node() override{};

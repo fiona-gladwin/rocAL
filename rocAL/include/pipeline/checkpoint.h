@@ -41,17 +41,17 @@ class OperatorCheckpoint {
 
 class Checkpoint {
    public:
-    OperatorCheckpoint& AddOperatorCheckpoint(std::string op_name) {
+    std::shared_ptr<OperatorCheckpoint> AddOperatorCheckpoint(std::string op_name) {
         _name_to_id[op_name] = _op_cpts.size();
-        _op_cpts.emplace_back(OperatorCheckpoint(op_name));
+        _op_cpts.emplace_back(std::make_shared<OperatorCheckpoint>(op_name));
         return _op_cpts.back();
     }
 
-    OperatorCheckpoint& GetOperatorCheckpoint(std::string op_name) {
+    std::shared_ptr<OperatorCheckpoint>& GetOperatorCheckpoint(std::string op_name) {
         return _op_cpts[_name_to_id[op_name]];
     }
    private:
-    std::vector<OperatorCheckpoint> _op_cpts; // Can this be a shared ptr
+    std::vector<std::shared_ptr<OperatorCheckpoint>> _op_cpts; // Can this be a shared ptr
     std::map<std::string, int, std::less<>> _name_to_id;
     // size_t _iteration_number = 0;
 };

@@ -104,5 +104,6 @@ std::string ImageLoaderNode::serialize_state(const std::shared_ptr<OperatorCheck
     rocal_proto::LoaderState proto_state;
     proto_state.set_current_epoch(loader_state._epoch_number);
     proto_state.set_age(loader_state._iteration_number);
+    proto_state.set_rng(SerializeRNGToString(loader_state._rng));
     return proto_state.SerializeAsString();
 }

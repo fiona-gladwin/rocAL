@@ -26,6 +26,13 @@ THE SOFTWARE.
 #include <random>
 #include <any>
 #include <map>
+#include <sstream>
+
+inline std::string SerializeRNGToString(std::mt19937& rng) {
+    std::stringstream stream;
+    stream << rng;
+    return stream.str();
+}
 
 class OperatorCheckpoint {
    public:

@@ -96,4 +96,5 @@ message Checkpoint {
 message LoaderState {
   optional int32 current_epoch = 1;
   optional int32 age = 2;
+  optional bytes rng = 3;
 }

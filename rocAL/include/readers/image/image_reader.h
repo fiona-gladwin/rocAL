@@ -306,6 +306,8 @@ class Reader {
     //! Returns the number of images in the last batch
     size_t last_batch_padded_size() { return _last_batch_padded_size; }
 
+    virtual std::mt19937& get_rng() { THROW("RNG not available for the requested reader") }
+
    protected:
     ShardingInfo _sharding_info = ShardingInfo();  // The members of ShardingInfo determines how the data is distributed among the shards and how the last batch is processed by the pipeline.
     std::vector<unsigned> _shard_start_idx_vector, _shard_end_idx_vector;   // Holds the start and end idx of the file names vector for each shard

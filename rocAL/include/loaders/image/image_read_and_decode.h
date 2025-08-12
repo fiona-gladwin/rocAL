@@ -70,6 +70,7 @@ class ImageReadAndDecode {
     //! returns timing info or other status information
     Timing timing();
     size_t last_batch_padded_size();
+    std::mt19937& get_rng_state() { return _reader->get_rng(); }
 
    private:
     std::vector<std::shared_ptr<Decoder>> _decoder;

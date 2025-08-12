@@ -66,6 +66,7 @@ Reader::Status FileSourceReader::initialize(ReaderConfig desc) {
             _backup_file_names = _file_names;
         }
         std::mt19937 e(_seed);
+        _rng = e;
         std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
                      _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
         // TODO - check the stick to shard logic and the shuffle should be checked
@@ -143,6 +144,7 @@ void FileSourceReader::reset() {
             _file_names = _backup_file_names;
         }
         std::mt19937 e(_seed + (++_epoch_counter));
+        _rng = e;
         std::shuffle(_file_names.begin() + _shard_start_idx_vector[_shard_id],
                      _file_names.begin() + _shard_end_idx_vector[_shard_id], e);
     }

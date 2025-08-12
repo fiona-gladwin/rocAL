@@ -68,7 +68,10 @@ class FileSourceReader : public Reader {
     std::string get_root_folder_path() override;  // Returns the root folder path
 
     std::vector<std::string> get_file_paths_from_meta_data_reader() override;  // Returns the relative file path from the meta-data reader
-   private:
+   
+    std::mt19937& get_rng() override { return _rng; }
+   
+    private:
     //! opens the folder containing the images
     Reader::Status open_folder();
     Reader::Status subfolder_reading();
@@ -91,4 +94,5 @@ class FileSourceReader : public Reader {
     unsigned _seed;
     bool _is_checkpointing_enabled = false;
     unsigned _epoch_counter;
+    std::mt19937 _rng;
 };

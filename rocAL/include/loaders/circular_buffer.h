@@ -35,7 +35,7 @@ THE SOFTWARE.
 struct LoaderState {
     int64_t _epoch_number;
     int64_t _iteration_number;
-    std::default_random_engine _rng;
+    std::mt19937 _rng;
 };
 
 struct DecodedDataInfo {

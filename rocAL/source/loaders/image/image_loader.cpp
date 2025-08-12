@@ -211,7 +211,7 @@ ImageLoader::load_routine() {
         if (_is_checkpointing_enabled) {
             _decoded_data_info._loader_state._epoch_number = _epoch_count;
             _decoded_data_info._loader_state._iteration_number = _iteration_count;
-            // _decoded_data_info._loader_state._rng = _image_loader->get_rng_state();
+            _decoded_data_info._loader_state._rng = _image_loader->get_rng_state();
         }
         // The initial state needs to be saved so 
         auto load_status = LoaderModuleStatus::NO_MORE_DATA_TO_READ;

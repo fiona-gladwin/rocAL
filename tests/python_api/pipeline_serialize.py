@@ -1,12 +1,13 @@
 
 import sys
-from amd.rocal.pipeline import pipeline_def
+from amd.rocal.pipeline import pipeline_def, Pipeline
 from amd.rocal.plugin.generic import ROCALClassificationIterator
 import amd.rocal.fn as fn
 import amd.rocal.types as types
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
+# import matplotlib.gridspec as gridspec
+# import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 
 seed = 1549361629
 image_dir = "/opt/rocm/share/rocal/test/data/images/AMD-tinyDataSet"
@@ -17,9 +18,10 @@ gpu_id = 0
 def image_decoder_pipeline(device="cpu", path=image_dir):
     jpegs, labels = fn.readers.file(file_root=path)
     images = fn.decoders.image(jpegs, file_root=path, device=device, output_type=types.RGB, shard_id=0, num_shards=1, random_shuffle=False)
-    brightness_op = fn.brightness(images)
-    crop_op = fn.crop(brightness_op, crop=[100, 100])
-    return fn.rotate(crop_op, angle=30.0)
+    brightness_op = fn.brightness_fixed(images)
+    return brightness_op
+    # crop_op = fn.crop(brightness_op, crop=[100, 100])
+    # return fn.rotate(crop_op, angle=30.0)
 
 def main():
     print ('Optional arguments: <cpu/gpu image_folder>')
@@ -37,6 +39,10 @@ def main():
                                 reverse_channels=True, mean = [0, 0, 0], std=[255,255,255], device=rocal_device, path=img_folder)
     pipe.build()
     serialized_pipeline = pipe.serialize(filename="serialize_pipe.txt")
+    
+    deserialized_pipeline = Pipeline.deserialize(serialized_pipeline=serialized_pipeline)
+    out = pipe.run()
+    out_deserialized = deserialized_pipeline.run()
 
 if __name__ == '__main__':
     main()

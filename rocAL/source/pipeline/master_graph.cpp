@@ -2015,7 +2015,8 @@ Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &outp
     std::vector<size_t> dims;
     for (auto& dim : output.dims()) {
         dims.push_back(dim);
-    } 
+    }
+    dims[0] = _user_batch_size;
     if (!dims.size())
         THROW("Empty tensor dims")
     // mem type
@@ -2055,7 +2056,7 @@ inline bool check_tensor_info(const TensorInfo& input_info, const rocal_proto::I
     
     if (input_info.num_of_dims() != output.dims_size())
         return false;
-    for (int i = 0; i < input_info.num_of_dims(); i++) {
+    for (int i = 1; i < input_info.num_of_dims(); i++) {
         if (input_info.dims()[i] != output.dims(i))
             return false;
     }

@@ -135,26 +135,42 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
         pipe.ParseFromCodedStream(&coded_input);
 
         // Get the pipeline related info
-        pipe_params.batch_size = pipe.batch_size();
+        if (pipe_params.batch_size.has_value()) {
+            std::cerr << "Batch size value : " << pipe_params.batch_size.value() << "\n";
+        }
+        pipe_params.batch_size = pipe_params.batch_size.value_or(pipe.batch_size());
         if (pipe.has_device_id())
-            pipe_params.device_id = pipe.device_id();
+            pipe_params.device_id = pipe_params.device_id.value_or(pipe.device_id());
         if (pipe.has_num_threads())
-            pipe_params.num_threads = pipe.num_threads();
+            pipe_params.num_threads = pipe_params.num_threads.value_or(pipe.num_threads());
         if (pipe.has_seed())
-            pipe_params.seed = pipe.seed();
+            pipe_params.seed = pipe_params.seed.value_or(pipe.seed());
         if (pipe.has_rocal_cpu())
-            pipe_params.rocal_cpu = pipe.rocal_cpu();
+            pipe_params.rocal_cpu = pipe_params.rocal_cpu.value_or(pipe.rocal_cpu());
         if (pipe.has_prefetch_queue_depth())
-           pipe_params.prefetch_queue_depth = pipe.prefetch_queue_depth();
+           pipe_params.prefetch_queue_depth = pipe_params.prefetch_queue_depth.value_or(pipe.prefetch_queue_depth());
+
+        // Create the context. pipe.prefetch_queue_depth();
         if (pipe.has_seed()) {
-            pipe_params.seed = pipe.seed();
+            pipe_params.seed = pipe_params.seed.value_or(pipe.seed());
             rocalSetSeed(pipe.seed());
         }
 
+        std::cerr << "BS : " << pipe_params.batch_size.value() << "\n";
+        std::cerr << "TID : " << pipe_params.num_threads.value() << "\n";
+        std::cerr << "GPU ID : " << pipe_params.device_id.value() << "\n";
+        std::cerr << "CPU : " << pipe_params.rocal_cpu.value() << "\n";
+        std::cerr << "Seed : " << pipe_params.seed.value() << "\n";
+        std::cerr << "Prefetch : " << pipe_params.prefetch_queue_depth.value() << "\n";
+
+
         RocalAffinity affinity = pipe_params.rocal_cpu ? RocalAffinity::CPU : RocalAffinity::GPU;
         // Create the context
-        context = new Context(pipe_params.batch_size, affinity, std::max(pipe_params.device_id, 0),
-                              pipe_params.num_threads, pipe_params.prefetch_queue_depth, RocalTensorDataType::FP32);  // Need to set dtype in protobuf/just use default value
+        context = new Context(pipe_params.batch_size.value(), affinity,
+                              std::max(pipe_params.device_id.value_or(0), 0),
+                              pipe_params.num_threads.value_or(1),
+                              pipe_params.prefetch_queue_depth.value_or(3),
+                              RocalTensorDataType::FP32);  // Need to set dtype in protobuf/just use default value
         static_cast<Context*>(context)->master_graph->deserialize(&pipe);
 
     } catch (const std::exception& e) {

@@ -294,7 +294,7 @@ class Pipeline(object):
         return ret
     
     @classmethod
-    def deserialize(cls, serialized_pipeline=None, filename=None):
+    def deserialize(cls, serialized_pipeline=None, filename=None, **kwargs):
         """
         Deserialize the pipeline from the protobuffers and recontruct the pipeline
         The returned pipeline is deserialized and build
@@ -307,6 +307,13 @@ class Pipeline(object):
                 "serialized_pipeline and filename arguments are mutually exclusive. "
                 "Atleast one of them should be defined."
             )
+
+        for key, value in kwargs.items():
+            if hasattr(pipe_params, key):
+                setattr(pipe_params, key, value)
+            else:
+                # Handle the case of an unexpected keyword argument
+                print(f"Warning: Ignoring unexpected keyword argument '{key}'")
 
         if filename is not None:
             with open(filename, "rb") as pipeline_file:

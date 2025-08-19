@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define MIVISIONX_ROCAL_API_TYPES_H
 
 #include <cstdlib>
+#include <optional>
 
 #ifndef ROCAL_API_CALL
 #if defined(_WIN32)
@@ -528,12 +529,12 @@ struct DistortionCoeffs {
  * \ingroup group_rocal_types
  */
 struct RocalPipelineParams {
-    size_t batch_size = 1;
-    size_t num_threads = 1;
-    size_t prefetch_queue_depth = 3;
-    int device_id = 0;
-    bool rocal_cpu = true;
-    unsigned seed = 1;
+    std::optional<size_t> batch_size;
+    std::optional<size_t> num_threads;
+    std::optional<size_t> prefetch_queue_depth;
+    std::optional<int> device_id;
+    std::optional<bool> rocal_cpu;
+    std::optional<unsigned> seed;
 };
 
 #endif  // MIVISIONX_ROCAL_API_TYPES_H

@@ -2016,6 +2016,7 @@ Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &outp
     for (auto& dim : output.dims()) {
         dims.push_back(dim);
     }
+    // Update the N dim to the batch size set in the pipeline
     dims[0] = _user_batch_size;
     if (!dims.size())
         THROW("Empty tensor dims")
@@ -2056,6 +2057,7 @@ inline bool check_tensor_info(const TensorInfo& input_info, const rocal_proto::I
     
     if (input_info.num_of_dims() != output.dims_size())
         return false;
+    // Excluding N dim, as the batch size can be different as set by the user
     for (int i = 1; i < input_info.num_of_dims(); i++) {
         if (input_info.dims()[i] != output.dims(i))
             return false;

@@ -1931,43 +1931,46 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
             for (const auto& s : proto_arg.strings()) {
                 arg.values.push_back(s);
             }
+            continue;
         }
 
-        // if (arg.is_parameter) {
-        //     const auto& param = proto_arg.param();
-        //     if (param.param_val_int_size() > 0) {
-        //         if (arg.enum_type_name == "SimpleParameter") {
-        //             auto sp = new SimpleParameter<int>(param.param_val_int(0));
-        //             arg.param_core = static_cast<pParamCore>(sp);
-        //         } else if (arg.enum_type_name == "UniformRand") {
-        //             auto ur = new UniformRand<int>(param.param_val_int(0), param.param_val_int(1));
-        //             arg.param_core = static_cast<pParamCore>(ur);
-        //         } else if (arg.enum_type_name == "CustomRand") {
-        //             std::vector<int> values(param.param_val_int().begin(), param.param_val_int().end());
-        //             std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
-        //             auto cr = new CustomRand<int>(values, freqs, param.size());
-        //             arg.param_core = static_cast<pParamCore>(cr);
-        //         }
-        //         arg.type_name = "int";
-        //     } else if (param.param_val_float_size() > 0) {
-        //         if (arg.enum_type_name == "SimpleParameter") {
-        //             auto sp = new SimpleParameter<float>(param.param_val_float(0));
-        //             arg.param_core = static_cast<pParamCore>(sp);
-        //         } else if (arg.enum_type_name == "UniformRand") {
-        //             auto ur = new UniformRand<float>(param.param_val_float(0), param.param_val_float(1));
-        //             arg.param_core = static_cast<pParamCore>(ur);
-        //         } else if (arg.enum_type_name == "CustomRand") {
-        //             std::vector<float> values(param.param_val_float().begin(), param.param_val_float().end());
-        //             std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
-        //             auto cr = new CustomRand<float>(values, freqs, param.size());
-        //             arg.param_core = static_cast<pParamCore>(cr);
-        //         }
-        //         arg.type_name = "float";
-        //     } else {
-        //         arg.is_null_ptr = true;
-        //     }
-        //     continue;
-        // }
+        if (arg.is_parameter) {
+            const auto& param = proto_arg.param();
+            if (arg.type_name == "int") {
+                if (arg.enum_type_name == "SimpleParameter") {
+                    auto sp = ParameterFactory::instance()->create_single_value_int_param(param.param_val_int(0));
+                    arg.param_core = static_cast<pParamCore>(sp->core);
+                } else if (arg.enum_type_name == "UniformRand") {
+                    auto ur = ParameterFactory::instance()->create_uniform_int_rand_param(param.param_val_int(0), param.param_val_int(1));
+                    arg.param_core = static_cast<pParamCore>(ur->core);
+                } else if (arg.enum_type_name == "CustomRand") {
+                    std::vector<int> values(param.param_val_int().begin(), param.param_val_int().end());
+                    std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+                    auto cr = ParameterFactory::instance()->create_custom_int_rand_param(values.data(),
+                                                                      freqs.data(),
+                                                                      values.size());
+                    arg.param_core = static_cast<pParamCore>(cr->core);
+                }
+            } else if (arg.type_name == "float") {
+                if (arg.enum_type_name == "SimpleParameter") {
+                    auto sp = ParameterFactory::instance()->create_single_value_float_param(param.param_val_float(0));
+                    arg.param_core = static_cast<pParamCore>(sp->core);
+                } else if (arg.enum_type_name == "UniformRand") {
+                    auto ur = ParameterFactory::instance()->create_uniform_float_rand_param(param.param_val_float(0), param.param_val_float(1));
+                    arg.param_core = static_cast<pParamCore>(ur->core);
+                } else if (arg.enum_type_name == "CustomRand") {
+                    std::vector<float> values(param.param_val_float().begin(), param.param_val_float().end());
+                    std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+                    auto cr = ParameterFactory::instance()->create_custom_float_rand_param(values.data(),
+                                                                      freqs.data(),
+                                                                      values.size());
+                    arg.param_core = static_cast<pParamCore>(cr->core);
+                }
+            } else {
+                arg.is_null_ptr = true;
+            }
+            continue;
+        }
 
         // Handle non-parameter arguments
         else if (arg.type_name == "int" || arg.type_name == "shared_ptr") {

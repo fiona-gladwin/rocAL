@@ -1931,7 +1931,6 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
             for (const auto& s : proto_arg.strings()) {
                 arg.values.push_back(s);
             }
-            continue;
         }
         else if (arg.is_parameter) {
             const auto& param = proto_arg.param();
@@ -1962,7 +1961,6 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
             } else {
                 arg.is_null_ptr = true;
             }
-            continue;
         }
 
         // Handle non-parameter arguments

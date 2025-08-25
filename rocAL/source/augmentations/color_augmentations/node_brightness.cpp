@@ -61,12 +61,13 @@ void BrightnessNode::init(FloatParam *alpha, FloatParam *beta) {
     _beta.set_param(core(beta));
 
     // Add all arguments as part of the Node
-    _args.push_back(Argument("alpha", alpha));
-    _args.push_back(Argument("beta", beta));
+    std::array<std::string, 2> arg_names = {"alpha", "beta"};
+    set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, alpha, beta);
 }
 
 void BrightnessNode::initalize_args(std::vector<Argument> &arguments) {
     this->init(arguments[0].Get<float>(), arguments[1].Get<float>());
+    // this->init(arguments[0].Get<FloatParam *>(), arguments[1].Get<FloatParam *>());
 }
 
 void BrightnessNode::update_node() {

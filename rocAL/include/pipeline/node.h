@@ -57,10 +57,18 @@ class Argument {
     bool is_null_ptr = false;
     std::vector<std::any> values;   // Can change to std::variant later
     pParam param;
-    
+
     template <typename T>
     T Get() const {
         std::cerr << "Type name -> " << type_name << "\n";
+
+        // Compile-time check for parameter types
+        if constexpr (std::is_same_v<T, FloatParam*> || std::is_same_v<T, IntParam*>) {
+            if (is_null_ptr) {
+                return nullptr;
+            }
+            return std::any_cast<T>(param);
+        } else {
         if (!is_vector) {
             return std::any_cast<T>(values[0]);
         } else if (is_vector) {
@@ -68,6 +76,7 @@ class Argument {
         } else {
             THROW("Undefined")
         }
+    }
     }
 
     template<>

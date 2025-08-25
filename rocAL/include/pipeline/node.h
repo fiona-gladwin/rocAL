@@ -56,7 +56,7 @@ class Argument {
     bool is_parameter = false;
     bool is_null_ptr = false;
     std::vector<std::any> values;   // Can change to std::variant later
-    pParamCore param_core;
+    pParam param;
     
     template <typename T>
     T Get() const {
@@ -192,7 +192,7 @@ class Argument {
     }
 
     // Deduces the type of parameter of the argument
-    inline void extract_param(const RocalParameterType param_type, pParamCore param) {
+    inline void extract_param(const RocalParameterType param_type, pParam parameter) {
         if (param_type == RocalParameterType::DETERMINISTIC) {
             enum_type_name = "SimpleParameter";
         } else if (param_type == RocalParameterType::RANDOM_UNIFORM) {
@@ -200,7 +200,7 @@ class Argument {
         } else if (param_type == RocalParameterType::RANDOM_CUSTOM) {
             enum_type_name = "CustomRand";
         }
-        param_core = param;
+        param = parameter;
         is_parameter = true;
     }
 
@@ -213,7 +213,7 @@ class Argument {
             type_name = "nullptr";
             return;
         }
-        extract_param(param->type, pParamCore(core(param)));
+        extract_param(param->type, param);
     }
 
     // Constructor for IntParam arguments
@@ -225,7 +225,7 @@ class Argument {
             is_null_ptr = true;
             return;
         }
-        extract_param(param->type, pParamCore(core(param)));
+        extract_param(param->type, param);
     }
 
     Argument() {}

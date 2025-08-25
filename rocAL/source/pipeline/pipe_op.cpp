@@ -54,26 +54,26 @@ void PipelineOperator::serialize_pipeop_inputs_and_outputs_to_protobuf(rocal_pro
 void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument &op_arg) {
     if (op_arg.enum_type_name == "SimpleParameter") {
         if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int> *>(op_arg.param_core);
-            auto simple_param = dynamic_cast<SimpleParameter<int> *>(param_core);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto simple_param = dynamic_cast<SimpleParameter<int> *>(param->core);
             // Fetch and add values to the parameter class
             parameter->add_param_val_int(simple_param->get());
         } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float> *>(op_arg.param_core);
-            auto simple_param = dynamic_cast<SimpleParameter<float> *>(param_core);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto simple_param = dynamic_cast<SimpleParameter<float> *>(param->core);
             parameter->add_param_val_float(simple_param->get());
         }
     } else if (op_arg.enum_type_name == "UniformRand") {
         if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int> *>(op_arg.param_core);
-            auto uniform_param = dynamic_cast<UniformRand<int> *>(param_core);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto uniform_param = dynamic_cast<UniformRand<int> *>(param->core);
             // Fetch and add values to the parameter class
             auto uniform_range = uniform_param->get_start_and_end();
             parameter->add_param_val_int(uniform_range.first);
             parameter->add_param_val_int(uniform_range.second);
         } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float> *>(op_arg.param_core);
-            auto uniform_param = dynamic_cast<UniformRand<float> *>(param_core);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto uniform_param = dynamic_cast<UniformRand<float> *>(param->core);
             // Fetch and add values to the parameter class
             auto uniform_range = uniform_param->get_start_and_end();
             parameter->add_param_val_float(uniform_range.first);
@@ -81,8 +81,8 @@ void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument
         }
     } else if (op_arg.enum_type_name == "CustomRand") {
         if (op_arg.type_name == "int") {
-            auto param_core = std::get<Parameter<int> *>(op_arg.param_core);
-            auto random_param = dynamic_cast<CustomRand<int> *>(param_core);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto random_param = dynamic_cast<CustomRand<int> *>(param->core);
             // Fetch and add values to the parameter class
             auto values_vec = random_param->get_values();
             // Get values
@@ -95,8 +95,8 @@ void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument
             }
             parameter->set_size(random_param->size());
         } else if (op_arg.type_name == "float") {
-            auto param_core = std::get<Parameter<float> *>(op_arg.param_core);
-            auto random_param = dynamic_cast<CustomRand<float> *>(param_core);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto random_param = dynamic_cast<CustomRand<float> *>(param->core);
             // Fetch and add values to the parameter class
             auto values_vec = random_param->get_values();
             // Get values

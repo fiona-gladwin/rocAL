@@ -182,7 +182,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     auto pipe_params = RocalPipelineParams();
 
     auto second_handle = rocalDeserialize(serialized_pipe_string.c_str(), str_size, pipe_params);
-    rocalSetSeed(pipe_params.seed);
+    rocalSetSeed(pipe_params.seed.value());
     
     // Calling the API to verify and build the augmentation graph
     rocalVerify(second_handle);

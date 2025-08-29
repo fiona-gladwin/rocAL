@@ -255,7 +255,7 @@ std::tuple<Args...> unpack_arguments(const std::vector<Argument>& arguments) {
 }
 
 template <typename NodeType, typename... Args>
-bool try_init_with(NodeType* node, const std::vector<Argument>& arguments) {
+bool init_args(NodeType* node, const std::vector<Argument>& arguments) {
     if (arguments.size() != sizeof...(Args)) return false;
 
     try {

@@ -66,8 +66,8 @@ void BrightnessNode::init(FloatParam *alpha, FloatParam *beta) {
 }
 
 void BrightnessNode::initalize_args(std::vector<Argument> &arguments) {
-    if (try_init_with<BrightnessNode, float, float>(this, arguments)) return;
-    if (try_init_with<BrightnessNode, FloatParam*, FloatParam*>(this, arguments)) return;
+    if (init_args<BrightnessNode, float, float>(this, arguments)) return;
+    if (init_args<BrightnessNode, FloatParam*, FloatParam*>(this, arguments)) return;
     THROW("Unsupported argument types for BrightnessNode");
 }
 

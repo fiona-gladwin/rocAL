@@ -70,15 +70,23 @@ class Argument {
             }
             return std::any_cast<T>(param);
         } else {
-            if (!is_null_ptr) {
-                if (!is_vector) {
-                    return std::any_cast<T>(values[0]);
-                } else if (is_vector) {
-                    return std::any_cast<T>(values);
-                }
-            } else {
+            if (is_null_ptr)
                 THROW("Undefined type passed")
-            }
+
+            if constexpr (is_vector_type<std::decay_t<T>>::value) {
+                std::cerr << "Vector type\n";
+                using ElementType = typename std::decay_t<T>::value_type;
+
+                std::vector<ElementType> result;
+                for (const auto& v : values) {
+                    result.push_back(std::any_cast<ElementType>(v));
+                    std::cerr << "Print val : " << std::any_cast<ElementType>(v) << "\n";
+                }
+                return result;
+            } else if (!is_vector) {
+                std::cerr << "Non Vector type detected - \t" << values.size() <<"\n";
+                return std::any_cast<T>(values[0]);
+            }        
         }
     }
 
@@ -266,6 +274,7 @@ bool init_args(NodeType* node, const std::vector<Argument>& arguments) {
         // }(std::index_sequence_for<Args...>{});
 
         auto unpacked_args = unpack_arguments<Args...>(arguments);
+        std::cerr << "Arguments unpacked\t" << std::tuple_size<decltype(unpacked_args)>::value << "\n";
 
         std::apply([&](Args... unpacked) {
             node->init(std::forward<Args>(unpacked)...);

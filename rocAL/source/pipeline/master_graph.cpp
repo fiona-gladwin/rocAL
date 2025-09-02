@@ -1917,6 +1917,26 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
     serialized_string_size = _serialized_pipeline.size();
 }
 
+using EnumCaster = std::function<void(Argument&, int)>;
+
+template<typename EnumType>
+EnumCaster make_enum_caster() {
+    return [](Argument& arg, int i) {
+        arg.values.push_back(static_cast<EnumType>(i));
+    };
+}
+
+const static std::unordered_map<std::string, EnumCaster> enum_cast_map = {
+    {"RocalMemType", make_enum_caster<RocalMemType>()},
+    {"DecoderType", make_enum_caster<DecoderType>()},
+    {"StorageType", make_enum_caster<StorageType>()},
+    {"ExternalSourceFileMode", make_enum_caster<ExternalSourceFileMode>()},
+    {"RocalBatchPolicy", make_enum_caster<RocalBatchPolicy>()},
+    {"RocalResizeScalingMode", make_enum_caster<RocalResizeScalingMode>()},
+    {"RocalResizeInterpolationType", make_enum_caster<RocalResizeInterpolationType>()},
+    // ...
+};
+
 void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {
     for (const auto& proto_arg : opdef.args()) {
         Argument arg;
@@ -1966,7 +1986,17 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
         // Handle non-parameter arguments
         else if (arg.type_name == "int" || arg.type_name == "shared_ptr") {
             for (auto i : proto_arg.ints()) {
-                arg.values.push_back(static_cast<int>(i));
+                if (proto_arg.has_instance_name()) {
+                    auto instance_name = proto_arg.instance_name();
+                    auto it = enum_cast_map.find(instance_name);
+                    if (it != enum_cast_map.end()) {
+                        it->second(arg, i);  // Call the associated lambda
+                    } else {
+                        THROW("Invalid instance name set to the argument: " + instance_name);
+                    }
+                } else {
+                    arg.values.push_back(static_cast<int>(i));
+                }
             }
         } else if (arg.type_name == "float") {
             for (auto f : proto_arg.floats()) {

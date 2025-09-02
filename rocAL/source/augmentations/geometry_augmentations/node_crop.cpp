@@ -110,8 +110,10 @@ void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatP
 }
 
 void CropNode::initalize_args(std::vector<Argument> &arguments) {
-    std::cerr << "CropNode initialize args is getting called>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
-    this->init(arguments[0].Get<unsigned>(), arguments[1].Get<unsigned>(), arguments[2].Get<float>(), arguments[3].Get<float>());
+    if (init_args<CropNode, unsigned, unsigned, float, float>(this, arguments)) return;
+    if (init_args<CropNode, unsigned, unsigned>(this, arguments)) return;
+    if (init_args<CropNode, FloatParam*, FloatParam*, FloatParam*, FloatParam*>(this, arguments)) return;
+    THROW("Unsupported argument types for CropNode");
 }
 
 // Create vx_tensor for the crop coordinates

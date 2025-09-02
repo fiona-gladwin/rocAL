@@ -78,10 +78,10 @@ void ImageLoaderNode::initalize_args(std::vector<Argument> &arguments, std::shar
     std::cerr << "Arguments count : " << arguments.size() << "\n";
     // auto shard_cnt = arguments[0].Get<unsigned>();
     this->init(arguments[0].Get<unsigned>(), arguments[1].Get<unsigned>(), arguments[2].Get<std::string>(),
-               arguments[3].Get<std::string>(), arguments[4].Get<std::map<std::string, std::string>>(), static_cast<StorageType>(arguments[5].Get<int>()),
-               static_cast<DecoderType>(arguments[6].Get<int>()), arguments[7].Get<bool>(), arguments[8].Get<bool>(), arguments[9].Get<size_t>(), static_cast<RocalMemType>(arguments[10].Get<int>()), 
-               meta_data_reader, arguments[12].Get<bool>(), ShardingInfo(static_cast<RocalBatchPolicy>(arguments[13].Get<int>()), arguments[14].Get<bool>(), arguments[15].Get<bool>(), arguments[16].Get<int32_t>()), arguments[17].Get<std::string>().c_str(),
-               arguments[18].Get<unsigned>(), arguments[19].Get<unsigned>(), arguments[20].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[21].Get<int>()), arguments[22].Get<std::string>());
+               arguments[3].Get<std::string>(), arguments[4].Get<std::map<std::string, std::string>>(), arguments[5].Get<StorageType>(),
+               arguments[6].Get<DecoderType>(), arguments[7].Get<bool>(), arguments[8].Get<bool>(), arguments[9].Get<size_t>(), arguments[10].Get<RocalMemType>(), 
+               meta_data_reader, arguments[12].Get<bool>(), ShardingInfo(arguments[13].Get<RocalBatchPolicy>(), arguments[14].Get<bool>(), arguments[15].Get<bool>(), arguments[16].Get<int32_t>()), arguments[17].Get<std::string>().c_str(),
+               arguments[18].Get<unsigned>(), arguments[19].Get<unsigned>(), arguments[20].Get<unsigned>(), arguments[21].Get<ExternalSourceFileMode>(), arguments[22].Get<std::string>());
 }
 
 std::shared_ptr<LoaderModule> ImageLoaderNode::get_loader_module() {

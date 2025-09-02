@@ -31,7 +31,8 @@ public:
     void init(unsigned dest_width, unsigned dest_height, RocalResizeScalingMode scaling_mode,
               const std::vector<unsigned>& max_size, RocalResizeInterpolationType interpolation_type);
     void adjust_out_roi_size();
-    std::string node_name() override { return "resize"; }
+    std::string node_name() override { return "ResizeNode"; }
+    void initalize_args(std::vector<Argument> &arguments) override;
 
 protected:
     void create_node() override;
@@ -44,3 +45,4 @@ private:
     unsigned _max_width = 0, _max_height = 0;
     std::vector<unsigned> _dst_roi_width_vec, _dst_roi_height_vec;
 };
+REGISTER_NODE(ResizeNode);

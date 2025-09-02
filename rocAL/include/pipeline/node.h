@@ -282,6 +282,7 @@ bool init_args(NodeType* node, const std::vector<Argument>& arguments) {
 
         return true;
     } catch (const std::exception& e) {
+        std::cerr << "[ERR] Exception during init_args: " << e.what() << "\n";
         return false; // Type mismatch
     }
 }

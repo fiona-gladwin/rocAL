@@ -68,9 +68,12 @@ class Argument {
             if (is_null_ptr) {
                 return nullptr;
             }
-            return std::any_cast<T>(param);
+            if constexpr (std::is_same_v<T, FloatParam*>)
+                return std::get<FloatParam*>(param);
+            else if constexpr (std::is_same_v<T, IntParam*>)
+                return std::get<IntParam*>(param);
         } else {
-            if (is_null_ptr)
+            if (is_null_ptr || is_parameter)
                 THROW("Undefined type passed")
 
             if constexpr (is_vector_type<std::decay_t<T>>::value) {

@@ -1956,25 +1956,25 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
             const auto& param = proto_arg.param();
             if (arg.type_name == "int") {
                 if (arg.enum_type_name == "SimpleParameter") {
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_single_value_int_param(param.param_val_int(0)));
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_single_value_int_param(param.param_val_int(0)));
                 } else if (arg.enum_type_name == "UniformRand") {
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_uniform_int_rand_param(param.param_val_int(0), param.param_val_int(1)));
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_uniform_int_rand_param(param.param_val_int(0), param.param_val_int(1)));
                 } else if (arg.enum_type_name == "CustomRand") {
                     std::vector<int> values(param.param_val_int().begin(), param.param_val_int().end());
                     std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_custom_int_rand_param(values.data(),
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_custom_int_rand_param(values.data(),
                                                                       freqs.data(),
                                                                       values.size()));
                 }
             } else if (arg.type_name == "float") {
                 if (arg.enum_type_name == "SimpleParameter") {
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_single_value_float_param(param.param_val_float(0)));
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_single_value_float_param(param.param_val_float(0)));
                 } else if (arg.enum_type_name == "UniformRand") {
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_uniform_float_rand_param(param.param_val_float(0), param.param_val_float(1)));
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_uniform_float_rand_param(param.param_val_float(0), param.param_val_float(1)));
                 } else if (arg.enum_type_name == "CustomRand") {
                     std::vector<float> values(param.param_val_float().begin(), param.param_val_float().end());
                     std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
-                    arg.param = static_cast<pParam>(ParameterFactory::instance()->create_custom_float_rand_param(values.data(),
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_custom_float_rand_param(values.data(),
                                                                       freqs.data(),
                                                                       values.size()));
                 }
@@ -2040,10 +2040,13 @@ Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &outp
     for (auto& dim : output.dims()) {
         dims.push_back(dim);
     }
-    // Update the N dim to the batch size set in the pipeline
-    dims[0] = _user_batch_size;
+
     if (!dims.size())
         THROW("Empty tensor dims")
+    
+    // Update the N dim to the batch size set in the pipeline
+    dims[0] = _user_batch_size;
+    
     // mem type
     auto mem_type = static_cast<RocalMemType>(output.device());
     auto data_type = static_cast<RocalTensorDataType>(output.dtype());
@@ -2162,7 +2165,6 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
             } else if (op_def.module_name() == "loader") {
                 // fetch the output tensor details and create it
                 auto output_tensor = create_operator_output(op_def.outputs()[0], true);
-                // auto loader_node = this->add_node<ImageLoaderNode>({}, {output_tensor});
 
                 auto loader_node = this->add_node(get_node_name(op_def.name()), {}, {output_tensor}, true);
 
@@ -2191,6 +2193,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                         if (input_tensor && check_tensor_info(input_tensor->info(), op_def.outputs()[0])) {
                             output_tensor = create_tensor(input_tensor->info(), false);
                         } else {
+                            // Should be created for those geometric augmentations
                             output_tensor = create_operator_output(op_def.outputs()[0], false);
                         }
                         _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;

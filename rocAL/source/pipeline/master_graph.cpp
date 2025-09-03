@@ -2171,7 +2171,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 
                 // fetch all the arguments and pass it to the init function inside the loader
                 // In the loader recall the init function
-                loader_node->initalize_args(args_list, _meta_data_reader);
+                loader_node->initialize_args(args_list, _meta_data_reader);
                 
             } else {
                 Tensor *input_tensor = nullptr;
@@ -2209,7 +2209,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 
                 // fetch all the arguments and pass it to the init function inside the loader
                 // In the loader recall the init function
-                node->initalize_args(args_list);
+                node->initialize_args(args_list);
             }
         }
 

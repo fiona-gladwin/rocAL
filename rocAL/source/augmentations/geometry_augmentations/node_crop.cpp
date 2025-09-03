@@ -109,7 +109,7 @@ void CropNode::init(FloatParam *crop_h_factor, FloatParam *crop_w_factor, FloatP
     set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, crop_h_factor, crop_w_factor, x_drift, y_drift);
 }
 
-void CropNode::initalize_args(std::vector<Argument> &arguments) {
+void CropNode::initialize_args(std::vector<Argument> &arguments) {
     if (init_args<CropNode, unsigned, unsigned, float, float>(this, arguments)) return;
     if (init_args<CropNode, unsigned, unsigned>(this, arguments)) return;
     if (init_args<CropNode, FloatParam*, FloatParam*, FloatParam*, FloatParam*>(this, arguments)) return;

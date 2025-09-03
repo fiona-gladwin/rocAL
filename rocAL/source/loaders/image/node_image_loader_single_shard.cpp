@@ -86,7 +86,7 @@ std::shared_ptr<LoaderModule> ImageLoaderSingleShardNode::get_loader_module() {
     return _loader_module;
 }
 
-void ImageLoaderSingleShardNode::initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) {
+void ImageLoaderSingleShardNode::initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) {
     this->init(arguments[0].Get<unsigned>(), arguments[1].Get<unsigned>(), arguments[2].Get<unsigned>(),
             arguments[3].Get<std::string>(), arguments[4].Get<std::string>(), static_cast<StorageType>(arguments[5].Get<int>()),
             static_cast<DecoderType>(arguments[6].Get<int>()), arguments[7].Get<bool>(), arguments[8].Get<bool>(),

@@ -99,7 +99,7 @@ void ResizeNode::init(unsigned dest_width, unsigned dest_height, RocalResizeScal
     set_node_arguments(arg_names, std::make_index_sequence<arg_names.size()>{}, dest_width, dest_height, scaling_mode, max_size, interpolation_type);
 }
 
-void ResizeNode::initalize_args(std::vector<Argument> &arguments) {
+void ResizeNode::initialize_args(std::vector<Argument> &arguments) {
     if (init_args<ResizeNode, unsigned, unsigned, RocalResizeScalingMode, const std::vector<unsigned>, RocalResizeInterpolationType>(this, arguments)) return;
     THROW("Unsupported argument types for ResizeNode")
 }

@@ -32,7 +32,7 @@ public:
               const std::vector<unsigned>& max_size, RocalResizeInterpolationType interpolation_type);
     void adjust_out_roi_size();
     std::string node_name() override { return "ResizeNode"; }
-    void initalize_args(std::vector<Argument> &arguments) override;
+    void initialize_args(std::vector<Argument> &arguments) override;
 
 protected:
     void create_node() override;

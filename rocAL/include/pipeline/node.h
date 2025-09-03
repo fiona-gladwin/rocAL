@@ -310,8 +310,8 @@ class Node {
     virtual std::string node_name() { return ""; }
     std::vector<Argument> get_args_list() { return _args; }
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
-    virtual void initalize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
-    virtual void initalize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
+    virtual void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
+    virtual void initialize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
 
    protected:
     virtual void create_node() = 0;

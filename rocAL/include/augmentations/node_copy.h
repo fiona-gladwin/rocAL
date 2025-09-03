@@ -28,7 +28,7 @@ class CopyNode : public Node {
    public:
     CopyNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs);
     CopyNode() = delete;
-    void initalize_args(std::vector<Argument> &arguments) override {}
+    void initialize_args(std::vector<Argument> &arguments) override {}
     std::string node_name() override { return "CopyNode"; }
 
    protected:

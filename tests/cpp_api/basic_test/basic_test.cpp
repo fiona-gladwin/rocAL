@@ -221,8 +221,9 @@ int main(int argc, const char **argv) {
             cv::waitKey(0);
         size_t size_ckpt;
         rocalCheckpoint(handle, size_ckpt);
-        std::string serialized_ckpt(size_ckpt, '\0');
-        rocalGetSerializedCheckpointString(handle, serialized_ckpt.c_str());
+        std::string serialized_ckpt;
+        serialized_ckpt.resize(size_ckpt);
+        rocalGetSerializedCheckpointString(handle, serialized_ckpt.data());
 
         std::cerr << "The checkpoint -> " << serialized_ckpt << "\n";
         std::cout << "rocAL reset\n";

@@ -82,19 +82,28 @@ class ParameterFactory {
     template <typename T>
     Parameter<T>* create_uniform_rand_param(T start, T end) {
         auto gen = new UniformRand<T>(start, end, _seed);
-        _parameters.insert(gen);
+        {
+            std::lock_guard<std::mutex> lk(_rng_mutex);
+            _parameters.insert(gen);
+        }
         return gen;
     }
     template <typename T>
     Parameter<T>* create_single_value_param(T value) {
         auto gen = new SimpleParameter<T>(value);
-        _parameters.insert(gen);
+        {
+            std::lock_guard<std::mutex> lk(_rng_mutex);
+            _parameters.insert(gen);
+        }
         return gen;
     }
     template <typename T>
     void destroy_param(Parameter<T>* param) {
-        if (_parameters.find(param) != _parameters.end())
-            _parameters.erase(param);
+        {
+            std::lock_guard<std::mutex> lk(_rng_mutex);
+            if (_parameters.find(param) != _parameters.end())
+                _parameters.erase(param);
+        }
         delete param;
     }
     IntParam* create_uniform_int_rand_param(int start, int end);
@@ -112,6 +121,8 @@ class ParameterFactory {
     long long unsigned _seed;
     std::set<pParamCore> _parameters;  //<! Keeps the random generators used to randomized the augmentation parameters
     std::vector<pParamCore> _param_list;  //<! Deterministic creation order of random parameters for RNG snapshot/restore
+    // Mutex protecting _parameters, _param_list and RNG snapshot/restore/renew operations
+    std::mutex _rng_mutex;
     static ParameterFactory* _instance;
     static std::mutex _mutex;
     ParameterFactory();

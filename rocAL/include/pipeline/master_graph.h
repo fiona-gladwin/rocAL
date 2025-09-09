@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <map>
 #include <memory>
 #include <variant>
+#include <mutex>
 
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
@@ -262,6 +263,8 @@ class MasterGraph {
     bool _checkpointing_enabled = false;
     int64_t _iteration_number = 0;
     std::string _serialized_checkpoint;
+    // Guards checkpoint capture against concurrent parameter renewals and node updates
+    mutable std::mutex _checkpoint_mutex;
 };
 
 template <typename T>

@@ -298,8 +298,9 @@ PYBIND11_MODULE(rocal_pybind, m) {
     m.def("rocalSerialize", [](RocalContext context) {
         size_t size;
         rocalSerialize(context, size);
-        std::string serialized_string(size, '\0');
-        rocalGetSerializedString(context, serialized_string.c_str());
+        std::string serialized_string;
+        serialized_string.resize(size);
+        rocalGetSerializedString(context, serialized_string.data());
         return py::bytes(serialized_string);  // Returned by value
     }, "Returns the serialized pipeline as string");
     // rocal_api_types.h

@@ -409,6 +409,9 @@ void MasterGraph::release() {
 
 MasterGraph::Status
 MasterGraph::update_node_parameters() {
+    // Pause updates while a checkpoint might be captured
+    std::lock_guard<std::mutex> lk(_checkpoint_mutex);
+
     // Randomize random parameters
     ParameterFactory::instance()->renew_parameters();
 
@@ -2233,6 +2236,9 @@ std::shared_ptr<Checkpoint> MasterGraph::create_checkpoint() {
 }
 
 void MasterGraph::get_serialized_checkpoint(size_t &serialized_ckpt_string_size) {
+    // Prevent concurrent parameter renewals and node updates while capturing a checkpoint
+    std::lock_guard<std::mutex> lk(_checkpoint_mutex);
+
     rocal_proto::Checkpoint checkpoint;
     auto ckpt = _ring_buffer.get_current_checkpoint();
 

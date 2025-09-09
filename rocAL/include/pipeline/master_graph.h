@@ -163,6 +163,7 @@ class MasterGraph {
     bool is_checkpointing_enabled() { return _checkpointing_enabled; }
     std::shared_ptr<Checkpoint> create_checkpoint();
     void get_serialized_checkpoint(size_t &serialized_ckpt_string_size);
+    std::string& get_serialized_checkpoint_string() { return _serialized_checkpoint; }
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif

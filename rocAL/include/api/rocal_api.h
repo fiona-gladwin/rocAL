@@ -116,5 +116,7 @@ extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedString(RocalContext roca
 
 extern "C" RocalContext rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size, RocalPipelineParams& pipe_params);
 
-extern "C" RocalStatus rocalCheckpoint(RocalContext rocal_context, size_t &serialized_ckpt_string_size);
+extern "C" RocalStatus ROCAL_API_CALL rocalCheckpoint(RocalContext rocal_context, size_t &serialized_ckpt_string_size);
+
+extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedCheckpointString(RocalContext rocal_context, const char* serialized_ckpt_string);
 #endif

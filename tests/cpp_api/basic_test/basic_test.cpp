@@ -98,7 +98,7 @@ int main(int argc, const char **argv) {
 
     RocalImageColor color_format = (rgb != 0) ? RocalImageColor::ROCAL_COLOR_RGB24 : RocalImageColor::ROCAL_COLOR_U8;
 
-    auto handle = rocalCreate(inputBatchSize, processing_device ? RocalProcessMode::ROCAL_PROCESS_GPU : RocalProcessMode::ROCAL_PROCESS_CPU, 0, 1);
+    auto handle = rocalCreate(inputBatchSize, processing_device ? RocalProcessMode::ROCAL_PROCESS_GPU : RocalProcessMode::ROCAL_PROCESS_CPU, 0, 1, 3, ROCAL_FP32, true);
 
     if (rocalGetStatus(handle) != ROCAL_OK) {
         std::cout << "Could not create the Rocal contex\n";
@@ -219,6 +219,12 @@ int main(int argc, const char **argv) {
         std::cout << "Completed test id: " << test_id << " processed " << counter << " images\n";
         if (DISPLAY)
             cv::waitKey(0);
+        size_t size_ckpt;
+        rocalCheckpoint(handle, size_ckpt);
+        std::string serialized_ckpt(size_ckpt, '\0');
+        rocalGetSerializedCheckpointString(handle, serialized_ckpt.c_str());
+
+        std::cerr << "The checkpoint -> " << serialized_ckpt << "\n";
         std::cout << "rocAL reset\n";
         rocalResetLoaders(handle);
         mat_input.release();

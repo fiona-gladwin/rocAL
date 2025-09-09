@@ -336,3 +336,15 @@ void ImageLoader::feed_external_input(const std::vector<std::string>& input_imag
 const LoaderState& ImageLoader::get_loader_state() {
     return const_cast<LoaderState &>(_current_loader_state);
 }
+
+void ImageLoader::restore_from_state(const LoaderState& s) {
+    // Apply epoch/iteration counters
+    _epoch_count = s._epoch_number;
+    _iteration_count = s._iteration_number;
+    _current_loader_state = s;
+
+    // Restore reader RNG
+    if (_image_loader) {
+        _image_loader->set_rng_state(s._rng);
+    }
+}

@@ -26,12 +26,20 @@ THE SOFTWARE.
 #include <random>
 #include <any>
 #include <map>
+#include <functional>
+#include <string>
 #include <sstream>
 
 inline std::string SerializeRNGToString(std::mt19937& rng) {
     std::stringstream stream;
     stream << rng;
     return stream.str();
+}
+
+// Helper to deserialize RNG from string
+inline void DeserializeRNGFromString(const std::string &data, std::mt19937 &rng) {
+    std::stringstream ss(data);
+    ss >> rng;
 }
 
 class OperatorCheckpoint {

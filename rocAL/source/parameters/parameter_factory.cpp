@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <ctime>
 
 #include "parameters/parameter_simple.h"
+#include <stdexcept>
 ParameterFactory* ParameterFactory::_instance = nullptr;
 std::mutex ParameterFactory::_mutex;
 
@@ -122,6 +123,7 @@ IntParam* ParameterFactory::create_uniform_int_rand_param(int start, int end) {
     auto gen = new UniformRand<int>(start, end, get_seed_from_seedsequence());
     auto ret = new IntParam(gen, RocalParameterType::RANDOM_UNIFORM);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -129,6 +131,7 @@ FloatParam* ParameterFactory::create_uniform_float_rand_param(float start, float
     auto gen = new UniformRand<float>(start, end, get_seed_from_seedsequence());
     auto ret = new FloatParam(gen, RocalParameterType::RANDOM_UNIFORM);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -136,6 +139,7 @@ IntParam* ParameterFactory::create_custom_int_rand_param(const int* value, const
     auto gen = new CustomRand<int>(value, frequencies, size, get_seed_from_seedsequence());
     auto ret = new IntParam(gen, RocalParameterType::RANDOM_CUSTOM);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -143,6 +147,7 @@ FloatParam* ParameterFactory::create_custom_float_rand_param(const float* value,
     auto gen = new CustomRand<float>(value, frequencies, size, get_seed_from_seedsequence());
     auto ret = new FloatParam(gen, RocalParameterType::RANDOM_CUSTOM);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -150,6 +155,7 @@ IntParam* ParameterFactory::create_single_value_int_param(int value) {
     auto gen = new SimpleParameter<int>(value);
     auto ret = new IntParam(gen, RocalParameterType::DETERMINISTIC);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -157,6 +163,7 @@ FloatParam* ParameterFactory::create_single_value_float_param(float value) {
     auto gen = new SimpleParameter<float>(value);
     auto ret = new FloatParam(gen, RocalParameterType::DETERMINISTIC);
     _parameters.insert(gen);
+    _param_list.push_back(gen);
     return ret;
 }
 
@@ -170,4 +177,32 @@ Parameter<float>* core(FloatParam* arg) {
     if (!arg)
         return nullptr;
     return arg->core;
+}
+
+std::vector<std::string> ParameterFactory::snapshot_rngs() {
+    std::vector<std::string> out;
+    out.reserve(_param_list.size());
+    for (auto &p : _param_list) {
+        std::visit([&](auto* param) {
+            if (param) {
+                out.emplace_back(param->serialize_rng());
+            } else {
+                out.emplace_back(std::string{});
+            }
+        }, p);
+    }
+    return out;
+}
+
+void ParameterFactory::restore_rngs(const std::vector<std::string>& rng_states) {
+    if (rng_states.size() != _param_list.size()) {
+        throw std::runtime_error("ParameterFactory::restore_rngs: snapshot size mismatch with parameter list");
+    }
+    for (size_t i = 0; i < _param_list.size(); ++i) {
+        std::visit([&](auto* param) {
+            if (param) {
+                param->deserialize_rng(rng_states[i]);
+            }
+        }, _param_list[i]);
+    }
 }

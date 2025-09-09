@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <typeindex>
 #include <unordered_map>
 #include <map>
+#include <string>
 
 #include "pipeline/checkpoint.h"
 #include "pipeline/graph.h"
@@ -260,6 +261,8 @@ class Node {
     virtual void initalize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }
     virtual void save_state(std::shared_ptr<OperatorCheckpoint>& op_ckpt) {}
     virtual std::string serialize_state(const std::shared_ptr<OperatorCheckpoint>& op_ckpt) { return ""; }
+    // Restore operator state from serialized bytes (default: stateless no-op)
+    virtual void restore_state(const std::string &operator_state_bytes) {}
 
    protected:
     virtual void create_node() = 0;

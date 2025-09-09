@@ -28,6 +28,9 @@ THE SOFTWARE.
 
 #include "parameters/parameter_random.h"
 #include "parameters/parameter_simple.h"
+#include <vector>
+#include <string>
+#include <variant>
 
 const int MAX_SEEDS = 1024;
 
@@ -101,9 +104,14 @@ class ParameterFactory {
     IntParam* create_single_value_int_param(int value);
     FloatParam* create_single_value_float_param(float value);
 
+    // Checkpointing: snapshot/restore RNG states of random parameters (deterministic params ignored)
+    std::vector<std::string> snapshot_rngs();
+    void restore_rngs(const std::vector<std::string>& rng_states);
+
    private:
     long long unsigned _seed;
     std::set<pParamCore> _parameters;  //<! Keeps the random generators used to randomized the augmentation parameters
+    std::vector<pParamCore> _param_list;  //<! Deterministic creation order of random parameters for RNG snapshot/restore
     static ParameterFactory* _instance;
     static std::mutex _mutex;
     ParameterFactory();

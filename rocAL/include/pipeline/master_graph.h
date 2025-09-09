@@ -164,6 +164,8 @@ class MasterGraph {
     std::shared_ptr<Checkpoint> create_checkpoint();
     void get_serialized_checkpoint(size_t &serialized_ckpt_string_size);
     std::string& get_serialized_checkpoint_string() { return _serialized_checkpoint; }
+    // Restores pipeline state from a serialized checkpoint (build the pipeline first)
+    void restore_from_serialized_checkpoint(const std::string &serialized_ckpt);
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif
@@ -538,4 +540,3 @@ inline std::shared_ptr<NumpyLoaderSingleShardNode> MasterGraph::add_node(const s
 
     return node;
 }
-

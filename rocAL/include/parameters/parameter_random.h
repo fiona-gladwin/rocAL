@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <thread>
 #include <variant>
 #include <vector>
+#include <sstream>
 
 #include "pipeline/log.h"
 #include "parameters/parameter.h"
@@ -106,6 +107,17 @@ class UniformRand : public Parameter<T> {
     }
     std::pair<int, int> get_start_and_end() {
         return std::make_pair(_start, _end);
+    }
+
+    // RNG serialization for checkpointing
+    std::string serialize_rng() const override {
+        std::stringstream ss;
+        ss << _generator;
+        return ss.str();
+    }
+    void deserialize_rng(const std::string &data) override {
+        std::stringstream ss(data);
+        ss >> _generator;
     }
 
    private:
@@ -231,6 +243,17 @@ struct CustomRand : public Parameter<T> {
     std::vector<T>& get_values() { return _values; }
     std::vector<double>& get_frequencies() { return _frequencies; }
     unsigned size() { return _size; }
+
+    // RNG serialization for checkpointing
+    std::string serialize_rng() const override {
+        std::stringstream ss;
+        ss << _generator;
+        return ss.str();
+    }
+    void deserialize_rng(const std::string &data) override {
+        std::stringstream ss(data);
+        ss >> _generator;
+    }
 
    private:
     std::vector<T> _values;            //!< Values

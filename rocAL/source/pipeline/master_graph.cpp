@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "meta_data/randombboxcrop_meta_data_reader_factory.h"
 #include "augmentations/node_copy.h"
 #include "augmentations/color_augmentations/node_brightness.h"
+#include <unordered_map>
 
 using half_float::half;
 
@@ -2235,13 +2236,79 @@ void MasterGraph::get_serialized_checkpoint(size_t &serialized_ckpt_string_size)
     rocal_proto::Checkpoint checkpoint;
     auto ckpt = _ring_buffer.get_current_checkpoint();
 
-    for(auto &pipe_op : _pipeline_operators) {
+    // Per-operator states
+    for (auto &pipe_op : _pipeline_operators) {
         auto op_ckpt = checkpoint.add_cpts();
         op_ckpt->set_operator_name(pipe_op->operator_name);
         if (pipe_op->node) {
-            op_ckpt->set_operator_state(pipe_op->node->serialize_state(ckpt->GetOperatorCheckpoint(pipe_op->operator_name)));
+            op_ckpt->set_operator_state(
+                pipe_op->node->serialize_state(ckpt->GetOperatorCheckpoint(pipe_op->operator_name)));
         }
     }
+
+    // External context: last known pipeline iteration index
+    auto *ext = checkpoint.mutable_external_ctx();
+    ext->set_pipeline_iteration(static_cast<int64_t>(_iteration_number));
+
+    // Augmentation RNG snapshot
+    auto rng_states = ParameterFactory::instance()->snapshot_rngs();
+    auto *rngs = checkpoint.mutable_aug_rng();
+    for (auto &s : rng_states) {
+        rngs->add_rng_mt19937(s);
+    }
+
     _serialized_checkpoint = checkpoint.SerializeAsString();
     serialized_ckpt_string_size = _serialized_checkpoint.size();
+}
+
+// Restores pipeline state from a serialized checkpoint (build first)
+void MasterGraph::restore_from_serialized_checkpoint(const std::string &serialized_ckpt) {
+    bool was_processing = _processing;
+    if (was_processing) {
+        stop_processing();
+    }
+    _ring_buffer.reset();
+
+    rocal_proto::Checkpoint checkpoint;
+    if (!checkpoint.ParseFromString(serialized_ckpt)) {
+        throw std::runtime_error("Failed to parse serialized rocAL checkpoint");
+    }
+
+    // Build name->node map
+    std::unordered_map<std::string, std::shared_ptr<Node>> node_by_name;
+    node_by_name.reserve(_pipeline_operators.size());
+    for (auto &pipe_op : _pipeline_operators) {
+        if (pipe_op->node) node_by_name.emplace(pipe_op->operator_name, pipe_op->node);
+    }
+
+    // Restore operator states
+    for (int i = 0; i < checkpoint.cpts_size(); i++) {
+        const auto &cpt = checkpoint.cpts(i);
+        auto it = node_by_name.find(cpt.operator_name());
+        if (it == node_by_name.end()) {
+            throw std::runtime_error("Checkpoint operator \"" + cpt.operator_name() + "\" not found in pipeline");
+        }
+        it->second->restore_state(cpt.operator_state());
+    }
+
+    // Restore augmentation RNG snapshot, if any
+    if (checkpoint.has_aug_rng()) {
+        std::vector<std::string> rng_states;
+        rng_states.reserve(checkpoint.aug_rng().rng_mt19937_size());
+        for (int i = 0; i < checkpoint.aug_rng().rng_mt19937_size(); i++) {
+            rng_states.emplace_back(checkpoint.aug_rng().rng_mt19937(i));
+        }
+        ParameterFactory::instance()->restore_rngs(rng_states);
+    }
+
+    // Restore external context (iteration index)
+    if (checkpoint.has_external_ctx()) {
+        _iteration_number = checkpoint.external_ctx().pipeline_iteration();
+    }
+
+    if (!was_processing) {
+        // do nothing, user will start processing later (build/verify/run)
+    } else {
+        start_processing();
+    }
 }

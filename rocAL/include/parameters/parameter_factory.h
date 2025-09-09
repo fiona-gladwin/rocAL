@@ -120,6 +120,7 @@ class ParameterFactory {
    private:
     long long unsigned _seed;
     std::set<pParamCore> _parameters;  //<! Keeps the random generators used to randomized the augmentation parameters
+    std::set<pParam> _params;          //<! Used for storing IntParam and FloatParam objects to be deleted in dtor
     std::vector<pParamCore> _param_list;  //<! Deterministic creation order of random parameters for RNG snapshot/restore
     // Mutex protecting _parameters, _param_list and RNG snapshot/restore/renew operations
     std::mutex _rng_mutex;

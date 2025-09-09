@@ -84,6 +84,13 @@ ParameterFactory::~ParameterFactory() {
                 delete arg;
             },
             rand_obj);
+    // Delete the memory allocated for random parameters
+    for (auto&& rand_obj : _params)
+        std::visit(
+            [](auto&& arg) {
+                delete arg;
+            },
+            rand_obj);
 }
 
 void ParameterFactory::renew_parameters() {
@@ -131,6 +138,7 @@ IntParam* ParameterFactory::create_uniform_int_rand_param(int start, int end) {
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;
@@ -142,6 +150,7 @@ FloatParam* ParameterFactory::create_uniform_float_rand_param(float start, float
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;
@@ -153,6 +162,7 @@ IntParam* ParameterFactory::create_custom_int_rand_param(const int* value, const
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;
@@ -164,6 +174,7 @@ FloatParam* ParameterFactory::create_custom_float_rand_param(const float* value,
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;
@@ -175,6 +186,7 @@ IntParam* ParameterFactory::create_single_value_int_param(int value) {
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;
@@ -186,6 +198,7 @@ FloatParam* ParameterFactory::create_single_value_float_param(float value) {
     {
         std::lock_guard<std::mutex> lk(_rng_mutex);
         _parameters.insert(gen);
+        _params.insert(ret);
         _param_list.push_back(gen);
     }
     return ret;

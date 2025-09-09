@@ -66,7 +66,7 @@ class LoaderModule {
                                      const std::vector<ROIxywh>& roi_xywh, unsigned int max_width, unsigned int max_height,
                                      unsigned int channels, ExternalSourceFileMode mode, bool eos) = 0;
     virtual size_t last_batch_padded_size() { return 0; }
-    virtual const LoaderState& get_loader_state() { ERR("The LoaderState is not defined for the given loader") }
+    [[noreturn]] virtual const LoaderState& get_loader_state() { THROW("The LoaderState is not defined for the given loader") }
     // Restore loader state from checkpoint (default no-op for loaders that do not support it)
     virtual void restore_from_state(const LoaderState& s) {}
    protected:

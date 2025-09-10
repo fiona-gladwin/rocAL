@@ -41,6 +41,8 @@ class IterationData {
    public:
     int64_t iteration_number;
     std::shared_ptr<Checkpoint> ckpt;
+    // RNG snapshot for this committed iteration (e.g., mt19937 state per parameter)
+    std::vector<std::string> rng_states;
 };
 
 class RingBuffer {
@@ -69,6 +71,7 @@ class RingBuffer {
     std::shared_ptr<IterationData>& get_iteration_data();
     void init_iteration_data();
     std::shared_ptr<Checkpoint> get_current_checkpoint();
+    std::shared_ptr<IterationData> get_current_iteration_data();
     void reset();
     void pop();
     void push();

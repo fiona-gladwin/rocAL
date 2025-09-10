@@ -172,6 +172,8 @@ class MasterGraph {
 #endif
    private:
     Status update_node_parameters();
+    // Computes a stable signature of the current pipeline definition for validation
+    uint64_t compute_pipeline_signature() const;
     void create_single_graph();
     void create_multiple_graphs();
     void start_processing();
@@ -263,6 +265,9 @@ class MasterGraph {
     bool _checkpointing_enabled = false;
     int64_t _iteration_number = 0;
     std::string _serialized_checkpoint;
+    // Checkpoint versioning and pipeline identity
+    static constexpr uint32_t kCheckpointVersion = 1;
+    uint64_t _pipeline_signature = 0;
     // Guards checkpoint capture against concurrent parameter renewals and node updates
     mutable std::mutex _checkpoint_mutex;
 };

@@ -301,6 +301,9 @@ MasterGraph::build() {
         THROW("At least one loader needs to be created in the pipeline")
 
     if (_loaders_count > 1) {
+        if (_checkpointing_enabled) {
+            THROW("Checkpointing is not yet supported for pipelines with multiple loaders.");
+        }
         _meta_data_reader = nullptr; // Disable metadata reader for multiple loaders pipeline, support not enabled
         create_multiple_graphs();
     } else {
@@ -1021,12 +1024,10 @@ void MasterGraph::output_routine() {
                 }
             }
 
-            // Create the checkpoint
-            // Store the checkpoint in the ring buffer
+            // Reserve the iteration-data slot for this write; we will fill after commit (save-after-commit)
+            std::shared_ptr<IterationData> reserved_iter_data;
             if (_checkpointing_enabled) {
-                auto iter_data = _ring_buffer.get_iteration_data();
-                iter_data->iteration_number = _iteration_number++;
-                iter_data->ckpt = this->create_checkpoint();
+                reserved_iter_data = _ring_buffer.get_iteration_data();
             }
 
             _process_time.start();
@@ -1058,6 +1059,18 @@ void MasterGraph::output_routine() {
 #endif
             _ring_buffer.set_meta_data(full_batch_data_names, output_meta_data);
             _ring_buffer.push();  // The data and metadata is now stored in output the ring_buffer, increases it's level by 1
+
+            // Save-after-commit: snapshot operator states for the just-committed batch
+            if (_checkpointing_enabled) {
+                // Prevent concurrent parameter renewals and node updates while saving state snapshot
+                std::lock_guard<std::mutex> lk(_checkpoint_mutex);
+                if (reserved_iter_data) {
+                    reserved_iter_data->iteration_number = _iteration_number++;
+                    reserved_iter_data->ckpt = this->create_checkpoint();
+                    // Snapshot RNG state after the batch commit - ensures restore resumes deterministically on next batch
+                    reserved_iter_data->rng_states = ParameterFactory::instance()->snapshot_rngs();
+                }
+            }
         }
     } catch (const std::exception &e) {
         ERR("Exception thrown in the process routine: " + STR(e.what()) + STR("\n"));
@@ -2234,6 +2247,88 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
     }
 }
 
+uint64_t MasterGraph::compute_pipeline_signature() const {
+    auto hash_combine = [](uint64_t &h, uint64_t v) {
+        h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+    };
+    uint64_t h = 1469598103934665603ULL;  // FNV offset basis
+    std::hash<std::string> Hs;
+    std::hash<uint64_t> Hi;
+
+    for (auto &pipe_op : _pipeline_operators) {
+        hash_combine(h, Hs(pipe_op->module_name));
+        hash_combine(h, Hs(pipe_op->operator_name));
+
+        // Gather arguments from reader ops or node args
+        std::vector<Argument> args;
+        if (pipe_op->module_name == "reader") {
+            args = pipe_op->arguments;
+        } else if (pipe_op->node) {
+            args = pipe_op->node->get_args_list();
+        }
+        for (auto &arg : args) {
+            hash_combine(h, Hs(arg.arg_name));
+            hash_combine(h, Hs(arg.type_name));
+            hash_combine(h, Hs(arg.enum_type_name));
+            hash_combine(h, Hi(arg.is_vector ? 1 : 0));
+            hash_combine(h, Hi(arg.is_parameter ? 1 : 0));
+            // Hash values, if present and non-parameter
+            try {
+                if (arg.type_name == "int" || arg.type_name == "shared_ptr") {
+                    for (auto &v : arg.values) {
+                        hash_combine(h, Hi(static_cast<uint64_t>(std::any_cast<int>(v))));
+                    }
+                } else if (arg.type_name == "float") {
+                    for (auto &v : arg.values) {
+                        float f = std::any_cast<float>(v);
+                        uint32_t bits;
+                        std::memcpy(&bits, &f, sizeof(bits));
+                        hash_combine(h, Hi(bits));
+                    }
+                } else if (arg.type_name == "char_str" || arg.type_name == "string" || arg.type_name == "map_string") {
+                    for (auto &v : arg.values) {
+                        hash_combine(h, Hs(std::any_cast<std::string>(v)));
+                    }
+                } else if (arg.type_name == "bool") {
+                    for (auto &v : arg.values) {
+                        hash_combine(h, Hi(std::any_cast<bool>(v) ? 1 : 0));
+                    }
+                } else if (arg.type_name == "unsigned") {
+                    for (auto &v : arg.values) {
+                        hash_combine(h, Hi(static_cast<uint64_t>(std::any_cast<unsigned>(v))));
+                    }
+                } else if (arg.type_name == "size_t") {
+                    for (auto &v : arg.values) {
+                        hash_combine(h, Hi(static_cast<uint64_t>(std::any_cast<size_t>(v))));
+                    }
+                } else if (arg.type_name == "nullptr") {
+                    hash_combine(h, Hi(0));
+                }
+            } catch (...) {
+                // If values cannot be cast, fall back to type info only
+            }
+        }
+    }
+
+    // Include output tensor metadata
+    {
+        auto &out_list = const_cast<TensorList&>(_internal_tensor_list);
+        for (unsigned i = 0; i < out_list.size(); i++) {
+            Tensor* pipe_output = out_list[i];
+            hash_combine(h, Hi(static_cast<uint64_t>(pipe_output->info().mem_type())));
+            hash_combine(h, Hi(static_cast<uint64_t>(pipe_output->info().data_type())));
+            hash_combine(h, Hi(static_cast<uint64_t>(pipe_output->info().layout())));
+            hash_combine(h, Hi(static_cast<uint64_t>(pipe_output->info().color_format())));
+            for (auto d : pipe_output->info().dims()) {
+                hash_combine(h, Hi(static_cast<uint64_t>(d)));
+            }
+        }
+    }
+    // Include pipeline memory type
+    hash_combine(h, Hi(static_cast<uint64_t>(_mem_type)));
+    return h;
+}
+
 std::shared_ptr<Checkpoint> MasterGraph::create_checkpoint() {
     auto ckpt = std::make_shared<Checkpoint>();
 
@@ -2254,32 +2349,51 @@ void MasterGraph::get_serialized_checkpoint(size_t &serialized_ckpt_string_size)
     rocal_proto::Checkpoint checkpoint;
     auto ckpt = _ring_buffer.get_current_checkpoint();
 
-    // Per-operator states
+    // Per-operator states: serialize only operators with nodes (skip readers)
     for (auto &pipe_op : _pipeline_operators) {
+        if (!pipe_op->node) {
+            continue;
+        }
         auto op_ckpt = checkpoint.add_cpts();
         op_ckpt->set_operator_name(pipe_op->operator_name);
-        if (pipe_op->node) {
-            op_ckpt->set_operator_state(
-                pipe_op->node->serialize_state(ckpt->GetOperatorCheckpoint(pipe_op->operator_name)));
-        }
+        op_ckpt->set_operator_state(
+            pipe_op->node->serialize_state(ckpt->GetOperatorCheckpoint(pipe_op->operator_name)));
     }
 
-    // External context: last known pipeline iteration index
+    // External context: last known pipeline iteration index (committed batch index)
     auto *ext = checkpoint.mutable_external_ctx();
     ext->set_pipeline_iteration(static_cast<int64_t>(_iteration_number));
 
-    // Augmentation RNG snapshot
-    auto rng_states = ParameterFactory::instance()->snapshot_rngs();
+    // Augmentation RNG snapshot: use committed iteration RNG state when available
     auto *rngs = checkpoint.mutable_aug_rng();
-    for (auto &s : rng_states) {
-        rngs->add_rng_mt19937(s);
+    auto iter_data = _ring_buffer.get_current_iteration_data();
+    if (iter_data && !iter_data->rng_states.empty()) {
+        for (auto &s : iter_data->rng_states) {
+            rngs->add_rng_mt19937(s);
+        }
+    } else {
+        // Fallback to live snapshot if no committed RNG snapshot is available
+        auto rng_states = ParameterFactory::instance()->snapshot_rngs();
+        for (auto &s : rng_states) {
+            rngs->add_rng_mt19937(s);
+        }
     }
+
+    // Version/signature/config fields
+    if (_pipeline_signature == 0) {
+        _pipeline_signature = compute_pipeline_signature();
+    }
+    checkpoint.set_checkpoint_version(static_cast<uint32_t>(kCheckpointVersion));
+    checkpoint.set_pipeline_signature(static_cast<uint64_t>(_pipeline_signature));
+    checkpoint.set_batch_size(static_cast<uint32_t>(_user_batch_size));
+    checkpoint.set_device_id(static_cast<int32_t>(_gpu_id));
+    checkpoint.set_mem_type(static_cast<int32_t>(_mem_type));
 
     _serialized_checkpoint = checkpoint.SerializeAsString();
     serialized_ckpt_string_size = _serialized_checkpoint.size();
 }
 
-// Restores pipeline state from a serialized checkpoint (build first)
+ // Restores pipeline state from a serialized checkpoint (build first)
 void MasterGraph::restore_from_serialized_checkpoint(const std::string &serialized_ckpt) {
     bool was_processing = _processing;
     if (was_processing) {
@@ -2290,6 +2404,28 @@ void MasterGraph::restore_from_serialized_checkpoint(const std::string &serializ
     rocal_proto::Checkpoint checkpoint;
     if (!checkpoint.ParseFromString(serialized_ckpt)) {
         throw std::runtime_error("Failed to parse serialized rocAL checkpoint");
+    }
+
+    // Validate checkpoint version and pipeline identity when available
+    if (checkpoint.has_checkpoint_version()) {
+        if (checkpoint.checkpoint_version() != static_cast<int>(kCheckpointVersion)) {
+            throw std::runtime_error("rocAL checkpoint version mismatch");
+        }
+    }
+    if (checkpoint.has_pipeline_signature()) {
+        uint64_t current_sig = compute_pipeline_signature();
+        if (current_sig != checkpoint.pipeline_signature()) {
+            throw std::runtime_error("rocAL checkpoint/pipeline signature mismatch - checkpoint was created with a different pipeline configuration");
+        }
+    }
+    if (checkpoint.has_batch_size() && static_cast<uint32_t>(_user_batch_size) != checkpoint.batch_size()) {
+        throw std::runtime_error("rocAL checkpoint restore failed: batch_size mismatch");
+    }
+    if (checkpoint.has_device_id() && static_cast<int32_t>(_gpu_id) != checkpoint.device_id()) {
+        throw std::runtime_error("rocAL checkpoint restore failed: device_id mismatch");
+    }
+    if (checkpoint.has_mem_type() && static_cast<int32_t>(_mem_type) != checkpoint.mem_type()) {
+        throw std::runtime_error("rocAL checkpoint restore failed: mem_type mismatch");
     }
 
     // Build name->node map
@@ -2304,7 +2440,8 @@ void MasterGraph::restore_from_serialized_checkpoint(const std::string &serializ
         const auto &cpt = checkpoint.cpts(i);
         auto it = node_by_name.find(cpt.operator_name());
         if (it == node_by_name.end()) {
-            throw std::runtime_error("Checkpoint operator \"" + cpt.operator_name() + "\" not found in pipeline");
+            // Operator without a node in this pipeline (e.g., reader); skip
+            continue;
         }
         it->second->restore_state(cpt.operator_state());
     }

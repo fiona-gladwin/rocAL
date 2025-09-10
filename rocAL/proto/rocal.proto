@@ -102,6 +102,13 @@ message Checkpoint {
   repeated OpCheckpoint cpts = 1;
   optional ExternalContextCheckpoint external_ctx = 2;
   optional AugmentationRNGSnapshot aug_rng = 3;
+
+  // Optional versioning and identity/config fields
+  optional uint64 pipeline_signature = 10;
+  optional uint32 checkpoint_version = 11;
+  optional uint32 batch_size = 12;
+  optional int32 device_id = 13;
+  optional int32 mem_type = 14;
 }
 
 message LoaderState {

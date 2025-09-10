@@ -100,6 +100,11 @@ std::shared_ptr<Checkpoint> RingBuffer::get_current_checkpoint() {
     return _iteration_data[_read_ptr]->ckpt;
 }
 
+std::shared_ptr<IterationData> RingBuffer::get_current_iteration_data() {
+    block_if_empty();
+    return _iteration_data[_read_ptr];
+}
+
 void RingBuffer::unblock_reader() {
     // Wake up the reader thread in case it's waiting for a load
     _wait_for_load.notify_all();

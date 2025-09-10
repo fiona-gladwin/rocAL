@@ -235,6 +235,109 @@ int main(int argc, const char **argv) {
             cvDestroyWindow(win_name);
     }
 
+    // Demonstrate checkpoint/restore determinism: save a checkpoint, then
+    // compare the next batch produced by this pipeline vs. a new identical
+    // pipeline restored from the checkpoint. They should match byte-for-byte.
+    {
+        std::cout << "Demonstrating checkpoint/restore determinism..." << std::endl;
+
+        // Dimensions for a single output from rocalCopyToOutput
+        int H = rocalGetAugmentationBranchCount(handle) * rocalGetOutputHeight(handle) * inputBatchSize;
+        int W = rocalGetOutputWidth(handle);
+        int C = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? 3 : 1);
+
+        // Warm up a couple of iterations before checkpointing
+        int warmup_steps = 2;
+        for (int i = 0; i < warmup_steps; ++i) {
+            if (rocalRun(handle) != ROCAL_OK) {
+                std::cout << "rocalRun failed during warmup" << std::endl;
+                rocalRelease(handle);
+                return -1;
+            }
+            std::vector<unsigned char> tmp(H * W * C);
+            rocalCopyToOutput(handle, tmp.data(), static_cast<size_t>(tmp.size()));
+        }
+
+        // Create a checkpoint
+        size_t ckpt_size = 0;
+        if (rocalCheckpoint(handle, ckpt_size) != ROCAL_OK) {
+            std::cout << "rocalCheckpoint failed" << std::endl;
+            rocalRelease(handle);
+            return -1;
+        }
+        std::string ckpt(ckpt_size, '\0');
+        if (rocalGetSerializedCheckpointString(handle, ckpt.data()) != ROCAL_OK) {
+            std::cout << "rocalGetSerializedCheckpointString failed" << std::endl;
+            rocalRelease(handle);
+            return -1;
+        }
+
+        // Capture the next batch as reference from the current pipeline
+        if (rocalRun(handle) != ROCAL_OK) {
+            std::cout << "rocalRun failed after checkpoint" << std::endl;
+            rocalRelease(handle);
+            return -1;
+        }
+        std::vector<unsigned char> reference(H * W * C);
+        rocalCopyToOutput(handle, reference.data(), static_cast<size_t>(reference.size()));
+
+        // Build a second identical pipeline and restore from the checkpoint
+        auto handle2 = rocalCreate(inputBatchSize,
+                                   processing_device ? RocalProcessMode::ROCAL_PROCESS_GPU : RocalProcessMode::ROCAL_PROCESS_CPU,
+                                   0, 1, 3, ROCAL_FP32, true);
+        if (rocalGetStatus(handle2) != ROCAL_OK) {
+            std::cout << "Could not create the Rocal context for handle2" << std::endl;
+            rocalRelease(handle);
+            return -1;
+        }
+
+        // Recreate the same graph on handle2
+        RocalTensor decoded_output2;
+        if (decode_height <= 0 || decode_width <= 0)
+            decoded_output2 = rocalJpegFileSource(handle2, folderPath1, color_format, decode_shard_counts, false, false);
+        else
+            decoded_output2 = rocalJpegFileSource(handle2, folderPath1, color_format, decode_shard_counts, false, false, false,
+                                                  ROCAL_USE_USER_GIVEN_SIZE, decode_width, decode_height, rocal_decoder_type);
+
+        if (strcmp(label_text_file_path, "") == 0)
+            rocalCreateLabelReader(handle2, folderPath1);
+        else
+            rocalCreateTextFileBasedLabelReader(handle2, label_text_file_path);
+
+        rocalCropResizeFixed(handle2, decoded_output2, 224, 224, true, 0.9, 1.1, 0.1, 0.1);
+
+        if (rocalVerify(handle2) != ROCAL_OK) {
+            std::cout << "Could not verify the augmentation graph for handle2" << std::endl;
+            rocalRelease(handle2);
+            rocalRelease(handle);
+            return -1;
+        }
+
+        // Restore pipeline state into handle2
+        if (rocalRestoreFromSerializedCheckpoint(handle2, ckpt.data(), ckpt.size()) != ROCAL_OK) {
+            std::cout << "Restore from checkpoint failed for handle2" << std::endl;
+            rocalRelease(handle2);
+            rocalRelease(handle);
+            return -1;
+        }
+
+        // Pull the next batch from the restored pipeline
+        if (rocalRun(handle2) != ROCAL_OK) {
+            std::cout << "rocalRun failed on handle2 after restore" << std::endl;
+            rocalRelease(handle2);
+            rocalRelease(handle);
+            return -1;
+        }
+        std::vector<unsigned char> restored(H * W * C);
+        rocalCopyToOutput(handle2, restored.data(), static_cast<size_t>(restored.size()));
+
+        bool identical = (reference.size() == restored.size()) &&
+                         (std::memcmp(reference.data(), restored.data(), reference.size()) == 0);
+        std::cout << "Checkpoint restore determinism check: " << (identical ? "PASS" : "FAIL") << std::endl;
+
+        rocalRelease(handle2);
+    }
+
     rocalRelease(handle);
 
     return 0;

@@ -52,7 +52,7 @@ THE SOFTWARE.
 #endif
 #include "meta_data/randombboxcrop_meta_data_reader.h"
 #include "rocal_api_types.h"
-#include "pipeline/pipe_op.h"
+#include "pipeline/pipeline_serializer.h"
 
 #define MAX_STRING_LENGTH 100
 #define MAX_OBJECTS 50                // Setting an arbitrary value 50.(Max number of objects/image in COCO dataset is 93)
@@ -245,6 +245,7 @@ class MasterGraph {
 #endif
     TimingDbg _rb_block_if_empty_time, _rb_block_if_full_time;
     std::vector<std::shared_ptr<PipelineOperator>> _pipeline_operators;
+    PipelineSerializer _pipeline_serializer;
     int _op_idx = 0;
     std::string _serialized_pipeline;  // Stores the serialized string of the pipeline
 };

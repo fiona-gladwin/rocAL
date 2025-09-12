@@ -72,8 +72,8 @@ class Argument {
         {typeid(StorageType), "StorageType"},
         {typeid(ExternalSourceFileMode), "ExternalSourceFileMode"},
         {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
-        {typeid(RocalResizeInterpolationType), "RocalResizeInterpolationType"},
-        {typeid(RocalResizeScalingMode), "RocalResizeScalingMode"},
+        {typeid(ResizeInterpolationType), "ResizeInterpolationType"},
+        {typeid(ResizeScalingMode), "ResizeScalingMode"},
         {typeid(RocalMemType), "RocalMemType"},
     };
 

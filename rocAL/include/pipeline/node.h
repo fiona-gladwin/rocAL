@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "pipeline/tensor.h"
 #include "parameters/parameter_factory.h"
 #include "pipeline/commons.h"
+#include "pipeline/enum_registry.h"
 #include "decoders/image/decoder.h"
 #include "readers/image/image_reader.h"
 
@@ -57,25 +58,32 @@ class Argument {
     std::vector<std::any> values;   // Can change to std::variant later
     pParamCore param_core;
     
-    // unordered map, mapping the type with the string
-    std::unordered_map<std::type_index, std::string> type_names = {
-        {typeid(int), "int"},
-        {typeid(unsigned), "unsigned"},
-        {typeid(size_t), "size_t"},
-        {typeid(float), "float"},
-        {typeid(double), "double"},
-        {typeid(bool), "bool"},
-        {typeid(std::string), "string"},
-        {typeid(char *), "char_str"},
-        {typeid(const char *), "char_str"},
-        {typeid(DecoderType), "DecoderType"},
-        {typeid(StorageType), "StorageType"},
-        {typeid(ExternalSourceFileMode), "ExternalSourceFileMode"},
-        {typeid(RocalBatchPolicy), "RocalBatchPolicy"},
-        {typeid(ResizeInterpolationType), "ResizeInterpolationType"},
-        {typeid(ResizeScalingMode), "ResizeScalingMode"},
-        {typeid(RocalMemType), "RocalMemType"},
-    };
+private:
+    // Helper method to get type name from registry or built-in types
+    template<typename T>
+    std::string getTypeName() const {
+        using DecayedType = std::decay_t<T>;
+        
+        // Check built-in types first
+        if constexpr (std::is_same_v<DecayedType, int>) return "int";
+        else if constexpr (std::is_same_v<DecayedType, unsigned>) return "unsigned";
+        else if constexpr (std::is_same_v<DecayedType, size_t>) return "size_t";
+        else if constexpr (std::is_same_v<DecayedType, float>) return "float";
+        else if constexpr (std::is_same_v<DecayedType, double>) return "double";
+        else if constexpr (std::is_same_v<DecayedType, bool>) return "bool";
+        else if constexpr (std::is_same_v<DecayedType, std::string>) return "string";
+        else if constexpr (std::is_same_v<DecayedType, char*> || std::is_same_v<DecayedType, const char*>) return "char_str";
+        else if constexpr (std::is_enum_v<DecayedType>) {
+            // For enum types, check the registry
+            std::string enum_name = EnumRegistry::getInstance().getEnumName<DecayedType>();
+            return enum_name.empty() ? "unknown_enum" : enum_name;
+        }
+        else {
+            return "unknown";
+        }
+    }
+
+public:
 
     template <typename T>
     explicit inline Argument(const std::string& name, const T&& val)
@@ -83,38 +91,34 @@ class Argument {
         if constexpr (std::is_enum<T>::value) {
             type_name = "enum"; // Enum types are stored as integers by default
             
-            auto it = type_names.find(typeid(std::decay_t<T>));
-            if (it != type_names.end()) {
-                enum_type_name = it->second;
+            enum_type_name = getTypeName<T>();
+            if (enum_type_name != "unknown_enum") {
                 values.push_back(static_cast<int>(val));
             } else {
-                std::cout << "Type: Unknown" << arg_name << std::endl;
+                std::cout << "Type: Unknown enum " << arg_name << std::endl;
             }
         } else if constexpr (is_vector_type<T>::value) {
             using ElementType = typename std::decay_t<T>::value_type;
-            auto it = type_names.find(typeid(ElementType));
-            if (it != type_names.end()) {
-                type_name = it->second;                
+            std::string element_type_name = getTypeName<ElementType>();
+            if (element_type_name != "unknown") {
+                type_name = element_type_name;                
                 is_vector = true;
                 for (const auto& v : val) {
-                    // values.push_back(v);  // Store std::string as std::any
                     values.push_back(static_cast<ElementType>(v));
                 }
             } else {
-                std::cout << "Type: Unknown" << arg_name << std::endl;
+                std::cout << "Type: Unknown vector element type " << arg_name << std::endl;
             }
         } else {
-            auto it = type_names.find(typeid(std::decay_t<T>));
-            if (it != type_names.end()) {
-                type_name = it->second;
-
+            type_name = getTypeName<T>();
+            if (type_name != "unknown") {
                 if constexpr (std::is_same<std::decay_t<T>, const char *>::value) {
                     values.push_back(std::string(val));
                 } else {
                     values.push_back(static_cast<std::decay_t<T>>(val));
                 }
             } else {
-                std::cout << "Type: Unknown" << arg_name << std::endl;
+                std::cout << "Type: Unknown " << arg_name << std::endl;
             }
         }
     }

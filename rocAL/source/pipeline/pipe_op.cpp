@@ -134,6 +134,10 @@ void PipelineOperator::serialize_pipeop_args_to_protobuf(rocal_proto::OperatorDe
         if (op_arg.is_parameter) {
             rocal_proto::Parameter *param = arg->mutable_param();
             serialize_parameter_to_protobuf(param, op_arg);
+        } else if (op_arg.type_name == "enum") {
+            rocal_proto::EnumType* enum_arg = arg->mutable_enum_value();
+            enum_arg->set_name(op_arg.enum_type_name);
+            enum_arg->set_value(std::any_cast<int>(op_arg.values[0]));
         } else {  // Add each value to the arg based on the type
             if (!op_arg.is_vector && op_arg.values.size() > 1) {
                 ERR("Argument has more than one value, is_vector should be set to true")

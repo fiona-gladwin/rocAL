@@ -1274,7 +1274,7 @@ TensorListVector* MasterGraph::create_label_reader(const char *source_path, Meta
 
     // Add all arguments as part of the operator
     reader_op->arguments.push_back(Argument("source_path", "char_str", std::string(source_path)));
-    reader_op->arguments.push_back(Argument("reader_type", "int", "MetaDataReaderType", static_cast<int>(reader_type)));
+    reader_op->arguments.push_back(Argument("reader_type", "enum", "MetaDataReaderType", static_cast<int>(reader_type)));
 
     _pipeline_operators.push_back(reader_op);
 

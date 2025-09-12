@@ -45,6 +45,11 @@ message Parameter {
   optional uint32 size = 5; // Used only for CustomRand param
 }
 
+message EnumType {
+  required string name = 1;
+  required int32 value = 2;
+}
+
 // Stores a single argument
 message Arguments {
   required string name = 1;
@@ -56,9 +61,10 @@ message Arguments {
   repeated bool bools = 7;
   repeated uint64 uints = 8;
   optional Parameter param = 9;
+  optional EnumType enum_value = 10;
 
   // vector storage
-  required bool is_vector = 10 [default = false];
+  required bool is_vector = 11 [default = false];
 }
 
 // Stores info about each operator in pipeline

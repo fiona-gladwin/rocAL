@@ -81,7 +81,7 @@ class Argument {
     explicit inline Argument(const std::string& name, const T&& val)
         : arg_name(name) {
         if constexpr (std::is_enum<T>::value) {
-            type_name = "int"; // Enum types are stored as integers by default
+            type_name = "enum"; // Enum types are stored as integers by default
             
             auto it = type_names.find(typeid(std::decay_t<T>));
             if (it != type_names.end()) {

@@ -26,12 +26,19 @@ THE SOFTWARE.
 #include <typeindex>
 #include <string>
 #include <type_traits>
+#include <functional>
+#include <stdexcept>
+#include <any>
 
 /*!
- * \brief Centralized enum registry for automatic enum type name management
+ * \brief Pure centralized enum registry for automatic enum type name management
  * 
- * This singleton class provides a registry for enum types,
- * allowing automatic registration and lookup of enum type names.
+ * This singleton class provides a registry for enum types with exactly 2 maps:
+ * 1. Type index to string name mapping
+ * 2. String name to conversion function mapping (converts int values to enum types as std::any)
+ * 
+ * This design is completely independent of the Argument class, eliminating circular dependencies.
+ * The calling code is responsible for extracting values from std::any and handling Argument manipulation.
  */
 class EnumRegistry {
 public:
@@ -39,17 +46,28 @@ public:
      * \brief Get the singleton instance of the enum registry
      * \return Reference to the singleton EnumRegistry instance
      */
-    static EnumRegistry& getInstance();
+    static EnumRegistry& getInstance() {
+        static EnumRegistry instance;
+        return instance;
+    }
 
     /*!
-     * \brief Register an enum type with its string name
+     * \brief Register an enum type with its string name and conversion function
      * \tparam T The enum type to register (must be an enum)
      * \param name The string name to associate with the enum type
      */
     template<typename T>
     void registerEnum(const std::string& name) {
         static_assert(std::is_enum<T>::value, "T must be an enum type");
-        _enum_map[std::type_index(typeid(T))] = name;
+        auto type_idx = std::type_index(typeid(T));
+        
+        // Map 1: Type index to string name
+        _enum_map[type_idx] = name;
+        
+        // Map 2: String name to conversion function that returns std::any
+        _name_to_converter_map[name] = [](int value) -> std::any {
+            return static_cast<T>(value);
+        };
     }
 
     /*!
@@ -65,18 +83,48 @@ public:
     }
 
     /*!
-     * \brief Check if an enum type is registered
-     * \param type The type_index to check
-     * \return true if the enum type is registered, false otherwise
-     */
-    bool isEnumRegistered(const std::type_index& type) const;
-
-    /*!
      * \brief Get the registered name for a type_index
      * \param type The type_index to look up
      * \return The registered string name, or empty string if not found
      */
-    std::string getEnumName(const std::type_index& type) const;
+    std::string getEnumName(const std::type_index& type) const {
+        auto it = _enum_map.find(type);
+        return (it != _enum_map.end()) ? it->second : "";
+    }
+
+    /*!
+     * \brief Convert integer value to enum and return as std::any
+     * \param enumTypeName The name of the enum type
+     * \param value The integer value to convert
+     * \return The converted enum value wrapped in std::any
+     * \throws std::runtime_error if enum type is not registered
+     */
+    std::any convertIntToEnum(const std::string& enumTypeName, int value) const {
+        auto it = _name_to_converter_map.find(enumTypeName);
+        if (it != _name_to_converter_map.end()) {
+            return it->second(value);  // Call the conversion function and return std::any
+        } else {
+            throw std::runtime_error("No conversion function registered for enum: " + enumTypeName);
+        }
+    }
+
+    /*!
+     * \brief Check if an enum type is registered
+     * \param type The type_index to check
+     * \return true if the enum type is registered, false otherwise
+     */
+    bool isEnumRegistered(const std::type_index& type) const {
+        return _enum_map.find(type) != _enum_map.end();
+    }
+
+    /*!
+     * \brief Check if an enum type is registered by name
+     * \param enumTypeName The name of the enum type
+     * \return true if the enum type is registered, false otherwise
+     */
+    bool isEnumRegistered(const std::string& enumTypeName) const {
+        return _name_to_converter_map.find(enumTypeName) != _name_to_converter_map.end();
+    }
 
 private:
     EnumRegistry() = default;
@@ -84,7 +132,11 @@ private:
     EnumRegistry(const EnumRegistry&) = delete;
     EnumRegistry& operator=(const EnumRegistry&) = delete;
 
+    // Map 1: Type index to string name mapping
     std::unordered_map<std::type_index, std::string> _enum_map;
+    
+    // Map 2: String name to conversion function mapping (returns std::any)
+    std::unordered_map<std::string, std::function<std::any(int)>> _name_to_converter_map;
 };
 
 /*!

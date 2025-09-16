@@ -1882,27 +1882,6 @@ void MasterGraph::serialize(size_t &serialized_string_size) {
     serialized_string_size = _serialized_pipeline.size();
 }
 
-using EnumCaster = std::function<void(Argument&, int)>;
-
-template<typename EnumType>
-EnumCaster make_enum_caster() {
-    return [](Argument& arg, int i) {
-        arg.values.push_back(static_cast<EnumType>(i));
-    };
-}
-
-const static std::unordered_map<std::string, EnumCaster> enum_cast_map = {
-    {"RocalMemType", make_enum_caster<RocalMemType>()},
-    {"DecoderType", make_enum_caster<DecoderType>()},
-    {"StorageType", make_enum_caster<StorageType>()},
-    {"ExternalSourceFileMode", make_enum_caster<ExternalSourceFileMode>()},
-    {"RocalBatchPolicy", make_enum_caster<RocalBatchPolicy>()},
-    {"ResizeScalingMode", make_enum_caster<ResizeScalingMode>()},
-    {"ResizeInterpolationType", make_enum_caster<ResizeInterpolationType>()},
-    {"MetaDataReaderType", make_enum_caster<MetaDataReaderType>()}
-    // ...
-};
-
 void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {
     for (const auto& proto_arg : opdef.args()) {
         Argument arg;
@@ -1920,9 +1899,10 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
         } else if (arg.type_name == "enum") {
             const auto& enum_val = proto_arg.enum_value();
             arg.enum_type_name = enum_val.name();
-            auto it = enum_cast_map.find(arg.enum_type_name);
-            if (it != enum_cast_map.end()) {
-                it->second(arg, enum_val.value());  // Call the associated lambda
+            if (EnumRegistry::getInstance().isEnumRegistered(arg.enum_type_name)) {
+                // Use new std::any-based approach
+                std::any enum_value = EnumRegistry::getInstance().convertIntToEnum(arg.enum_type_name, enum_val.value());
+                arg.values.push_back(enum_value);
             } else {
                 THROW("Invalid instance name set to the argument: " + arg.enum_type_name);
             }

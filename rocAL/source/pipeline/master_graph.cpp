@@ -1897,8 +1897,9 @@ const static std::unordered_map<std::string, EnumCaster> enum_cast_map = {
     {"StorageType", make_enum_caster<StorageType>()},
     {"ExternalSourceFileMode", make_enum_caster<ExternalSourceFileMode>()},
     {"RocalBatchPolicy", make_enum_caster<RocalBatchPolicy>()},
-    {"RocalResizeScalingMode", make_enum_caster<RocalResizeScalingMode>()},
-    {"RocalResizeInterpolationType", make_enum_caster<RocalResizeInterpolationType>()},
+    {"ResizeScalingMode", make_enum_caster<ResizeScalingMode>()},
+    {"ResizeInterpolationType", make_enum_caster<ResizeInterpolationType>()},
+    {"MetaDataReaderType", make_enum_caster<MetaDataReaderType>()}
     // ...
 };
 

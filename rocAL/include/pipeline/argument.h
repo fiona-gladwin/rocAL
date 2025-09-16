@@ -52,7 +52,7 @@ class Argument {
     bool is_parameter = false;  ///< True if the argument is a parameter object
     bool is_null_ptr = false;   ///< True if the argument represents a null pointer
     std::vector<std::any> values; ///< Storage for argument values (can change to std::variant later)
-    pParamCore param_core;      ///< Parameter core for parameter-type arguments
+    pParam param;               ///< Parameter core for parameter-type arguments
     
    private:
     // Helper method to get type name from registry or built-in types
@@ -70,8 +70,8 @@ class Argument {
         }
     }
 
-public:
-
+   public:
+    Argument() {}
     template <typename T>
     T Get() const {
         std::cerr << "Type name -> " << type_name << "\n";
@@ -183,7 +183,7 @@ public:
     }
 
     // Deduces the type of parameter of the argument
-    inline void extract_param(const RocalParameterType param_type, pParamCore param) {
+    inline void extract_param(const RocalParameterType param_type, pParam parameter) {
         if (param_type == RocalParameterType::DETERMINISTIC) {
             enum_type_name = "SimpleParameter";
         } else if (param_type == RocalParameterType::RANDOM_UNIFORM) {
@@ -191,7 +191,7 @@ public:
         } else if (param_type == RocalParameterType::RANDOM_CUSTOM) {
             enum_type_name = "CustomRand";
         }
-        param_core = param;
+        param = parameter;
         is_parameter = true;
     }
 
@@ -204,7 +204,7 @@ public:
             type_name = "nullptr";
             return;
         }
-        extract_param(param->type, pParamCore(core(param)));
+        extract_param(param->type, param);
     }
 
     // Constructor for IntParam arguments
@@ -216,7 +216,7 @@ public:
             is_null_ptr = true;
             return;
         }
-        extract_param(param->type, pParamCore(core(param)));
+        extract_param(param->type, param);
     }
 };
 

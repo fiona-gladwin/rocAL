@@ -1917,8 +1917,16 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
             for (const auto& s : proto_arg.strings()) {
                 arg.values.push_back(s);
             }
-        }
-        else if (arg.is_parameter) {
+        } else if (arg.type_name == "enum") {
+            const auto& enum_val = proto_arg.enum_value();
+            arg.enum_type_name = enum_val.name();
+            auto it = enum_cast_map.find(arg.enum_type_name);
+            if (it != enum_cast_map.end()) {
+                it->second(arg, enum_val.value());  // Call the associated lambda
+            } else {
+                THROW("Invalid instance name set to the argument: " + arg.enum_type_name);
+            }
+        } else if (arg.is_parameter) {
             const auto& param = proto_arg.param();
             if (arg.type_name == "int") {
                 if (arg.enum_type_name == "SimpleParameter") {
@@ -1952,17 +1960,7 @@ void MasterGraph::deserialize_args_from_protobuf(const rocal_proto::OperatorDef&
         // Handle non-parameter arguments
         else if (arg.type_name == "int" || arg.type_name == "shared_ptr") {
             for (auto i : proto_arg.ints()) {
-                if (proto_arg.has_instance_name()) {
-                    auto instance_name = proto_arg.instance_name();
-                    auto it = enum_cast_map.find(instance_name);
-                    if (it != enum_cast_map.end()) {
-                        it->second(arg, i);  // Call the associated lambda
-                    } else {
-                        THROW("Invalid instance name set to the argument: " + instance_name);
-                    }
-                } else {
-                    arg.values.push_back(static_cast<int>(i));
-                }
+                arg.values.push_back(static_cast<int>(i));
             }
         } else if (arg.type_name == "float") {
             for (auto f : proto_arg.floats()) {
@@ -2124,9 +2122,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
             if (op_def.module_name() == "reader") {
                 std::cerr << "Reader\n";
                 if (compare_string(op_def.name(), "LabelReader")) {
-                    // add_node
-                    create_label_reader(op_def.args()[0].strings(0).c_str(), static_cast<MetaDataReaderType>(op_def.args()[1].ints(0)));
-                    // Create the input and output tensors
+                    create_label_reader(op_def.args()[0].strings(0).c_str(), static_cast<MetaDataReaderType>(op_def.args()[1].enum_value().value()));
                 }
             } else if (op_def.module_name() == "loader") {
                 // fetch the output tensor details and create it

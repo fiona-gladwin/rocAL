@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,24 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#pragma once
-#include "pipeline/graph.h"
-#include "pipeline/node.h"
-#include "parameters/parameter_factory.h"
-#include "parameters/parameter_vx.h"
+#include "pipeline/enum_registry.h"
 
-class SliceNode : public Node {
-   public:
-    SliceNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs);
-    SliceNode() = delete;
-    void init(Tensor *anchor_param, Tensor *shape_param, std::vector<float> &fill_values_param, OutOfBoundsPolicy policy);
+EnumRegistry& EnumRegistry::getInstance() {
+    static EnumRegistry instance;
+    return instance;
+}
 
-   protected:
-    void create_node() override;
-    void update_node() override;
+bool EnumRegistry::isEnumRegistered(const std::type_index& type) const {
+    return _enum_map.find(type) != _enum_map.end();
+}
 
-   private:
-    Tensor *_anchor, *_shape;
-    std::vector<float> _fill_values, _fill_values_vec;
-    OutOfBoundsPolicy _policy = OutOfBoundsPolicy::ERROR;
-};
+std::string EnumRegistry::getEnumName(const std::type_index& type) const {
+    auto it = _enum_map.find(type);
+    return (it != _enum_map.end()) ? it->second : "";
+}

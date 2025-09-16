@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include "parameters/parameter_random.h"
 #include "parameters/parameter_simple.h"
+#include "pipeline/enum_registry.h"
 
 const int MAX_SEEDS = 1024;
 
@@ -36,6 +37,7 @@ enum class RocalParameterType {
     RANDOM_UNIFORM,
     RANDOM_CUSTOM
 };
+AUTO_REGISTER_ENUM(RocalParameterType)
 
 struct IntParam {
     IntParam(

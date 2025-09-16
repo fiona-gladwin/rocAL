@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "pipeline/exception.h"
 #include "pipeline/log.h"
 #include "pipeline/filesystem.h"
+#include "pipeline/enum_registry.h"
 
 // Calculated from the largest resize shorter dimension in imagenet validation dataset
 #define MAX_ASPECT_RATIO 6.0f
@@ -54,6 +55,7 @@ enum class RocalTensorlayout {
     NCDHW,
     NONE
 };
+AUTO_REGISTER_ENUM(RocalTensorlayout)
 
 /*! \brief Tensor data type
  *
@@ -68,11 +70,13 @@ enum class RocalTensorDataType {
     INT32,
     INT16
 };
+AUTO_REGISTER_ENUM(RocalTensorDataType)
 
 enum class RocalAffinity {
     GPU = 0,
     CPU
 };
+AUTO_REGISTER_ENUM(RocalAffinity)
 
 /*! \brief Color formats currently supported by Rocal SDK as input/output
  *
@@ -83,6 +87,7 @@ enum class RocalColorFormat {
     U8,
     RGB_PLANAR,
 };
+AUTO_REGISTER_ENUM(RocalColorFormat)
 
 /*! \brief Memory type, host or device
  *
@@ -93,6 +98,7 @@ enum class RocalMemType {
     OCL,
     HIP
 };
+AUTO_REGISTER_ENUM(RocalMemType)
 
 /*! \brief Decoder mode for Video decoding
  *
@@ -102,6 +108,7 @@ enum class DecodeMode {
     ROCDECODE = 0,
     CPU
 };
+AUTO_REGISTER_ENUM(DecodeMode)
 
 /*! \brief Tensor ROI type
  *
@@ -111,6 +118,7 @@ enum class RocalROIType {
     LTRB = 0,
     XYWH
 };
+AUTO_REGISTER_ENUM(RocalROIType)
 
 /*! \brief Tensor ROI in LTRB format
  *
@@ -173,6 +181,7 @@ enum RocalBatchPolicy {
     DROP,
     PARTIAL
 };
+AUTO_REGISTER_ENUM(RocalBatchPolicy)
 
 template <typename RNG = std::mt19937>
 class BatchRNG {
@@ -216,3 +225,58 @@ enum MissingComponentsBehaviour {
     MISSING_COMPONENT_SKIP,
     MISSING_COMPONENT_EMPTY
 };
+AUTO_REGISTER_ENUM(MissingComponentsBehaviour);
+
+/*! \brief Internal Resize Scaling Mode enum
+ * Internal version of RocalResizeScalingMode for use within rocAL implementation
+ */
+enum class ResizeScalingMode {
+    DEFAULT = 0,
+    STRETCH,
+    NOT_SMALLER,
+    NOT_LARGER,
+    MIN_MAX
+};
+AUTO_REGISTER_ENUM(ResizeScalingMode);
+
+/*! \brief Internal Resize Interpolation Type enum
+ * Internal version of RocalResizeInterpolationType for use within rocAL implementation
+ */
+enum class ResizeInterpolationType {
+    NEAREST_NEIGHBOR = 0,
+    LINEAR,
+    CUBIC,
+    LANCZOS,
+    GAUSSIAN,
+    TRIANGULAR
+};
+AUTO_REGISTER_ENUM(ResizeInterpolationType);
+
+/*! \brief Internal Mel Scale Formula enum
+ * Internal version of RocalMelScaleFormula for use within rocAL implementation
+ */
+enum class MelScaleFormula {
+    SLANEY = 0,
+    HTK
+};
+AUTO_REGISTER_ENUM(MelScaleFormula);
+
+/*! \brief Internal Audio Border Type enum
+ * Internal version of RocalAudioBorderType for use within rocAL implementation
+ */
+enum class AudioBorderType {
+    ZERO = 0,
+    CLAMP,
+    REFLECT
+};
+AUTO_REGISTER_ENUM(AudioBorderType);
+
+/*! \brief Internal Out Of Bounds Policy enum
+ * Internal version of RocalOutOfBoundsPolicy for use within rocAL implementation
+ */
+enum class OutOfBoundsPolicy {
+    PAD = 0,
+    TRIMTOSHAPE,
+    ERROR
+};
+AUTO_REGISTER_ENUM(OutOfBoundsPolicy);

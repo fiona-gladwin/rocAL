@@ -1274,8 +1274,8 @@ TensorListVector* MasterGraph::create_label_reader(const char *source_path, Meta
     auto reader_op = std::make_shared<PipelineOperator>("LabelReader_" + std::to_string(_op_idx++), "reader");
 
     // Add all arguments as part of the operator
-    reader_op->arguments.push_back(Argument("source_path", "char_str", std::string(source_path)));
-    reader_op->arguments.push_back(Argument("reader_type", "int", "MetaDataReaderType", static_cast<int>(reader_type)));
+    reader_op->arguments.push_back(Argument("source_path", source_path));
+    reader_op->arguments.push_back(Argument("reader_type", reader_type));
 
     _pipeline_operators.push_back(reader_op);
 
@@ -1875,45 +1875,10 @@ void MasterGraph::feed_external_input(const std::vector<std::string>& input_imag
 
 
 void MasterGraph::serialize(size_t &serialized_string_size) {
-    // Add all the pipeline related arguments to protobuf string
-    rocal_proto::PipelineDef pipe;
-    pipe.set_num_threads(_cpu_num_threads);
-    pipe.set_batch_size(_user_batch_size);
-    pipe.set_device_id(_gpu_id);
-    pipe.set_seed(ParameterFactory::instance()->get_seed());
-    pipe.set_rocal_cpu(_mem_type == RocalMemType::HOST ? true : false);
-    pipe.set_prefetch_queue_depth(_prefetch_queue_depth);
-
-
-    // Serialize all operators
-    for (auto &pipe_op : _pipeline_operators) {
-        rocal_proto::OperatorDef *op = pipe.add_operators();
-        op->set_name(pipe_op->operator_name);
-        op->set_module_name(pipe_op->module_name);
-        // Add support to add each argument in the operator
-        pipe_op->serialize_pipeop_args_to_protobuf(op);
-        pipe_op->serialize_pipeop_inputs_and_outputs_to_protobuf(op);
-        // std::cerr << "Serialized args for op : " << pipe_op->name << "\n";
-    }
-
-
-    // Serialize the pipeline outputs
-    for (size_t idx = 0; idx < _internal_tensor_list.size(); idx++) {
-        rocal_proto::InputOutput *output = pipe.add_pipe_outputs();
-        auto pipe_output = _internal_tensor_list[idx];
-        output->set_name(pipe_output->tensor_name());
-        output->set_device(static_cast<int>(pipe_output->info().mem_type()));
-        output->set_dtype(static_cast<int>(pipe_output->info().data_type()));
-        output->set_layout(static_cast<int>(pipe_output->info().layout()));
-        output->set_color_format(static_cast<int>(pipe_output->info().color_format()));
-        for (auto& dim : pipe_output->info().dims())
-            output->add_dims(dim);
-        output->set_num_dims(pipe_output->info().num_of_dims());
-        output->set_is_argument_input(false);
-    }
-
-    // Serialize the string and return
-    _serialized_pipeline = pipe.SerializeAsString();
+    _pipeline_serializer.serialize_pipeline_config(_cpu_num_threads, _user_batch_size, _gpu_id, _mem_type, _prefetch_queue_depth);
+    _pipeline_serializer.serialize_operators(_pipeline_operators);
+    _pipeline_serializer.serialize_output_tensors(_internal_tensor_list);
+    _pipeline_serializer.serialize_to_string(_serialized_pipeline);
     serialized_string_size = _serialized_pipeline.size();
 }
 

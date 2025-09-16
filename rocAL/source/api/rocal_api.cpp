@@ -143,16 +143,13 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
             pipe_params.device_id = pipe_params.device_id.value_or(pipe.device_id());
         if (pipe.has_num_threads())
             pipe_params.num_threads = pipe_params.num_threads.value_or(pipe.num_threads());
-        if (pipe.has_seed())
-            pipe_params.seed = pipe_params.seed.value_or(pipe.seed());
         if (pipe.has_rocal_cpu())
             pipe_params.rocal_cpu = pipe_params.rocal_cpu.value_or(pipe.rocal_cpu());
         if (pipe.has_prefetch_queue_depth())
            pipe_params.prefetch_queue_depth = pipe_params.prefetch_queue_depth.value_or(pipe.prefetch_queue_depth());
-
-        // Create the context. pipe.prefetch_queue_depth();
         if (pipe.has_seed()) {
             pipe_params.seed = pipe_params.seed.value_or(pipe.seed());
+            std::cerr << "Seed : " << pipe_params.seed.value() << "\n";
             rocalSetSeed(pipe.seed());
         }
 
@@ -160,7 +157,6 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
         std::cerr << "TID : " << pipe_params.num_threads.value() << "\n";
         std::cerr << "GPU ID : " << pipe_params.device_id.value() << "\n";
         std::cerr << "CPU : " << pipe_params.rocal_cpu.value() << "\n";
-        std::cerr << "Seed : " << pipe_params.seed.value() << "\n";
         std::cerr << "Prefetch : " << pipe_params.prefetch_queue_depth.value() << "\n";
 
 

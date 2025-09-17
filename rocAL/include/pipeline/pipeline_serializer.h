@@ -51,6 +51,7 @@ public:
     RocalStatus serialize_output_tensors(TensorList& output_tensors_list);
     RocalStatus serialize_operators(std::vector<std::shared_ptr<PipelineOperator>>& operators);
 
+    RocalStatus deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments);
     /**
      * @brief Deserialize a rocAL pipeline from a file
      * @param file_path Path to the serialized pipeline file

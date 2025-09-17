@@ -69,3 +69,94 @@ RocalStatus PipelineSerializer::serialize_output_tensors(TensorList& output_tens
     }
     return ROCAL_OK;
 }
+
+RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {
+    for (const auto& proto_arg : opdef.args()) {
+        Argument arg;
+        arg.arg_name = proto_arg.name();
+        arg.type_name = proto_arg.has_type() ? proto_arg.type() : "";
+        arg.enum_type_name = proto_arg.has_instance_name() ? proto_arg.instance_name() : "";
+        arg.is_vector = proto_arg.is_vector();
+        arg.is_parameter = proto_arg.has_param();
+
+        // Handle parameters
+        if (arg.type_name == "map_string") {
+            for (const auto& s : proto_arg.strings()) {
+                arg.values.push_back(s);
+            }
+        } else if (arg.type_name == "enum") {
+            const auto& enum_val = proto_arg.enum_value();
+            arg.enum_type_name = enum_val.name();
+            if (EnumRegistry::getInstance().isEnumRegistered(arg.enum_type_name)) {
+                // Use new std::any-based approach
+                std::any enum_value = EnumRegistry::getInstance().convertIntToEnum(arg.enum_type_name, enum_val.value());
+                arg.values.push_back(enum_value);
+            } else {
+                THROW("Invalid instance name set to the argument: " + arg.enum_type_name);
+            }
+        } else if (arg.is_parameter) {
+            const auto& param = proto_arg.param();
+            if (arg.type_name == "int") {
+                if (arg.enum_type_name == "SimpleParameter") {
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_single_value_int_param(param.param_val_int(0)));
+                } else if (arg.enum_type_name == "UniformRand") {
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_uniform_int_rand_param(param.param_val_int(0), param.param_val_int(1)));
+                } else if (arg.enum_type_name == "CustomRand") {
+                    std::vector<int> values(param.param_val_int().begin(), param.param_val_int().end());
+                    std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+                    arg.param = static_cast<IntParam*>(ParameterFactory::instance()->create_custom_int_rand_param(values.data(),
+                                                                      freqs.data(),
+                                                                      values.size()));
+                }
+            } else if (arg.type_name == "float") {
+                if (arg.enum_type_name == "SimpleParameter") {
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_single_value_float_param(param.param_val_float(0)));
+                } else if (arg.enum_type_name == "UniformRand") {
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_uniform_float_rand_param(param.param_val_float(0), param.param_val_float(1)));
+                } else if (arg.enum_type_name == "CustomRand") {
+                    std::vector<float> values(param.param_val_float().begin(), param.param_val_float().end());
+                    std::vector<double> freqs(param.frequency().begin(), param.frequency().end());
+                    arg.param = static_cast<FloatParam*>(ParameterFactory::instance()->create_custom_float_rand_param(values.data(),
+                                                                      freqs.data(),
+                                                                      values.size()));
+                }
+            } else {
+                arg.is_null_ptr = true;
+            }
+        }
+
+        // Handle non-parameter arguments
+        else if (arg.type_name == "int" || arg.type_name == "shared_ptr") {
+            for (auto i : proto_arg.ints()) {
+                arg.values.push_back(static_cast<int>(i));
+            }
+        } else if (arg.type_name == "float") {
+            for (auto f : proto_arg.floats()) {
+                arg.values.push_back(f);
+            }
+        } else if (arg.type_name == "char_str" || arg.type_name == "string") {
+            for (const auto& s : proto_arg.strings()) {
+                arg.values.push_back(s);
+            }
+        } else if (arg.type_name == "bool") {
+            for (auto b : proto_arg.bools()) {
+                arg.values.push_back(b);
+            }
+        } else if (arg.type_name == "unsigned") {
+            for (auto u : proto_arg.uints()) {
+                arg.values.push_back(static_cast<unsigned>(u));
+            }
+        } else if (arg.type_name == "size_t") {
+            for (auto u : proto_arg.uints()) {
+                arg.values.push_back(static_cast<size_t>(u));
+            }
+        } else if (arg.type_name == "nullptr") {
+            arg.is_null_ptr = true;
+        } else {
+            THROW("Invalid or unsupported type while deserializing: " + arg.type_name);
+        }
+
+        arguments.push_back(std::move(arg));
+    }
+    return ROCAL_OK;
+}

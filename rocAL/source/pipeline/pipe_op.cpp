@@ -148,25 +148,71 @@ void PipelineOperator::serialize_pipeop_args_to_protobuf(rocal_proto::OperatorDe
             rocal_proto::EnumType* enum_arg = arg->mutable_enum_value();
             enum_arg->set_name(op_arg.enum_type_name);
             enum_arg->set_value(std::any_cast<int>(op_arg.values[0]));
-        } else {  // Add each value to the arg based on the type
-            if (!op_arg.is_vector && op_arg.values.size() > 1) {
-                ERR("Argument has more than one value, is_vector should be set to true")
-            }
-            for (auto &v : op_arg.values) {
-                if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
-                    arg->add_ints(std::any_cast<int>(v));
-                } else if (op_arg.type_name == "float") {
-                    arg->add_floats(std::any_cast<float>(v));
-                } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
-                    arg->add_strings(std::any_cast<std::string>(v));
-                } else if (op_arg.type_name == "bool") {
-                    arg->add_bools(std::any_cast<bool>(v));
-                } else if (op_arg.type_name == "unsigned") {
-                    arg->add_uints(std::any_cast<unsigned>(v));  // Use unsigned int instead of uint
-                } else if (op_arg.type_name == "size_t") {
-                    arg->add_uints(std::any_cast<size_t>(v));  // Use unsigned int instead of uint
+        } else {
+            // Scalars go to the flat repeated fields; vectors go to repeated *Vector messages
+            if (op_arg.is_vector) {
+                if (op_arg.values.empty()) {
+                    // Represent empty vector by adding an empty vector message of the right type
+                    if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr"
+                        || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t") {
+                        static_cast<void>(arg->add_int_vectors());
+                    } else if (op_arg.type_name == "float") {
+                        static_cast<void>(arg->add_float_vectors());
+                    } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string"
+                               || op_arg.type_name == "map_string") {
+                        static_cast<void>(arg->add_string_vectors());
+                    } else {
+                        THROW("Vector type not supported for Argument " + op_arg.arg_name + " with type " + op_arg.type_name);
+                    }
                 } else {
-                    THROW("Invalid type specified for the Argument " + op_arg.arg_name);
+                    if (op_arg.type_name == "int" || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t") {
+                        auto *vec = arg->add_int_vectors();
+                        for (auto &v : op_arg.values) {
+                            // Map unsigned/size_t to int64 for IntVector as per spec (only Int/Float/String vectors permitted)
+                            if (op_arg.type_name == "unsigned") {
+                                vec->add_values(static_cast<int64_t>(std::any_cast<unsigned>(v)));
+                            } else if (op_arg.type_name == "size_t") {
+                                vec->add_values(static_cast<int64_t>(std::any_cast<size_t>(v)));
+                            } else {
+                                vec->add_values(static_cast<int64_t>(std::any_cast<int>(v)));
+                            }
+                        }
+                    } else if (op_arg.type_name == "float") {
+                        auto *vec = arg->add_float_vectors();
+                        for (auto &v : op_arg.values) {
+                            vec->add_values(std::any_cast<float>(v));
+                        }
+                    } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string" 
+                               || op_arg.type_name == "map_string") {
+                        auto *vec = arg->add_string_vectors();
+                        for (auto &v : op_arg.values) {
+                            vec->add_values(std::any_cast<std::string>(v));
+                        }
+                    } else {
+                        THROW("Vector type not supported for Argument " + op_arg.arg_name + " with type " + op_arg.type_name);
+                    }
+                }
+            } else {
+                // Scalar path (use flat repeated fields)
+                if (op_arg.values.size() > 1) {
+                    ERR("Argument has more than one value, is_vector should be set to true")
+                }
+                for (auto &v : op_arg.values) {
+                    if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr") {
+                        arg->add_ints(std::any_cast<int>(v));
+                    } else if (op_arg.type_name == "float") {
+                        arg->add_floats(std::any_cast<float>(v));
+                    } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string") {
+                        arg->add_strings(std::any_cast<std::string>(v));
+                    } else if (op_arg.type_name == "bool") {
+                        arg->add_bools(std::any_cast<bool>(v));
+                    } else if (op_arg.type_name == "unsigned") {
+                        arg->add_uints(std::any_cast<unsigned>(v));
+                    } else if (op_arg.type_name == "size_t") {
+                        arg->add_uints(std::any_cast<size_t>(v));
+                    } else {
+                        THROW("Invalid type specified for the Argument " + op_arg.arg_name);
+                    }
                 }
             }
         }

@@ -50,6 +50,19 @@ message EnumType {
   int32 value = 2;
 }
 
+// Vector containers for Arguments (use these when passing vectors)
+message FloatVector {
+  repeated float values = 1;
+}
+
+message IntVector {
+  repeated int64 values = 1;
+}
+
+message StringVector {
+  repeated string values = 1;
+}
+
 // Stores a single argument
 message Arguments {
   string name = 1;
@@ -63,8 +76,13 @@ message Arguments {
   optional Parameter param = 9;
   optional EnumType enum_value = 10;
 
-  // vector storage
-  bool is_vector = 11;
+  // vector storage (deprecated): use *_vectors below instead
+  bool is_vector = 11 [deprecated = true];
+
+  // Vector payloads (use these when the argument carries vectors)
+  repeated FloatVector float_vectors = 12;
+  repeated IntVector int_vectors = 13;
+  repeated StringVector string_vectors = 14;
 }
 
 // Stores info about each operator in pipeline

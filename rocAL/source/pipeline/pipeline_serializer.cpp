@@ -22,22 +22,20 @@ THE SOFTWARE.
 
 #include "pipeline/pipeline_serializer.h"
 
-RocalStatus PipelineSerializer::serialize_to_string(std::string& serialized_string) {
+void PipelineSerializer::serialize_to_string(std::string& serialized_string) {
     serialized_string = _pipeline.SerializeAsString();
-    return ROCAL_OK;
 }
 
-RocalStatus PipelineSerializer::serialize_pipeline_config(size_t num_threads, size_t batch_size, int device_id, RocalMemType device_type, size_t prefetch_queue_depth) {
+void PipelineSerializer::serialize_pipeline_config(size_t num_threads, size_t batch_size, int device_id, RocalMemType device_type, size_t prefetch_queue_depth) {
     _pipeline.set_num_threads(num_threads);
     _pipeline.set_batch_size(batch_size);
     _pipeline.set_device_id(device_id);
     // _pipeline.set_seed(seed);
     _pipeline.set_rocal_cpu(device_type == RocalMemType::HOST ? true : false);
     _pipeline.set_prefetch_queue_depth(prefetch_queue_depth);
-    return ROCAL_OK;
 }
 
-RocalStatus PipelineSerializer::serialize_operators(std::vector<std::shared_ptr<PipelineOperator>>& operators) {
+void PipelineSerializer::serialize_operators(std::vector<std::shared_ptr<PipelineOperator>>& operators) {
     // Serialize all operators
     for (auto &pipe_op : operators) {
         rocal_proto::OperatorDef *op = _pipeline.add_operators();
@@ -47,11 +45,9 @@ RocalStatus PipelineSerializer::serialize_operators(std::vector<std::shared_ptr<
         pipe_op->serialize_pipeop_args_to_protobuf(op);
         pipe_op->serialize_pipeop_inputs_and_outputs_to_protobuf(op);
     }
-
-    return ROCAL_OK;
 }
 
-RocalStatus PipelineSerializer::serialize_output_tensors(TensorList& output_tensors_list) {
+void PipelineSerializer::serialize_output_tensors(TensorList& output_tensors_list) {
 
     // Serialize the pipeline outputs
     for (size_t idx = 0; idx < output_tensors_list.size(); idx++) {
@@ -67,7 +63,6 @@ RocalStatus PipelineSerializer::serialize_output_tensors(TensorList& output_tens
         output->set_num_dims(pipe_output->info().num_of_dims());
         output->set_is_argument_input(false);
     }
-    return ROCAL_OK;
 }
 
 RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments) {

@@ -37,7 +37,7 @@ public:
      * @param file_path Path to save the serialized pipeline
      * @return RocalStatus indicating success or failure
      */
-    RocalStatus serialize_to_file(const std::string& file_path);
+    void serialize_to_file(const std::string& file_path);
 
     /**
      * @brief Serialize a rocAL pipeline to a string
@@ -45,11 +45,11 @@ public:
      * @param serialized_string Output string containing the serialized pipeline
      * @return RocalStatus indicating success or failure
      */
-    RocalStatus serialize_to_string(std::string& serialized_string);
+    void serialize_to_string(std::string& serialized_string);
 
-    RocalStatus serialize_pipeline_config(size_t num_threads, size_t batch_size, int device_id, RocalMemType device_type, size_t prefetch_queue_depth);
-    RocalStatus serialize_output_tensors(TensorList& output_tensors_list);
-    RocalStatus serialize_operators(std::vector<std::shared_ptr<PipelineOperator>>& operators);
+    void serialize_pipeline_config(size_t num_threads, size_t batch_size, int device_id, RocalMemType device_type, size_t prefetch_queue_depth);
+    void serialize_output_tensors(TensorList& output_tensors_list);
+    void serialize_operators(std::vector<std::shared_ptr<PipelineOperator>>& operators);
 
     RocalStatus deserialize_args_from_protobuf(const rocal_proto::OperatorDef& opdef, std::vector<Argument>& arguments);
     /**

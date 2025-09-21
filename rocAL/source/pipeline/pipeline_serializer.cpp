@@ -75,11 +75,7 @@ RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto
         arg.is_parameter = proto_arg.has_param();
 
         // Handle parameters
-        if (arg.type_name == "map_string") {
-            for (const auto& s : proto_arg.strings()) {
-                arg.values.push_back(s);
-            }
-        } else if (arg.type_name == "enum") {
+        if (arg.type_name == "enum") {
             const auto& enum_val = proto_arg.enum_value();
             arg.enum_type_name = enum_val.name();
             if (EnumRegistry::getInstance().isEnumRegistered(arg.enum_type_name)) {
@@ -117,6 +113,46 @@ RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto
                 }
             } else {
                 arg.is_null_ptr = true;
+            }
+        } else if (arg.is_vector) {
+            // Handle vector deserialization based on type
+            if (arg.type_name == "int" || arg.type_name == "unsigned" || arg.type_name == "size_t" || arg.type_name == "shared_ptr") {
+                // Deserialize integer vectors - expect exactly one vector
+                if (proto_arg.int_vectors_size() != 1) {
+                    THROW("Expected exactly one int vector for argument " + arg.arg_name + ", but found " + std::to_string(proto_arg.int_vectors_size()));
+                }
+                const auto& int_vec = proto_arg.int_vectors(0);
+                for (auto val : int_vec.values()) {
+                    if (arg.type_name == "unsigned") {
+                        arg.values.push_back(static_cast<unsigned>(val));
+                    } else if (arg.type_name == "size_t") {
+                        arg.values.push_back(static_cast<size_t>(val));
+                    } else if (arg.type_name == "shared_ptr") {
+                        arg.values.push_back(static_cast<int>(val));
+                    } else { // int
+                        arg.values.push_back(static_cast<int>(val));
+                    }
+                }
+            } else if (arg.type_name == "float") {
+                // Deserialize float vectors - expect exactly one vector
+                if (proto_arg.float_vectors_size() != 1) {
+                    THROW("Expected exactly one float vector for argument " + arg.arg_name + ", but found " + std::to_string(proto_arg.float_vectors_size()));
+                }
+                const auto& float_vec = proto_arg.float_vectors(0);
+                for (auto val : float_vec.values()) {
+                    arg.values.push_back(val);
+                }
+            } else if (arg.type_name == "char_str" || arg.type_name == "string" || arg.type_name == "map_string") {
+                // Deserialize string vectors - expect exactly one vector
+                if (proto_arg.string_vectors_size() != 1) {
+                    THROW("Expected exactly one string vector for argument " + arg.arg_name + ", but found " + std::to_string(proto_arg.string_vectors_size()));
+                }
+                const auto& string_vec = proto_arg.string_vectors(0);
+                for (const auto& val : string_vec.values()) {
+                    arg.values.push_back(val);
+                }
+            } else {
+                THROW("Vector type not supported during deserialization for Argument " + arg.arg_name + " with type " + arg.type_name);
             }
         }
 

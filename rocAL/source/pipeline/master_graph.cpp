@@ -2030,17 +2030,18 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 loader_node->initialize_args(args_list, _meta_data_reader);
                 
             } else {
-                Tensor *input_tensor = nullptr;
-                if (op_def.inputs_size() == 1) {
-                    if (_pipeline_tensors.find(op_def.inputs()[0].name()) != _pipeline_tensors.end()) {
-                        input_tensor = _pipeline_tensors[op_def.inputs()[0].name()];
-                        std::cerr << "Writing to pipe tensor in -> " << op_def.inputs()[0].name() << "\n";
+                std::vector<Tensor *> inputs_vector;
+                // Handle both single and multiple inputs
+                for (auto& op_input : op_def.inputs()) {
+                    if (_pipeline_tensors.find(op_input.name()) != _pipeline_tensors.end()) {
+                        inputs_vector.emplace_back(_pipeline_tensors[op_input.name()]);
+                        std::cerr << "Writing to pipe tensor in -> " << op_input.name() << "\n";
+                    } else {
+                        THROW("Input tensor '" + op_input.name() + "' not found in pipeline tensors for operator " + op_def.name());
                     }
-                } else {
-                    // To be done later.
                 }
                 Tensor* output_tensor = nullptr;
-                if (input_tensor) {
+                if (inputs_vector.size() > 0) {
                     // TODO - Need to check if all the input info and the output info details matches if not create a new one
                     if (op_def.outputs_size() == 1) {
 
@@ -2059,7 +2060,7 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                     THROW("Input not available for this Augmentation Node -> " + op_def.name())
                 }
                 // auto node = this->add_node<BrightnessNode>({input_tensor}, {output_tensor});
-                auto node = this->add_node(get_node_name(op_def.name()), {input_tensor}, {output_tensor});
+                auto node = this->add_node(get_node_name(op_def.name()), inputs_vector, {output_tensor});
 
                 std::vector<Argument> args_list;
                 _pipeline_serializer.deserialize_args_from_protobuf(op_def, args_list);

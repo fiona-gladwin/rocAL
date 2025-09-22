@@ -207,13 +207,6 @@ ImageLoader::load_routine() {
         if (!_internal_thread_running)
             break;
 
-        // TODO - Save state
-        if (_is_checkpointing_enabled) {
-            _decoded_data_info._loader_state._epoch_number = _epoch_count;
-            _decoded_data_info._loader_state._iteration_number = _iteration_count;
-            _decoded_data_info._loader_state._rng = _image_loader->get_rng_state();
-        }
-        // The initial state needs to be saved so 
         auto load_status = LoaderModuleStatus::NO_MORE_DATA_TO_READ;
         {
             load_status = _image_loader->load(data,
@@ -227,6 +220,13 @@ ImageLoader::load_routine() {
                                               _output_tensor->info().color_format(), _decoder_keep_original);
 
             if (load_status == LoaderModuleStatus::OK) {
+                // Save state AFTER successful load for correct checkpoint restoration
+                if (_is_checkpointing_enabled) {
+                    _decoded_data_info._loader_state._epoch_number = _epoch_count;
+                    _decoded_data_info._loader_state._iteration_number = _iteration_count;
+                    _decoded_data_info._loader_state._rng = _image_loader->get_rng_state();
+                    _decoded_data_info._loader_state._curr_file_idx = _image_loader->get_curr_file_idx();
+                }
                 if (_randombboxcrop_meta_data_reader) {
                     _crop_image_info._crop_image_coords = _image_loader->get_batch_random_bbox_crop_coords();
                     _circ_buff.set_crop_image_info(_crop_image_info);
@@ -338,13 +338,42 @@ const LoaderState& ImageLoader::get_loader_state() {
 }
 
 void ImageLoader::restore_from_state(const LoaderState& s) {
+    // Clear any prefetched data in the circular buffer
+    if (_internal_thread_running) {
+        _internal_thread_running = false;
+        _circ_buff.unblock_writer();
+        if (_load_thread.joinable())
+            _load_thread.join();
+    }
+    _circ_buff.reset();  // Clear the circular buffer
+
     // Apply epoch/iteration counters
     _epoch_count = s._epoch_number;
     _iteration_count = s._iteration_number;
     _current_loader_state = s;
 
-    // Restore reader RNG
+    // Restore reader RNG and file index
     if (_image_loader) {
+        // Reset reader to clear any prefetch done before restore in this pipeline build.
+        // This resets internal read counters so count() reflects the full dataset size.
+        _image_loader->reset();
         _image_loader->set_rng_state(s._rng);
+        _image_loader->set_curr_file_idx(s._curr_file_idx);
     }
+
+    // Update remaining image count based on restored state.
+    // Use the dataset size (after reset) minus the saved file index to avoid
+    // undercount from any prefetch that occurred before restore was called.
+    size_t dataset_size = _image_loader ? _image_loader->count() : 0;
+    _remaining_image_count = dataset_size;
+    if (!_loop && s._curr_file_idx > 0) {
+        // In non-loop mode, subtract the number of images already processed
+        _remaining_image_count = (dataset_size > s._curr_file_idx)
+                                     ? (dataset_size - s._curr_file_idx)
+                                     : 0;
+    }
+
+    // Restart the loading thread with restored state
+    _internal_thread_running = true;
+    _load_thread = std::thread(&ImageLoader::load_routine, this);
 }

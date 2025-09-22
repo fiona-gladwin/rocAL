@@ -165,3 +165,10 @@ void ImageLoaderSharded::feed_external_input(const std::vector<std::string>& inp
 const LoaderState& ImageLoaderSharded::get_loader_state() {
     return _loaders[_loader_idx]->get_loader_state();
 }
+
+void ImageLoaderSharded::restore_from_state(const LoaderState& s) {
+    // Restore state to all loaders since we don't know which loader was active when checkpoint was created
+    for (auto& loader : _loaders) {
+        loader->restore_from_state(s);
+    }
+}

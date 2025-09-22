@@ -36,6 +36,7 @@ struct LoaderState {
     int64_t _epoch_number;
     int64_t _iteration_number;
     std::mt19937 _rng;
+    unsigned _curr_file_idx;  // Current file index in the reader
 };
 
 struct DecodedDataInfo {

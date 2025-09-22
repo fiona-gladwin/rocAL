@@ -158,7 +158,7 @@ int main(int argc, const char **argv) {
     int counter = 0;
     cv::Mat mat_input(h, w, cv_color_format);
 
-    while (counter < 2) {
+    while (counter < 15) {
         if (rocalRun(handle) != 0) {
             std::cout << "rocalRun Failed with runtime error" << std::endl;
             rocalRelease(handle);

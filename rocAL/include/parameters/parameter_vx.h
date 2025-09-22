@@ -82,7 +82,7 @@ class ParameterVX {
         return _scalar;
     }
     T get() {
-        return _val;
+        return _param->get();
     }
     void update() {
         vx_status status;

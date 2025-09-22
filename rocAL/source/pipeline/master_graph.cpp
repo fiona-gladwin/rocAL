@@ -2400,6 +2400,7 @@ void MasterGraph::restore_from_serialized_checkpoint(const std::string &serializ
         stop_processing();
     }
     _ring_buffer.reset();
+    _first_run = true;  // Reset first_run flag to ensure proper behavior after restoration
 
     rocal_proto::Checkpoint checkpoint;
     if (!checkpoint.ParseFromString(serialized_ckpt)) {
@@ -2459,6 +2460,14 @@ void MasterGraph::restore_from_serialized_checkpoint(const std::string &serializ
     // Restore external context (iteration index)
     if (checkpoint.has_external_ctx()) {
         _iteration_number = checkpoint.external_ctx().pipeline_iteration();
+    }
+
+    // Update remaining count after restoring loader states
+    if (_loaders_count >= 1) {
+        _remaining_count = _loader_modules[0]->remaining_count();
+        for (int i = 1; i < _loaders_count; i++) {
+            _remaining_count = std::min(_remaining_count, static_cast<int>(_loader_modules[i]->remaining_count()));
+        }
     }
 
     if (!was_processing) {

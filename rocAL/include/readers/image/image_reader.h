@@ -307,6 +307,10 @@ class Reader {
     size_t last_batch_padded_size() { return _last_batch_padded_size; }
 
     virtual std::mt19937& get_rng() { THROW("RNG not available for the requested reader") }
+    
+    virtual unsigned get_curr_file_idx() const { return _curr_file_idx; }
+    
+    virtual void set_curr_file_idx(unsigned idx) { _curr_file_idx = idx; }
 
    protected:
     ShardingInfo _sharding_info = ShardingInfo();  // The members of ShardingInfo determines how the data is distributed among the shards and how the last batch is processed by the pipeline.

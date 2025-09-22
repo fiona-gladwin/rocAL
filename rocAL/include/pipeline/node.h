@@ -60,4 +60,5 @@ class Node {
     std::vector<std::shared_ptr<Node>> _next;   // Stores the reference to a list of next Nodes
     std::vector<std::shared_ptr<Node>> _prev;   // Stores the reference to a list of previous Nodes
     int _graph_id = -1;
+    std::vector<Argument> _args;
 };

@@ -51,73 +51,134 @@ void PipelineOperator::serialize_pipeop_inputs_and_outputs_to_protobuf(rocal_pro
     }
 }
 
-// Helper function to add parameter values based on type
-template<typename T>
-void add_param_value(rocal_proto::Parameter *parameter, const T& value) {
-    if constexpr (std::is_same_v<T, int>) {
-        parameter->add_param_val_int(value);
-    } else if constexpr (std::is_same_v<T, float>) {
-        parameter->add_param_val_float(value);
-    }
-}
+// // Helper function to add parameter values based on type
+// template<typename T>
+// void add_param_value(rocal_proto::Parameter *parameter, const T& value) {
+//     if constexpr (std::is_same_v<T, int>) {
+//         parameter->add_param_val_int(value);
+//     } else if constexpr (std::is_same_v<T, float>) {
+//         parameter->add_param_val_float(value);
+//     }
+// }
 
-// Template function to handle SimpleParameter serialization
-template<typename T>
-void serialize_simple_parameter(rocal_proto::Parameter *parameter, Argument &op_arg) {
-    auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
-    auto simple_param = dynamic_cast<SimpleParameter<T> *>(param_core);
-    add_param_value(parameter, simple_param->get());
-}
+// // Template function to handle SimpleParameter serialization
+// template<typename T>
+// void serialize_simple_parameter(rocal_proto::Parameter *parameter, Argument &op_arg) {
+//     auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
+//     auto simple_param = dynamic_cast<SimpleParameter<T> *>(param_core);
+//     add_param_value(parameter, simple_param->get());
+// }
 
-// Template function to handle UniformRand serialization
-template<typename T>
-void serialize_uniform_rand(rocal_proto::Parameter *parameter, Argument &op_arg) {
-    auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
-    auto uniform_param = dynamic_cast<UniformRand<T> *>(param_core);
-    auto uniform_range = uniform_param->get_start_and_end();
-    add_param_value(parameter, uniform_range.first);
-    add_param_value(parameter, uniform_range.second);
-}
+// // Template function to handle UniformRand serialization
+// template<typename T>
+// void serialize_uniform_rand(rocal_proto::Parameter *parameter, Argument &op_arg) {
+//     auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
+//     auto uniform_param = dynamic_cast<UniformRand<T> *>(param_core);
+//     auto uniform_range = uniform_param->get_start_and_end();
+//     add_param_value(parameter, uniform_range.first);
+//     add_param_value(parameter, uniform_range.second);
+// }
 
-// Template function to handle CustomRand serialization
-template<typename T>
-void serialize_custom_rand(rocal_proto::Parameter *parameter, Argument &op_arg) {
-    auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
-    auto random_param = dynamic_cast<CustomRand<T> *>(param_core);
+// // Template function to handle CustomRand serialization
+// template<typename T>
+// void serialize_custom_rand(rocal_proto::Parameter *parameter, Argument &op_arg) {
+//     auto param_core = std::get<Parameter<T> *>(op_arg.param_core);
+//     auto random_param = dynamic_cast<CustomRand<T> *>(param_core);
     
-    // Add values
-    auto values_vec = random_param->get_values();
-    for (const auto &val : values_vec) {
-        add_param_value(parameter, val);
-    }
+//     // Add values
+//     auto values_vec = random_param->get_values();
+//     for (const auto &val : values_vec) {
+//         add_param_value(parameter, val);
+//     }
     
-    // Add frequencies
-    auto frequency_vec = random_param->get_frequencies();
-    for (const auto &val : frequency_vec) {
-        parameter->add_frequency(val);
-    }
+//     // Add frequencies
+//     auto frequency_vec = random_param->get_frequencies();
+//     for (const auto &val : frequency_vec) {
+//         parameter->add_frequency(val);
+//     }
     
-    parameter->set_size(random_param->size());
-}
+//     parameter->set_size(random_param->size());
+// }
+
+// void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument &op_arg) {
+//     if (op_arg.enum_type_name == "SimpleParameter") {
+//         if (op_arg.type_name == "int") {
+//             serialize_simple_parameter<int>(parameter, op_arg);
+//         } else if (op_arg.type_name == "float") {
+//             serialize_simple_parameter<float>(parameter, op_arg);
+//         }
+//     } else if (op_arg.enum_type_name == "UniformRand") {
+//         if (op_arg.type_name == "int") {
+//             serialize_uniform_rand<int>(parameter, op_arg);
+//         } else if (op_arg.type_name == "float") {
+//             serialize_uniform_rand<float>(parameter, op_arg);
+//         }
+//     } else if (op_arg.enum_type_name == "CustomRand") {
+//         if (op_arg.type_name == "int") {
+//             serialize_custom_rand<int>(parameter, op_arg);
+//         } else if (op_arg.type_name == "float") {
+//             serialize_custom_rand<float>(parameter, op_arg);
+//         }
+//     }
+// }
 
 void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, Argument &op_arg) {
     if (op_arg.enum_type_name == "SimpleParameter") {
         if (op_arg.type_name == "int") {
-            serialize_simple_parameter<int>(parameter, op_arg);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto simple_param = dynamic_cast<SimpleParameter<int> *>(param->core);
+            // Fetch and add values to the parameter class
+            parameter->add_param_val_int(simple_param->get());
         } else if (op_arg.type_name == "float") {
-            serialize_simple_parameter<float>(parameter, op_arg);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto simple_param = dynamic_cast<SimpleParameter<float> *>(param->core);
+            parameter->add_param_val_float(simple_param->get());
         }
     } else if (op_arg.enum_type_name == "UniformRand") {
         if (op_arg.type_name == "int") {
-            serialize_uniform_rand<int>(parameter, op_arg);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto uniform_param = dynamic_cast<UniformRand<int> *>(param->core);
+            // Fetch and add values to the parameter class
+            auto uniform_range = uniform_param->get_start_and_end();
+            parameter->add_param_val_int(uniform_range.first);
+            parameter->add_param_val_int(uniform_range.second);
         } else if (op_arg.type_name == "float") {
-            serialize_uniform_rand<float>(parameter, op_arg);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto uniform_param = dynamic_cast<UniformRand<float> *>(param->core);
+            // Fetch and add values to the parameter class
+            auto uniform_range = uniform_param->get_start_and_end();
+            parameter->add_param_val_float(uniform_range.first);
+            parameter->add_param_val_float(uniform_range.second);
         }
     } else if (op_arg.enum_type_name == "CustomRand") {
         if (op_arg.type_name == "int") {
-            serialize_custom_rand<int>(parameter, op_arg);
+            auto param = std::get<IntParam *>(op_arg.param);
+            auto random_param = dynamic_cast<CustomRand<int> *>(param->core);
+            // Fetch and add values to the parameter class
+            auto values_vec = random_param->get_values();
+            // Get values
+            for (auto &val : values_vec) {
+                parameter->add_param_val_int(val);
+            }
+            auto frequency_vec = random_param->get_frequencies();
+            for (auto &val : frequency_vec) {
+                parameter->add_frequency(val);
+            }
+            parameter->set_size(random_param->size());
         } else if (op_arg.type_name == "float") {
-            serialize_custom_rand<float>(parameter, op_arg);
+            auto param = std::get<FloatParam *>(op_arg.param);
+            auto random_param = dynamic_cast<CustomRand<float> *>(param->core);
+            // Fetch and add values to the parameter class
+            auto values_vec = random_param->get_values();
+            // Get values
+            for (auto &val : values_vec) {
+                parameter->add_param_val_float(val);
+            }
+            auto frequency_vec = random_param->get_frequencies();
+            for (auto &val : frequency_vec) {
+                parameter->add_frequency(val);
+            }
+            parameter->set_size(random_param->size());
         }
     }
 }

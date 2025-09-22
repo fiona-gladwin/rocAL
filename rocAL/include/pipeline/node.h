@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
+#include "argument.h"
+
 class Node {
    public:
     Node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) : _inputs(inputs),
@@ -47,6 +49,8 @@ class Node {
     const Roi2DCords *get_dst_roi() { return _outputs[0]->info().roi().get_2D_roi(); }
     void set_graph_id(int id) { _graph_id = id; }
     int get_graph_id() { return _graph_id; }
+    virtual std::string node_name() { return ""; }
+    std::vector<Argument> get_args_list() { return _args; }
 
    protected:
     virtual void create_node() = 0;

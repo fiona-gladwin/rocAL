@@ -52,6 +52,8 @@ THE SOFTWARE.
 #endif
 #include "meta_data/randombboxcrop_meta_data_reader.h"
 #include "rocal_api_types.h"
+#include "pipeline/pipeline_serializer.h"
+
 #define MAX_STRING_LENGTH 100
 #define MAX_OBJECTS 50                // Setting an arbitrary value 50.(Max number of objects/image in COCO dataset is 93)
 #define BBOX_COUNT 4
@@ -151,6 +153,8 @@ class MasterGraph {
                              RocalTensorlayout layout, bool eos);
     void set_external_source_reader_flag() { _external_source_reader = true; }
     size_t bounding_box_batch_count(pMetaDataBatch meta_data_batch);
+    void serialize(size_t &serialized_string_size);
+    std::string get_serialized_string() { return _serialized_pipeline; }
 #if ENABLE_OPENCL
     cl_command_queue get_ocl_cmd_q() { return _device.resources()->cmd_queue; }
 #endif
@@ -240,12 +244,19 @@ class MasterGraph {
     BoxEncoderGpu *_box_encoder_gpu = nullptr;
 #endif
     TimingDbg _rb_block_if_empty_time, _rb_block_if_full_time;
+    std::vector<std::shared_ptr<PipelineOperator>> _pipeline_operators;
+    PipelineSerializer _pipeline_serializer;
+    int _op_idx = 0;
+    std::string _serialized_pipeline;  // Stores the serialized string of the pipeline
 };
 
 template <typename T>
 std::shared_ptr<T> MasterGraph::add_node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
     auto node = std::make_shared<T>(inputs, outputs);
     _nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "augmentation", node));
 
     for (auto &input : inputs) {
         if (_tensor_map.find(input) == _tensor_map.end())
@@ -287,6 +298,10 @@ inline std::shared_ptr<ImageLoaderNode> MasterGraph::add_node(const std::vector<
     _loader_modules.emplace_back(loader_module);
     node->set_graph_id(_loaders_count++);
     _root_nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "loader", node));
+
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 
@@ -305,6 +320,10 @@ inline std::shared_ptr<ImageLoaderSingleShardNode> MasterGraph::add_node(const s
     _loader_modules.emplace_back(loader_module);
     node->set_graph_id(_loaders_count++);
     _root_nodes.push_back(node);
+
+    // Add each opertor to the pipeline operators list
+    _pipeline_operators.push_back(std::make_shared<PipelineOperator>(node->node_name() + "_" + std::to_string(_op_idx++), "loader", node));
+
     for (auto &output : outputs)
         _tensor_map.insert(std::make_pair(output, node));
 

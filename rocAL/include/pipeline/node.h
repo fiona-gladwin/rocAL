@@ -27,6 +27,10 @@ THE SOFTWARE.
 #include "pipeline/graph.h"
 #include "meta_data/meta_data_graph.h"
 #include "pipeline/tensor.h"
+#include "pipeline/argument.h"
+#include "decoders/image/decoder.h"
+#include "readers/image/image_reader.h"
+
 class Node {
    public:
     Node(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) : _inputs(inputs),
@@ -47,6 +51,8 @@ class Node {
     const Roi2DCords *get_dst_roi() { return _outputs[0]->info().roi().get_2D_roi(); }
     void set_graph_id(int id) { _graph_id = id; }
     int get_graph_id() { return _graph_id; }
+    virtual std::string node_name() { return ""; }
+    std::vector<Argument> get_args_list() { return _args; }
 
    protected:
     virtual void create_node() = 0;
@@ -60,4 +66,10 @@ class Node {
     std::vector<std::shared_ptr<Node>> _next;   // Stores the reference to a list of next Nodes
     std::vector<std::shared_ptr<Node>> _prev;   // Stores the reference to a list of previous Nodes
     int _graph_id = -1;
+    std::vector<Argument> _args;
+    template <size_t N, size_t... Indices, typename... Args>
+    void set_node_arguments(std::array<std::string, N>& arg_names, std::index_sequence<Indices ...>, Args... args) {
+        // Fold expression to create Argument object for each argument in the node
+        (this->_args.push_back(Argument(arg_names[Indices], std::forward<Args>(args))), ...);
+    }
 };

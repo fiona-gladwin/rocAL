@@ -245,8 +245,8 @@ bool init_args(NodeType* node, const std::vector<Argument>& arguments) {
         auto unpacked_args = unpack_arguments<Args...>(arguments);
         std::cerr << "Arguments unpacked\t" << std::tuple_size<decltype(unpacked_args)>::value << "\n";
 
-        std::apply([&](Args... unpacked) {
-            node->init(std::forward<Args>(unpacked)...);
+        std::apply([&](Args&... unpacked) {
+            node->init(unpacked...);
         }, unpacked_args);
 
         return true;

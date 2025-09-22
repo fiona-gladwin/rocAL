@@ -32,6 +32,8 @@ class BlendNode : public Node {
 
     void init(float ratio);
     void init(FloatParam *ratio);
+    void initialize_args(std::vector<Argument> &arguments) override;
+    std::string node_name() override { return "BlendNode"; }
 
    protected:
     void update_node() override;
@@ -41,3 +43,4 @@ class BlendNode : public Node {
     ParameterVX<float> _ratio;
     constexpr static float RATIO_RANGE[2] = {0.1, 0.9};
 };
+REGISTER_NODE(BlendNode)

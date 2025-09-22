@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "parameters/parameter_factory.h"
 #include "parameters/parameter_random_crop_decoder.h"
 #include "pipeline/commons.h"
+#include "pipeline/enum_registry.h"
 
 #if ENABLE_HIP
 #include "hip/hip_runtime_api.h"
@@ -45,6 +46,7 @@ enum class DecoderType {
     ROCJPEG_DEC = 7,            //!< rocJpeg hardware decoder for decoding jpeg files
     ROCJPEG_CROPPED = 8  //!< For partial decoding of jpeg files using rocJpeg hardware decoder 
 };
+AUTO_REGISTER_ENUM(DecoderType)
 
 class DecoderConfig {
    public:

@@ -172,9 +172,8 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
     size_t str_size;
     rocalSerialize(handle, str_size);
     std::cerr << "String size : ------------------------------>>>>>>>>>>>>> " << str_size << "\n";
-    std::string serialized_pipe_string;
-    serialized_pipe_string.resize(str_size);
-    rocalGetSerializedString(handle, serialized_pipe_string.data());
+    std::string serialized_pipe_string(str_size, '\0');
+    rocalGetSerializedString(handle, serialized_pipe_string.c_str());
     std::cerr << "==================================================================\n";
     std::cerr << serialized_pipe_string << "\n";
     std::cerr << "==================================================================\n";

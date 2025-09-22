@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 #include "rocal_api.h"
@@ -48,23 +49,22 @@ int main(int argc, const char **argv) {
     // check command-line usage
     const int MIN_ARG_COUNT = 3;
     if (argc < MIN_ARG_COUNT) {
-        std::cout << "Usage: basic_test <image_dataset_folder - required> <label_text_file_path - required> <test_case:0/1> <processing_device=1/cpu=0>  decode_width decode_height <gray_scale:0/rgb:1> decode_shard_counts decoder_type \n";
+        std::cout << "Usage: checkpoint_test <image_dataset_folder - required> <label_text_file_path> <processing_device=1/cpu=0>  decode_width decode_height <gray_scale:0/rgb:1> decode_shard_counts decoder_type \n";
         return -1;
     }
     int argIdx = 1;
     const char *folderPath1 = argv[argIdx++];
-    const char *label_text_file_path = argv[argIdx++];
+    const char *label_text_file_path = "";
     int rgb = 1;  // process color images
     int decode_width = 0;
     int decode_height = 0;
-    int test_case = 0;
     bool processing_device = 0;
     size_t decode_shard_counts = 1;
     int decoder_type = 0;   // Set to default TurboJpeg decoder
 
     if (argc > argIdx)
-        test_case = atoi(argv[argIdx++]);
-
+        label_text_file_path = argv[argIdx++];
+    
     if (argc > argIdx)
         processing_device = atoi(argv[argIdx++]);
 
@@ -83,7 +83,7 @@ int main(int argc, const char **argv) {
     if (argc > argIdx)
         decoder_type = atoi(argv[argIdx++]);
 
-    const int inputBatchSize = 4;
+    const int inputBatchSize = 1;
 
     // Set the rocAL decoder type
     RocalDecoderType rocal_decoder_type = RocalDecoderType::ROCAL_DECODER_TJPEG;
@@ -119,7 +119,7 @@ int main(int argc, const char **argv) {
         rocalCreateLabelReader(handle, folderPath1);
     else
         rocalCreateTextFileBasedLabelReader(handle, label_text_file_path);
-    rocalCropResizeFixed(handle, decoded_output, 224, 224, true, 0.9, 1.1, 0.1, 0.1);
+    rocalBrightness(handle, decoded_output, true);
 
     if (rocalGetStatus(handle) != ROCAL_OK) {
         std::cout << "JPEG source could not initialize : " << rocalGetErrorMessage(handle) << std::endl;
@@ -146,94 +146,89 @@ int main(int argc, const char **argv) {
     std::cout << "output width " << w << " output height " << h << " color planes " << p << std::endl;
     auto cv_color_format = ((color_format == RocalImageColor::ROCAL_COLOR_RGB24) ? CV_8UC3 : CV_8UC1);
 
-    const int total_tests = 2;
-    int test_id = -1;
     int ImageNameLen[inputBatchSize];
-    int run_len[] = {2 * inputBatchSize, 4 * inputBatchSize, 1 * inputBatchSize, 50 * inputBatchSize};
 
     std::vector<std::string> names;
     names.resize(inputBatchSize);
 
-    while (++test_id < total_tests) {
-        std::cout << "Start test id " << test_id << "\n";
-        std::cout << "Available images = " << rocalGetRemainingImages(handle) << std::endl;
-        int process_image_count = ((test_case == 0) ? rocalGetRemainingImages(handle) : run_len[test_id]);
-        std::cout << "Process " << process_image_count << " images" << std::endl;
-        if (DISPLAY)
-            cv::waitKey(0);
-        const unsigned number_of_cols = process_image_count / inputBatchSize;
-        cv::Mat mat_output(h, w * number_of_cols, cv_color_format);
-        cv::Mat mat_input(h, w, cv_color_format);
-        cv::Mat mat_color;
-        auto win_name = "output";
-        if (DISPLAY)
-            cv::namedWindow(win_name, CV_WINDOW_AUTOSIZE);
+    std::cout << "Available images = " << rocalGetRemainingImages(handle) << std::endl;
+    int process_image_count = rocalGetRemainingImages(handle);
+    std::cout << "Process " << process_image_count << " images" << std::endl;
 
-        int col_counter = 0;
-        int counter = 0;
+    int counter = 0;
+    cv::Mat mat_input(h, w, cv_color_format);
 
-        while ((test_case == 0) ? !rocalIsEmpty(handle) : (counter < run_len[test_id])) {
-            if (rocalRun(handle) != 0) {
-                std::cout << "rocalRun Failed with runtime error" << std::endl;
-                rocalRelease(handle);
-                return -1;
-            }
-
-            rocalCopyToOutput(handle, mat_input.data, h * w * p);
-
-            counter += inputBatchSize;
-            RocalTensorList labels = rocalGetImageLabels(handle);
-
-            unsigned imagename_size = rocalGetImageNameLen(handle, ImageNameLen);
-            std::vector<char> imageNames(imagename_size);
-            rocalGetImageName(handle, imageNames.data());
-            std::string imageNamesStr(imageNames.data());
-
-            int pos = 0;
-            int *labels_buffer = reinterpret_cast<int *>(labels->at(0)->buffer());
-            for (int i = 0; i < inputBatchSize; i++) {
-                names[i] = imageNamesStr.substr(pos, ImageNameLen[i]);
-                pos += ImageNameLen[i];
-                std::cout << "name: " << names[i] << " label: " << labels_buffer[i] << std::endl;
-            }
-            std::cout << std::endl;
-
-            mat_input.copyTo(mat_output(cv::Rect(col_counter * w, 0, w, h)));
-            if (color_format == RocalImageColor::ROCAL_COLOR_RGB24) {
-                cv::cvtColor(mat_output, mat_color, CV_RGB2BGR);
-                if (DISPLAY)
-                    cv::imshow(win_name, mat_color);
-                else
-                    cv::imwrite("output.png", mat_color);
-            } else {
-                if (DISPLAY)
-                    cv::imshow(win_name, mat_output);
-                else
-                    cv::imwrite("output.png", mat_output);
-            }
-            // The delay here simulates possible latency between runs due to training
-            if (DISPLAY)
-                cv::waitKey(200);
-            col_counter = (col_counter + 1) % number_of_cols;
+    while (counter < 2) {
+        if (rocalRun(handle) != 0) {
+            std::cout << "rocalRun Failed with runtime error" << std::endl;
+            rocalRelease(handle);
+            return -1;
         }
-        std::cout << "Completed test id: " << test_id << " processed " << counter << " images\n";
-        if (DISPLAY)
-            cv::waitKey(0);
-        size_t size_ckpt;
-        rocalCheckpoint(handle, size_ckpt);
-        std::string serialized_ckpt(size_ckpt, '\0');
-        rocalGetSerializedCheckpointString(handle, serialized_ckpt.c_str());
 
-        std::cerr << "The checkpoint -> " << serialized_ckpt << "\n";
-        std::cout << "rocAL reset\n";
-        rocalResetLoaders(handle);
-        mat_input.release();
-        mat_output.release();
-        mat_color.release();
-        if (DISPLAY)
-            cvDestroyWindow(win_name);
+        rocalCopyToOutput(handle, mat_input.data, h * w * p);
+
+        counter += inputBatchSize;
+        RocalTensorList labels = rocalGetImageLabels(handle);
+
+        unsigned imagename_size = rocalGetImageNameLen(handle, ImageNameLen);
+        std::vector<char> imageNames(imagename_size);
+        rocalGetImageName(handle, imageNames.data());
+        std::string imageNamesStr(imageNames.data());
+
+        int pos = 0;
+        int *labels_buffer = reinterpret_cast<int *>(labels->at(0)->buffer());
+        for (int i = 0; i < inputBatchSize; i++) {
+            names[i] = imageNamesStr.substr(pos, ImageNameLen[i]);
+            pos += ImageNameLen[i];
+            std::cout << "name: " << names[i] << " label: " << labels_buffer[i] << std::endl;
+        }
+        std::cout << std::endl;
     }
+    // Save checkpoint
+    size_t size_ckpt;
+    rocalCheckpoint(handle, size_ckpt);
+    std::string serialized_ckpt(size_ckpt, '\0');
+    rocalGetSerializedCheckpointString(handle, &serialized_ckpt[0]);
 
+    // Save to file
+    std::ofstream file("checkpoint.bin", std::ios::binary);
+    file.write(serialized_ckpt.data(), size_ckpt);
+    file.close();
+
+    std::cerr << "The checkpoint size: " << size_ckpt << " bytes\n";
+    std::cerr << "The checkpoint -> " << serialized_ckpt << "\n";
+
+    std::cout << "Saved checkpoint for restoration test\n";
+
+    while (counter < 10) {
+        if (rocalRun(handle) != 0) {
+            std::cout << "rocalRun Failed with runtime error" << std::endl;
+            rocalRelease(handle);
+            return -1;
+        }
+
+        rocalCopyToOutput(handle, mat_input.data, h * w * p);
+
+        counter += inputBatchSize;
+        RocalTensorList labels = rocalGetImageLabels(handle);
+
+        unsigned imagename_size = rocalGetImageNameLen(handle, ImageNameLen);
+        std::vector<char> imageNames(imagename_size);
+        rocalGetImageName(handle, imageNames.data());
+        std::string imageNamesStr(imageNames.data());
+
+        int pos = 0;
+        int *labels_buffer = reinterpret_cast<int *>(labels->at(0)->buffer());
+        for (int i = 0; i < inputBatchSize; i++) {
+            names[i] = imageNamesStr.substr(pos, ImageNameLen[i]);
+            pos += ImageNameLen[i];
+            std::cout << "name: " << names[i] << " label: " << labels_buffer[i] << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    
+    std::cout << "rocAL reset\n";
+    rocalResetLoaders(handle);
     rocalRelease(handle);
 
     return 0;

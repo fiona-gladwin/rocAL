@@ -2040,27 +2040,43 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                         THROW("Input tensor '" + op_input.name() + "' not found in pipeline tensors for operator " + op_def.name());
                     }
                 }
-                Tensor* output_tensor = nullptr;
+                std::vector<Tensor *> outputs_vector;
                 if (inputs_vector.size() > 0) {
-                    // TODO - Need to check if all the input info and the output info details matches if not create a new one
-                    if (op_def.outputs_size() == 1) {
-
-                        if (input_tensor && check_tensor_info(input_tensor->info(), op_def.outputs()[0])) {
-                            output_tensor = create_tensor(input_tensor->info(), false);
-                        } else {
-                            // Should be created for those geometric augmentations
-                            output_tensor = create_operator_output(op_def.outputs()[0], false);
+                    // Handle multiple outputs
+                    for (const auto& op_output : op_def.outputs()) {
+                        Tensor* output_tensor = nullptr;
+                        
+                        // Try to reuse input tensor info if compatible, otherwise create new tensor
+                        bool tensor_info_compatible = false;
+                        if (!inputs_vector.empty()) {
+                            // Check compatibility with first input tensor as reference
+                            Tensor* reference_input = inputs_vector[0];
+                            if (reference_input && check_tensor_info(reference_input->info(), op_output)) {
+                                output_tensor = create_tensor(reference_input->info(), false);
+                                tensor_info_compatible = true;
+                                std::cerr << "Reusing input tensor info for output -> " << op_output.name() << "\n";
+                            }
                         }
-                        _pipeline_tensors[op_def.outputs()[0].name()] = output_tensor;
-                        std::cerr << "Writing to pipe tensor -> " << op_def.outputs()[0].name() << "\n";
-                    } else {
-                        // TODO - Handle multiple outputs
+                        
+                        if (!tensor_info_compatible) {
+                            // Create new tensor with specified output properties
+                            output_tensor = create_operator_output(op_output, false);
+                            std::cerr << "Creating new tensor for output -> " << op_output.name() << "\n";
+                        }
+                        
+                        if (!output_tensor) {
+                            THROW("Failed to create output tensor '" + op_output.name() + "' for operator " + op_def.name());
+                        }
+                        
+                        _pipeline_tensors[op_output.name()] = output_tensor;
+                        outputs_vector.push_back(output_tensor);
+                        std::cerr << "Writing to pipe tensor -> " << op_output.name() << "\n";
                     }
                 } else {
                     THROW("Input not available for this Augmentation Node -> " + op_def.name())
                 }
-                // auto node = this->add_node<BrightnessNode>({input_tensor}, {output_tensor});
-                auto node = this->add_node(get_node_name(op_def.name()), inputs_vector, {output_tensor});
+                // Create the node with all inputs and outputs
+                auto node = this->add_node(get_node_name(op_def.name()), inputs_vector, outputs_vector);
 
                 std::vector<Argument> args_list;
                 _pipeline_serializer.deserialize_args_from_protobuf(op_def, args_list);

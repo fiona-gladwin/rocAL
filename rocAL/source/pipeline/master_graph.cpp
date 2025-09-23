@@ -1926,7 +1926,7 @@ Tensor *MasterGraph::create_operator_output(const rocal_proto::InputOutput &outp
     
     // only for loader
     if (is_loader_output) {
-        out = this->create_loader_output_tensor(info);
+        out = this->create_internal_tensor(info);
         _pipeline_tensors[output.name()] = out;
         std::cerr << "Writing to pipe tensor -> " << output.name() << "\n";
     } else {

@@ -181,6 +181,17 @@ RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto
             for (auto u : proto_arg.uints()) {
                 arg.values.push_back(static_cast<size_t>(u));
             }
+        } else if (arg.type_name == "tensor") {
+            // Handle tensor reference deserialization
+            if (proto_arg.has_tensor_ref()) {
+                arg.is_tensor = true;
+                arg.tensor_name = proto_arg.tensor_ref().name();
+                // The actual tensor pointer will be resolved externally using the tensor name
+                // Store a placeholder value to indicate this is a tensor argument
+                arg.values.push_back(static_cast<void*>(nullptr));
+            } else {
+                THROW("Tensor argument " + arg.arg_name + " missing tensor_ref in protobuf");
+            }
         } else if (arg.type_name == "nullptr") {
             arg.is_null_ptr = true;
         } else {

@@ -227,6 +227,23 @@ void PipelineOperator::serialize_pipeop_args_to_protobuf(rocal_proto::OperatorDe
                         arg->add_uints(std::any_cast<unsigned>(v));
                     } else if (op_arg.type_name == "size_t") {
                         arg->add_uints(std::any_cast<size_t>(v));
+                    } else if (op_arg.type_name == "tensor") {
+                        // Handle tensor argument serialization
+                        if (op_arg.is_tensor) {
+                            rocal_proto::InputOutput *tensor_ref = arg->mutable_tensor_ref();
+                            // For tensor arguments, we need to find the tensor name from the stored pointer
+                            // This requires access to the tensor object to get its name
+                            // The tensor_name should be set during argument creation
+                            if (!op_arg.tensor_name.empty()) {
+                                tensor_ref->set_name(op_arg.tensor_name);
+                                tensor_ref->set_is_argument_input(true);
+                                // Additional tensor info can be set here if needed
+                            } else {
+                                THROW("Tensor argument " + op_arg.arg_name + " missing tensor name for serialization");
+                            }
+                        } else {
+                            THROW("Tensor type argument " + op_arg.arg_name + " is not marked as tensor");
+                        }
                     } else {
                         THROW("Invalid type specified for the Argument " + op_arg.arg_name);
                     }

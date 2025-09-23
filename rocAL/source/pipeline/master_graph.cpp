@@ -2097,6 +2097,19 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                 std::vector<Argument> args_list;
                 _pipeline_serializer.deserialize_args_from_protobuf(op_def, args_list);
                 
+                // Resolve tensor arguments from _pipeline_tensors map
+                for (auto& arg : args_list) {
+                    if (arg.is_tensor && !arg.tensor_name.empty()) {
+                        if (_pipeline_tensors.find(arg.tensor_name) != _pipeline_tensors.end()) {
+                            // Replace the placeholder with the actual tensor pointer
+                            arg.values[0] = static_cast<Tensor*>(_pipeline_tensors[arg.tensor_name]);
+                            std::cerr << "Resolved tensor argument " << arg.arg_name << " -> " << arg.tensor_name << "\n";
+                        } else {
+                            THROW("Tensor '" + arg.tensor_name + "' not found in pipeline tensors for argument " + arg.arg_name);
+                        }
+                    }
+                }
+                
                 // fetch all the arguments and pass it to the init function inside the loader
                 // In the loader recall the init function
                 node->initialize_args(args_list);

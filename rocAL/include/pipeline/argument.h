@@ -51,8 +51,10 @@ class Argument {
     bool is_vector = false;     ///< True if the argument contains vector data
     bool is_parameter = false;  ///< True if the argument is a parameter object
     bool is_null_ptr = false;   ///< True if the argument represents a null pointer
+    bool is_tensor = false;     ///< True if the argument is a tensor reference
     std::vector<std::any> values; ///< Storage for argument values (can change to std::variant later)
     pParam param;               ///< Parameter core for parameter-type arguments
+    std::string tensor_name;    ///< Name of the tensor for tensor reference arguments
     
    private:
     // Helper method to get type name from registry or built-in types
@@ -85,8 +87,23 @@ class Argument {
                 return std::get<FloatParam*>(param);
             else if constexpr (std::is_same_v<T, IntParam*>)
                 return std::get<IntParam*>(param);
+        } else if constexpr (std::is_pointer_v<T> && std::is_same_v<std::remove_pointer_t<T>, class Tensor>) {
+            // Handle Tensor* retrieval
+            if (is_tensor) {
+                if (is_null_ptr) {
+                    return nullptr;
+                }
+                // For tensor arguments, the actual pointer resolution should be done externally
+                // This method should not be called directly for tensors during deserialization
+                // Instead, use GetTensorName() to get the tensor name and resolve it externally
+                if (!values.empty()) {
+                    return static_cast<T>(std::any_cast<void*>(values[0]));
+                }
+                THROW("Tensor argument has no stored pointer")
+            }
+            THROW("Attempting to get Tensor* from non-tensor argument")
         } else {
-            if (is_null_ptr || is_parameter)
+            if (is_null_ptr || is_parameter || is_tensor)
                 THROW("Undefined type passed")
 
             if constexpr (is_vector_type<std::decay_t<T>>::value) {
@@ -104,6 +121,14 @@ class Argument {
                 return std::any_cast<T>(values[0]);
             }        
         }
+    }
+
+    // Method to get tensor name for external resolution
+    std::string GetTensorName() const {
+        if (!is_tensor) {
+            THROW("Argument is not a tensor type")
+        }
+        return tensor_name;
     }
 
     template<>
@@ -217,6 +242,26 @@ class Argument {
             return;
         }
         extract_param(param->type, param);
+    }
+
+    // Constructor for Tensor* arguments - stores tensor name for later resolution
+    // template<typename T>
+    // explicit inline Argument(std::string name, T* tensor_ptr, 
+    //                        typename std::enable_if_t<std::is_same_v<T, class Tensor>>* = nullptr)
+
+    explicit inline Argument(std::string name, Tensor* tensor_ptr)
+        : arg_name(std::move(name)) {
+        type_name = "tensor";
+        is_tensor = true;
+        if (tensor_ptr == nullptr) {
+            is_null_ptr = true;
+            type_name = "nullptr";
+            return;
+        }
+        // Store the tensor name for later resolution during deserialization
+        // The actual tensor pointer will be resolved from MasterGraph's _pipeline_tensors map
+        tensor_name = tensor_ptr->tensor_name(); // This will be set during serialization with the actual tensor name
+        values.push_back(static_cast<Tensor*>(tensor_ptr)); // Store the pointer temporarily
     }
 };
 

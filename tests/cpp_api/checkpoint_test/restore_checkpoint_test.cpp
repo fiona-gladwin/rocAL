@@ -111,9 +111,9 @@ int main(int argc, const char **argv) {
     // The jpeg file loader can automatically select the best size to decode all images to that size
     // User can alternatively set the size or change the policy that is used to automatically find the size
     if (decode_height <= 0 || decode_width <= 0)
-        decoded_output = rocalJpegFileSource(handle, folderPath1, color_format, decode_shard_counts, false, false);
+        decoded_output = rocalJpegFileSource(handle, folderPath1, color_format, decode_shard_counts, false, true);
     else
-        decoded_output = rocalJpegFileSource(handle, folderPath1, color_format, decode_shard_counts, false, false, false,
+        decoded_output = rocalJpegFileSource(handle, folderPath1, color_format, decode_shard_counts, false, true, false,
                                              ROCAL_USE_USER_GIVEN_SIZE, decode_width, decode_height, rocal_decoder_type);
     if (strcmp(label_text_file_path, "") == 0)
         rocalCreateLabelReader(handle, folderPath1);

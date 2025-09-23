@@ -192,6 +192,7 @@ void ImageLoader::start_loading() {
         THROW("start_loading() should be called after initialize() function is called")
 
     _remaining_image_count = _image_loader->count();
+    _dataset_size = _remaining_image_count;  // Capture the dataset size once for stable restore semantics
     _internal_thread_running = true;
     _load_thread = std::thread(&ImageLoader::load_routine, this);
 }
@@ -352,19 +353,14 @@ void ImageLoader::restore_from_state(const LoaderState& s) {
     _iteration_count = s._iteration_number;
     _current_loader_state = s;
 
-    // Restore reader RNG and file index
+    // Restore reader RNG and file index (do NOT reset() to avoid re-shuffling)
     if (_image_loader) {
-        // Reset reader to clear any prefetch done before restore in this pipeline build.
-        // This resets internal read counters so count() reflects the full dataset size.
-        _image_loader->reset();
         _image_loader->set_rng_state(s._rng);
         _image_loader->set_curr_file_idx(s._curr_file_idx);
     }
 
-    // Update remaining image count based on restored state.
-    // Use the dataset size (after reset) minus the saved file index to avoid
-    // undercount from any prefetch that occurred before restore was called.
-    size_t dataset_size = _image_loader ? _image_loader->count() : 0;
+    // Update remaining image count using the stable dataset size captured at start
+    size_t dataset_size = _dataset_size;
     _remaining_image_count = dataset_size;
     if (!_loop && s._curr_file_idx > 0) {
         // In non-loop mode, subtract the number of images already processed

@@ -84,6 +84,7 @@ class ImageLoader : public LoaderModule {
     size_t _prefetch_queue_depth;   // Used for circular buffer's internal buffer
     size_t _image_counter = 0;      //!< How many images have been loaded already
     size_t _remaining_image_count;  //!< How many images are there yet to be loaded
+    size_t _dataset_size = 0;       //!< Total number of images in the dataset at initialization (stable across restore)
     bool _decoder_keep_original = false;
     int _device_id;
     size_t _max_tensor_width, _max_tensor_height;

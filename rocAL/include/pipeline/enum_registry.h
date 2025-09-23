@@ -26,6 +26,9 @@ THE SOFTWARE.
 #include <typeindex>
 #include <string>
 #include <type_traits>
+#include <functional>
+#include <stdexcept>
+#include <any>
 
 /*!
  * \brief Centralized enum registry for automatic enum type name management
@@ -39,10 +42,13 @@ public:
      * \brief Get the singleton instance of the enum registry
      * \return Reference to the singleton EnumRegistry instance
      */
-    static EnumRegistry& getInstance();
+    static EnumRegistry& getInstance() {
+        static EnumRegistry instance;
+        return instance;
+    }
 
     /*!
-     * \brief Register an enum type with its string name
+     * \brief Register an enum type with its string name and conversion function
      * \tparam T The enum type to register (must be an enum)
      * \param name The string name to associate with the enum type
      */
@@ -65,18 +71,23 @@ public:
     }
 
     /*!
-     * \brief Check if an enum type is registered
-     * \param type The type_index to check
-     * \return true if the enum type is registered, false otherwise
-     */
-    bool isEnumRegistered(const std::type_index& type) const;
-
-    /*!
      * \brief Get the registered name for a type_index
      * \param type The type_index to look up
      * \return The registered string name, or empty string if not found
      */
-    std::string getEnumName(const std::type_index& type) const;
+    std::string getEnumName(const std::type_index& type) const {
+        auto it = _enum_map.find(type);
+        return (it != _enum_map.end()) ? it->second : "";
+    }
+
+    /*!
+     * \brief Check if an enum type is registered
+     * \param type The type_index to check
+     * \return true if the enum type is registered, false otherwise
+     */
+    bool isEnumRegistered(const std::type_index& type) const {
+        return _enum_map.find(type) != _enum_map.end();
+    }
 
 private:
     EnumRegistry() = default;
@@ -84,6 +95,7 @@ private:
     EnumRegistry(const EnumRegistry&) = delete;
     EnumRegistry& operator=(const EnumRegistry&) = delete;
 
+    // Map 1: Type index to string name mapping
     std::unordered_map<std::type_index, std::string> _enum_map;
 };
 

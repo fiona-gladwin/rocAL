@@ -85,6 +85,8 @@ class ParameterFactory {
         {
             std::lock_guard<std::mutex> lk(_rng_mutex);
             _parameters.insert(gen);
+            // Track creation order for deterministic RNG snapshot/restore across processes
+            _param_list.push_back(gen);
         }
         return gen;
     }
@@ -94,6 +96,9 @@ class ParameterFactory {
         {
             std::lock_guard<std::mutex> lk(_rng_mutex);
             _parameters.insert(gen);
+            // Keep deterministic params in the ordered list as placeholders,
+            // so RNG vectors align between save and restore.
+            _param_list.push_back(gen);
         }
         return gen;
     }

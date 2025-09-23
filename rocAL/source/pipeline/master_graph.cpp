@@ -309,9 +309,9 @@ MasterGraph::build() {
 }
 
 Tensor *
-MasterGraph::create_loader_output_tensor(const TensorInfo &info) {
+MasterGraph::create_internal_tensor(const TensorInfo &info) {
     /*
-     *   NOTE: Output tensor for a source node needs to be created as a regular (non-virtual) tensor
+     *   NOTE: This function creates a regular (non-virtual) tensor
      */
     auto output = new Tensor(info);
     if (output->create_from_handle(_context) != 0)
@@ -1542,8 +1542,10 @@ TensorListVector* MasterGraph::create_cifar10_label_reader(const char *source_pa
 }
 
 const std::pair<ImageNameBatch, pMetaDataBatch> &MasterGraph::meta_data() {
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) {
+        release();
         THROW("No meta data has been loaded")
+    }
     return _ring_buffer.get_meta_data();
 }
 
@@ -1574,8 +1576,10 @@ TensorList *MasterGraph::labels_meta_data() {
     if (!_meta_data_reader && _loaders_count > 1)
         THROW("Metadata reader is not compatible with multiple loaders")
 
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) {
+        release();
         THROW("No meta data has been loaded")
+    }
     auto meta_data_buffers = (unsigned char *)_ring_buffer.get_meta_read_buffers()[0];  // Get labels buffer from ring buffer
     auto labels = _ring_buffer.get_meta_data().second->get_labels_batch();
     for (unsigned i = 0; i < _labels_tensor_list.size(); i++) {
@@ -1593,8 +1597,10 @@ TensorListVector *MasterGraph::ascii_values_meta_data() {
     if (_external_source_reader) {
         return &_webdataset_output_tensor_list;
     }
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) { 
+        release();
         THROW("No meta data has been loaded")
+    }
 
     for (uint ext = 0; ext < _ascii_tensor_list.size(); ext++) {
         auto meta_data_buffers = (uint8_t *)_ring_buffer.get_meta_read_buffers()[ext]; // Get ASCII buffer from ring buffer
@@ -1617,8 +1623,10 @@ TensorListVector *MasterGraph::ascii_values_meta_data() {
 TensorList *MasterGraph::bbox_meta_data() {
     if (!_meta_data_reader && _loaders_count > 1)
         THROW("Metadata reader is not compatible with multiple loaders")
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) {
+        release();
         THROW("No meta data has been loaded")
+    }
     auto meta_data_buffers = (unsigned char *)_ring_buffer.get_meta_read_buffers()[1];  // Get bbox buffer from ring buffer
     auto bbox_cords = _ring_buffer.get_meta_data().second->get_bb_cords_batch();
     for (unsigned i = 0; i < _bbox_tensor_list.size(); i++) {
@@ -1633,8 +1641,10 @@ TensorList *MasterGraph::bbox_meta_data() {
 TensorList *MasterGraph::mask_meta_data() {
     if (!_meta_data_reader && _loaders_count > 1)
         THROW("Metadata reader is not compatible with multiple loaders")
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) {
+        release();
         THROW("No meta data has been loaded")
+    }
     auto meta_data_buffers = (unsigned char *)_ring_buffer.get_meta_read_buffers()[2];  // Get mask buffer from ring buffer
     auto mask_cords = _ring_buffer.get_meta_data().second->get_mask_cords_batch();
     for (unsigned i = 0; i < _mask_tensor_list.size(); i++) {
@@ -1650,8 +1660,10 @@ TensorList *MasterGraph::matched_index_meta_data() {
     if (!_meta_data_reader && _loaders_count > 1)
         THROW("Metadata reader is not compatible with multiple loaders")
 
-    if (_ring_buffer.level() == 0)
+    if (_ring_buffer.level() == 0) {
+        release();
         THROW("No meta data has been loaded")
+    }
     auto meta_data_buffers = reinterpret_cast<unsigned char *>(_ring_buffer.get_meta_read_buffers()[2]);  // Get matches buffer from ring buffer
     for (unsigned i = 0; i < _matches_tensor_list.size(); i++) {
         _matches_tensor_list[i]->set_mem_handle(reinterpret_cast<void *>(meta_data_buffers));

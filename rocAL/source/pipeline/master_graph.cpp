@@ -2053,6 +2053,9 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                     }
                 }
                 std::vector<Tensor *> outputs_vector;
+                static std::array<std::string, 8> geometric_augmentations = {"ResizeNode", "CropNode", "WarpAffineNode", 
+                                                                            "RotateNode", "CropResizeNode", "ResizeMirrorNormalizeNode",
+                                                                            "CropMirrorNormalizeNode", "ResizeCropMirrorNode"};
                 if (inputs_vector.size() > 0) {
                     // Handle multiple outputs
                     for (const auto& op_output : op_def.outputs()) {
@@ -2063,7 +2066,8 @@ void MasterGraph::deserialize(rocal_proto::PipelineDef *pipe_def) {
                         if (!inputs_vector.empty()) {
                             // Check compatibility with first input tensor as reference
                             Tensor* reference_input = inputs_vector[0];
-                            if (reference_input && check_tensor_info(reference_input->info(), op_output)) {
+                            if (reference_input && check_tensor_info(reference_input->info(), op_output)
+                                && std::find(geometric_augmentations.begin(), geometric_augmentations.end(), get_node_name(op_def.name())) == geometric_augmentations.end()) {
                                 output_tensor = create_tensor(reference_input->info(), false);
                                 tensor_info_compatible = true;
                                 std::cerr << "Reusing input tensor info for output -> " << op_output.name() << "\n";

@@ -112,13 +112,13 @@ extern "C" RocalStatus ROCAL_API_CALL rocalRelease(RocalContext rocal_context);
 
 extern "C" RocalStatus ROCAL_API_CALL rocalSerialize(RocalContext rocal_context, size_t &serialized_string_size);
 
-extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedString(RocalContext rocal_context, char* serialized_string);
+extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedString(RocalContext rocal_context, const char* serialized_string);
 
 extern "C" RocalContext rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size, RocalPipelineParams& pipe_params);
 
 extern "C" RocalStatus ROCAL_API_CALL rocalCheckpoint(RocalContext rocal_context, size_t &serialized_ckpt_string_size);
 
-extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedCheckpointString(RocalContext rocal_context, char* serialized_ckpt_string);
+extern "C" RocalStatus ROCAL_API_CALL rocalGetSerializedCheckpointString(RocalContext rocal_context, const char* serialized_ckpt_string);
 
 extern "C" RocalStatus ROCAL_API_CALL rocalRestoreFromSerializedCheckpoint(RocalContext rocal_context, const char* serialized_ckpt_string, size_t serialized_ckpt_size);
 #endif

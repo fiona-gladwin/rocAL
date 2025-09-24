@@ -165,7 +165,7 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
 }
 
 RocalStatus ROCAL_API_CALL
-rocalGetSerializedString(RocalContext rocal_context, char* serialized_string) {
+rocalGetSerializedString(RocalContext rocal_context, const char* serialized_string) {
     auto context = static_cast<Context*>(rocal_context);
     try {
         if (!serialized_string) {
@@ -175,7 +175,7 @@ rocalGetSerializedString(RocalContext rocal_context, char* serialized_string) {
         auto serialize_pipe_string = context->master_graph->get_serialized_string();
         if (serialize_pipe_string.empty())
             THROW("Serialized string is empty, Invoke rocalSerialize before obtaining the string")
-        std::memcpy(serialized_string, serialize_pipe_string.data(), serialize_pipe_string.size());
+        std::memcpy(const_cast<char*>(serialized_string), serialize_pipe_string.c_str(), serialize_pipe_string.size() + 1);
 
     } catch (const std::exception& e) {
         context->capture_error(e.what());
@@ -199,7 +199,7 @@ rocalCheckpoint(RocalContext rocal_context, size_t &serialized_ckpt_string_size)
 }
 
 RocalStatus ROCAL_API_CALL
-rocalGetSerializedCheckpointString(RocalContext rocal_context, char* serialized_ckpt_string) {
+rocalGetSerializedCheckpointString(RocalContext rocal_context, const char* serialized_ckpt_string) {
     auto context = static_cast<Context*>(rocal_context);
     try {
         if (!serialized_ckpt_string) {
@@ -209,7 +209,7 @@ rocalGetSerializedCheckpointString(RocalContext rocal_context, char* serialized_
         auto pipe_ckpt_string = context->master_graph->get_serialized_checkpoint_string();
         if (pipe_ckpt_string.empty())
             THROW("Serialized string is empty, Invoke rocalCheckpoint before obtaining the string")
-        std::memcpy(serialized_ckpt_string, pipe_ckpt_string.data(), pipe_ckpt_string.size());
+        std::memcpy(const_cast<char*>(serialized_ckpt_string), pipe_ckpt_string.data(), pipe_ckpt_string.size());
 
     } catch (const std::exception& e) {
         context->capture_error(e.what());

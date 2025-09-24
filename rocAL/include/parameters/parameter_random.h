@@ -111,13 +111,11 @@ class UniformRand : public Parameter<T> {
 
     // RNG serialization for checkpointing
     std::string serialize_rng() const override {
-        std::lock_guard<std::mutex> g(_lock);
         std::stringstream ss;
         ss << _generator;
         return ss.str();
     }
     void deserialize_rng(const std::string &data) override {
-        std::lock_guard<std::mutex> g(_lock);
         std::stringstream ss(data);
         ss >> _generator;
     }
@@ -128,7 +126,7 @@ class UniformRand : public Parameter<T> {
     T _updated_val;
     std::vector<T> _param_values;
     std::mt19937 _generator;
-    mutable std::mutex _lock;
+    std::mutex _lock;
     unsigned _size;
 };
 
@@ -248,13 +246,11 @@ struct CustomRand : public Parameter<T> {
 
     // RNG serialization for checkpointing
     std::string serialize_rng() const override {
-        std::lock_guard<std::mutex> g(_lock);
         std::stringstream ss;
         ss << _generator;
         return ss.str();
     }
     void deserialize_rng(const std::string &data) override {
-        std::lock_guard<std::mutex> g(_lock);
         std::stringstream ss(data);
         ss >> _generator;
     }
@@ -267,6 +263,6 @@ struct CustomRand : public Parameter<T> {
     T _updated_val;
     std::vector<T> _param_values;  //!< The values will be used in parameter_vx.h file after renewing
     std::mt19937 _generator;
-    mutable std::mutex _lock;
+    std::mutex _lock;
     unsigned _size;
 };

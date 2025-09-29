@@ -31,14 +31,10 @@ THE SOFTWARE.
 #include <any>
 
 /*!
- * \brief Pure centralized enum registry for automatic enum type name management
+ * \brief Centralized enum registry for automatic enum type name management
  * 
- * This singleton class provides a registry for enum types with exactly 2 maps:
- * 1. Type index to string name mapping
- * 2. String name to conversion function mapping (converts int values to enum types as std::any)
- * 
- * This design is completely independent of the Argument class, eliminating circular dependencies.
- * The calling code is responsible for extracting values from std::any and handling Argument manipulation.
+ * This singleton class provides a registry for enum types,
+ * allowing automatic registration and lookup of enum type names.
  */
 class EnumRegistry {
 public:
@@ -144,9 +140,9 @@ private:
  * \param EnumType The enum type to register
  * 
  * Uses a static variable with lambda function to ensure proper initialization timing.
- * Usage: AUTO_REGISTER_ENUM(MyEnumType)
+ * Usage: REGISTER_ENUM(MyEnumType)
  */
-#define AUTO_REGISTER_ENUM(EnumType) \
+#define REGISTER_ENUM(EnumType) \
     static bool enum_registered_##EnumType = []() { \
         EnumRegistry::getInstance().registerEnum<EnumType>(#EnumType); \
         return true; \

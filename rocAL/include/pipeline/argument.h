@@ -60,6 +60,7 @@ public:
     bool is_vector = false;               ///< True if the argument contains vector data
     bool is_parameter = false;            ///< True if the argument is a parameter object
     bool is_null_ptr = false;             ///< True if the argument represents a null pointer
+    bool is_tensor = false;               ///< True if the argument is a tensor reference
     std::vector<std::any> values;         ///< Storage for argument values (can change to std::variant later)
     pParam param;                         ///< Parameter stored for parameter-type arguments
     std::string tensor_name;              ///< Name of the tensor for tensor reference arguments

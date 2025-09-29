@@ -37,7 +37,6 @@ enum class RocalParameterType {
     RANDOM_UNIFORM,
     RANDOM_CUSTOM
 };
-AUTO_REGISTER_ENUM(RocalParameterType)
 
 struct IntParam {
     IntParam(

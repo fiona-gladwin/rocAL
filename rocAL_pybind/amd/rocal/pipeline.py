@@ -68,17 +68,17 @@ class Pipeline(object):
                  exec_async=True, bytes_per_sample=0,
                  rocal_cpu=False, max_streams=-1, default_cuda_stream_priority=0, tensor_layout=types.NCHW, 
                  reverse_channels=False, mean=None, std=None, tensor_dtype=types.FLOAT, output_memory_type=None,
-                 deserialized_pipeline_handle=None): 
+                 deserialized_pipeline_handle=None, enable_checkpointing=False): 
         
         if (deserialized_pipeline_handle is not None):
             self._handle = deserialized_pipeline_handle
         else:
             if (rocal_cpu):
                 self._handle = b.rocalCreate(
-                    batch_size, types.CPU, device_id, num_threads, prefetch_queue_depth, tensor_dtype)
+                    batch_size, types.CPU, device_id, num_threads, prefetch_queue_depth, tensor_dtype, enable_checkpointing)
             else:
                 self._handle = b.rocalCreate(
-                    batch_size, types.GPU, device_id, num_threads, prefetch_queue_depth, tensor_dtype)
+                    batch_size, types.GPU, device_id, num_threads, prefetch_queue_depth, tensor_dtype, enable_checkpointing)
 
         if (b.getStatus(self._handle) == types.OK):
             print("Pipeline has been created succesfully")
@@ -130,6 +130,7 @@ class Pipeline(object):
         self._external_source = None
         self._external_source_mode = None
         self._last_batch_policy = None
+        self._enable_checkpointing = enable_checkpointing
 
     def build(self):
         """!Build the pipeline using rocalVerify call
@@ -292,6 +293,32 @@ class Pipeline(object):
                 pipeline_file.write(ret)
         
         return ret
+
+    def checkpoint(self, filename=None):
+        """
+        Save the current pipeline state (checkpoint) and return it as bytes.
+        If filename is provided, also writes the checkpoint to the file.
+        """
+        ckpt = b.checkpoint(self._handle)
+        if filename is not None:
+            with open(filename, "wb") as f:
+                f.write(ckpt)
+        return ckpt
+
+    def restore_checkpoint(self, serialized_ckpt=None, filename=None):
+        """
+        Restore pipeline state from a checkpoint. Build must be called before restoring.
+        Provide either serialized_ckpt (bytes) or filename.
+        """
+        if (serialized_ckpt is None) == (filename is None):
+            raise ValueError(
+                "serialized_ckpt and filename are mutually exclusive; provide exactly one.")
+
+        if filename is not None:
+            with open(filename, "rb") as f:
+                serialized_ckpt = f.read()
+
+        b.restoreFromCheckpoint(self._handle, serialized_ckpt)
     
     @classmethod
     def deserialize(cls, serialized_pipeline=None, filename=None):

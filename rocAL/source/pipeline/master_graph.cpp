@@ -371,6 +371,8 @@ void MasterGraph::release() {
     // shut_down loader:: required for releasing any allocated resourses
     for (auto &loader_module : _loader_modules)
         loader_module->shut_down();
+    // Destroy ParameterFactory singleton to allow new pipelines to have completely fresh state
+    ParameterFactory::destroy_instance();
     // release output buffer if allocated
     if (_output_tensor_buffer != nullptr) {
 #if ENABLE_OPENCL

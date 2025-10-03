@@ -30,7 +30,8 @@ ImageLoaderSingleShardNode::ImageLoaderSingleShardNode(Tensor *output, void *dev
 
 void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, unsigned cpu_num_threads, const std::string &source_path, const std::string &json_path, StorageType storage_type, DecoderType decoder_type,
                                       bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type, std::shared_ptr<MetaDataReader> meta_data_reader,
-                                      bool decoder_keep_original, const ShardingInfo& sharding_info, unsigned seed, const std::map<std::string, std::string> feature_key_map, unsigned sequence_length, unsigned step, unsigned stride, ExternalSourceFileMode external_file_mode, const std::string &index_path) {
+                                      bool decoder_keep_original, const ShardingInfo& sharding_info, bool enable_checkpointing, unsigned seed,
+                                      const std::map<std::string, std::string> feature_key_map, unsigned sequence_length, unsigned step, unsigned stride, ExternalSourceFileMode external_file_mode, const std::string &index_path) {
     if (!_loader_module)
         THROW("ERROR: loader module is not set for ImageLoaderNode, cannot initialize")
     if (shard_count < 1)
@@ -52,14 +53,15 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
     reader_cfg.set_external_filemode(external_file_mode);
     reader_cfg.set_index_path(index_path);
     reader_cfg.set_sharding_info(sharding_info);
+    reader_cfg.enable_checkpointing(enable_checkpointing);
     reader_cfg.set_seed(seed);
 
     // Add all arguments as part of the operator
-    std::array<std::string, 24> arg_names = {
+    std::array<std::string, 25> arg_names = {
         "shard_id", "shard_count", "cpu_num_threads", "source_path", "json_path",
         "storage_type", "decoder_type", "shuffle", "loop",
         "load_batch_count", "mem_type", "meta_data_reader", "decoder_keep_original", 
-        "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size", "seed",
+        "last_batch_policy", "pad_last_batch_repeated", "stick_to_shard", "shard_size", "enable_checkpointing", "seed",
         "feature_key_map", "sequence_length", "step", "stride", "external_file_mode", "index_path"
     };
     
@@ -71,7 +73,7 @@ void ImageLoaderSingleShardNode::init(unsigned shard_id, unsigned shard_count, u
         meta_data_reader, decoder_keep_original,
         sharding_info.last_batch_policy,
         sharding_info.pad_last_batch_repeated, sharding_info.stick_to_shard,
-        sharding_info.shard_size, seed, feature_key_map, sequence_length, step, stride,
+        sharding_info.shard_size, enable_checkpointing, seed, feature_key_map, sequence_length, step, stride,
         external_file_mode, index_path
     );
 
@@ -93,10 +95,45 @@ void ImageLoaderSingleShardNode::initalize_args(std::vector<Argument> &arguments
             static_cast<DecoderType>(arguments[6].Get<int>()), arguments[7].Get<bool>(), arguments[8].Get<bool>(),
             arguments[9].Get<size_t>(), static_cast<RocalMemType>(arguments[10].Get<int>()), meta_data_reader, arguments[12].Get<bool>(),
             ShardingInfo(static_cast<RocalBatchPolicy>(arguments[13].Get<int>()), arguments[14].Get<bool>(), arguments[15].Get<bool>(), arguments[16].Get<int32_t>()),
-            arguments[17].Get<unsigned>(), arguments[18].Get<std::map<std::string, std::string>>(), arguments[19].Get<unsigned>(), arguments[20].Get<unsigned>(),
-            arguments[21].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[22].Get<int>()), arguments[23].Get<std::string>());
+            arguments[17].Get<bool>(), arguments[18].Get<unsigned>(), arguments[19].Get<std::map<std::string, std::string>>(), arguments[20].Get<unsigned>(), arguments[21].Get<unsigned>(),
+            arguments[22].Get<unsigned>(), static_cast<ExternalSourceFileMode>(arguments[23].Get<int>()), arguments[24].Get<std::string>());
 }
 
 ImageLoaderSingleShardNode::~ImageLoaderSingleShardNode() {
     _loader_module = nullptr;
+}
+
+void ImageLoaderSingleShardNode::save_state(std::shared_ptr<OperatorCheckpoint>& op_ckpt) {
+    op_ckpt->GetMutableCheckpointState() = _loader_module->get_loader_state();
+}
+
+std::string ImageLoaderSingleShardNode::serialize_state(const std::shared_ptr<OperatorCheckpoint>& op_ckpt) {
+    auto loader_state = op_ckpt->GetOperatorCheckpointState<LoaderState>();
+    rocal_proto::LoaderState proto_state;
+    proto_state.set_current_epoch(static_cast<int32_t>(loader_state._epoch_number));
+    proto_state.set_age(static_cast<int32_t>(loader_state._iteration_number));
+    proto_state.set_iteration_number(static_cast<int64_t>(loader_state._iteration_number));
+    proto_state.set_rng(SerializeRNGToString(loader_state._rng));
+    proto_state.set_curr_file_idx(static_cast<uint32_t>(loader_state._curr_file_idx));
+    return proto_state.SerializeAsString();
+}
+
+void ImageLoaderSingleShardNode::restore_state(const std::string &operator_state_bytes) {
+    rocal_proto::LoaderState proto_state;
+    if (!proto_state.ParseFromString(operator_state_bytes)) {
+        WRN("Failed to parse LoaderState from checkpoint. Skipping restore for ImageLoaderSingleShardNode.");
+        return;
+    }
+    LoaderState st{};
+    st._epoch_number = proto_state.has_current_epoch() ? proto_state.current_epoch() : 0;
+    st._iteration_number = proto_state.has_iteration_number()
+                                ? proto_state.iteration_number()
+                                : (proto_state.has_age() ? proto_state.age() : 0);
+    if (proto_state.has_rng()) {
+        DeserializeRNGFromString(proto_state.rng(), st._rng);
+    }
+    st._curr_file_idx = proto_state.has_curr_file_idx() ? proto_state.curr_file_idx() : 0;
+    if (_loader_module) {
+        _loader_module->restore_from_state(st);
+    }
 }

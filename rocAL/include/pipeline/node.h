@@ -40,8 +40,8 @@ class Node {
     virtual ~Node();
     void create(std::shared_ptr<Graph> graph);
     void update_parameters();
-    std::vector<Tensor *> input() { return _inputs; };
-    std::vector<Tensor *> output() { return _outputs; };
+    const std::vector<Tensor *>& input() const { return _inputs; }
+    const std::vector<Tensor *>& output() const { return _outputs; }
     void add_next(const std::shared_ptr<Node> &node);   // Adds the Node next to the current Node
     void add_previous(const std::shared_ptr<Node> &node);   // Adds the Node preceding the current Node
     void release();
@@ -53,7 +53,7 @@ class Node {
     void set_graph_id(int id) { _graph_id = id; }
     int get_graph_id() { return _graph_id; }
     virtual std::string node_name() { return ""; }
-    std::vector<Argument> get_args_list() { return _args; }
+    std::vector<Argument>& get_args_list() { return _args; }
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
     virtual void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
     virtual void initialize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }

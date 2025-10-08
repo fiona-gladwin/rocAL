@@ -42,21 +42,13 @@ THE SOFTWARE.
  * 
  * This class encapsulates argument information for pipeline nodes, supporting
  * various data types including basic types, enums, vectors, maps, and parameters.
- * 
- * The class provides type-safe storage and retrieval of arguments with support for:
- * - Basic types (int, float, string, etc.)
- * - Enum types with registry lookup
- * - Vector containers
- * - String-to-string maps
- * - Shared pointers
- * - Parameter objects (FloatParam, IntParam)
  */
 class Argument {
 public:
     // Public member variables
     std::string arg_name;                 ///< Name of the argument
     std::string type_name;                ///< Denotes the data type of the argument
-    std::string enum_type_name;           ///< Denotes the name of the enum <arg_name_enum>
+    std::string sub_type_name;            ///< Denotes the name of the enum/ type of parameter
     bool is_vector = false;               ///< True if the argument contains vector data
     bool is_parameter = false;            ///< True if the argument is a parameter object
     bool is_null_ptr = false;             ///< True if the argument represents a null pointer
@@ -191,9 +183,9 @@ private:
         static_assert(std::is_enum_v<std::decay_t<T>>, "T must be an enum type");
         
         type_name = "enum";
-        enum_type_name = getTypeName<T>();
+        sub_type_name = getTypeName<T>();
         
-        if (enum_type_name != "unknown_enum") {
+        if (sub_type_name != "unknown_enum") {
             values.push_back(static_cast<int>(val));
         } else {
             THROW("Unknown enum type for argument " + arg_name);
@@ -217,7 +209,8 @@ private:
             is_vector = true;
             values.reserve(val.size());
             
-            for (auto&& v : std::forward<T>(val)) {
+            auto&& local_val = std::forward<T>(val);
+            for (auto&& v : local_val) {
                 values.push_back(static_cast<ElementType>(std::forward<decltype(v)>(v)));
             }
         } else {
@@ -255,10 +248,11 @@ private:
         static_assert(is_shared_ptr_v<std::decay_t<T>>, "T must be a shared_ptr type");
         
         type_name = "shared_ptr";
-        // For MetadataReader case store an empty value
-        // During deserialization the MetadataReader should be created and passed from the MasterGraph.
+        // For MetaDataReader, mark as an external reference to be resolved during deserialization.
+        // The actual MetaDataReader instance should be created and provided by the MasterGraph/Pipeline.
         if (arg_name == "meta_data_reader") {
-            values.push_back(static_cast<int>(0));
+            sub_type_name = "MetaDataReader";
+            // No serialized payload for external references.
         } else {
             THROW("Unsupported shared_ptr type for argument " + arg_name);
         }
@@ -278,9 +272,10 @@ private:
         
         if (!val.empty()) {
             values.reserve(val.size() * 2); // Pre-allocate for key-value pairs
-            for (auto&& pair : std::forward<T>(val)) {
-                values.push_back(std::move(pair.first));   // Push key
-                values.push_back(std::move(pair.second));  // Push value
+            auto&& string_map = std::forward<T>(val);
+            for (auto&& pair : string_map) {
+                values.push_back(pair.first);   // Push key
+                values.push_back(pair.second);  // Push value
             }
         }
     }
@@ -319,13 +314,13 @@ private:
     void extractParam(RocalParameterType param_type, pParam parameter) {
         switch (param_type) {
             case RocalParameterType::DETERMINISTIC:
-                enum_type_name = "SimpleParameter";
+                sub_type_name = "SimpleParameter";
                 break;
             case RocalParameterType::RANDOM_UNIFORM:
-                enum_type_name = "UniformRand";
+                sub_type_name = "UniformRand";
                 break;
             case RocalParameterType::RANDOM_CUSTOM:
-                enum_type_name = "CustomRand";
+                sub_type_name = "CustomRand";
                 break;
             default:
                 THROW("Unknown parameter type for argument " + arg_name);

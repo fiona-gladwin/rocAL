@@ -23,6 +23,8 @@ THE SOFTWARE.
 #pragma once
 #include <memory>
 #include <set>
+#include <array>
+#include <utility>
 
 #include "pipeline/graph.h"
 #include "loaders/loader_module.h"
@@ -52,7 +54,7 @@ class Node {
     const Roi2DCords *get_dst_roi() { return _outputs[0]->info().roi().get_2D_roi(); }
     void set_graph_id(int id) { _graph_id = id; }
     int get_graph_id() { return _graph_id; }
-    virtual std::string node_name() { return ""; }
+    virtual std::string node_name() const { return ""; }
     std::vector<Argument>& get_args_list() { return _args; }
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
     virtual void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }

@@ -29,7 +29,7 @@ class CopyNode : public Node {
     CopyNode(const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs);
     CopyNode() = delete;
     void initialize_args(std::vector<Argument> &arguments) override {}
-    std::string node_name() override { return "CopyNode"; }
+    std::string node_name() const override { return "CopyNode"; }
 
    protected:
     void create_node() override;

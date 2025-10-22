@@ -41,7 +41,7 @@ class ImageLoaderSingleShardNode : public Node {
               const std::map<std::string, std::string> feature_key_map = std::map<std::string, std::string>(), unsigned sequence_length = 0, unsigned step = 0, unsigned stride = 0, ExternalSourceFileMode external_file_mode = ExternalSourceFileMode::NONE, const std::string &index_path = "");
 
     std::shared_ptr<LoaderModule> get_loader_module() override;
-    std::string node_name() override { return "ImageLoaderSingleShardNode"; }
+    std::string node_name() const override { return "ImageLoaderSingleShardNode"; }
     void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) override;
 
    protected:

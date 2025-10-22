@@ -45,7 +45,7 @@ class ImageLoaderNode : public Node {
 
     void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) override;
     std::shared_ptr<LoaderModule> get_loader_module() override;
-    std::string node_name() override { return "ImageLoaderNode"; }
+    std::string node_name() const override { return "ImageLoaderNode"; }
 
    protected:
     void create_node() override{};

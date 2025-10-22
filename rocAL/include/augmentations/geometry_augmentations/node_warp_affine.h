@@ -34,7 +34,7 @@ class WarpAffineNode : public Node {
     void init(FloatParam *x0, FloatParam *x1, FloatParam *y0, FloatParam *y1,
               FloatParam *o0, FloatParam *o1, ResizeInterpolationType interpolation_type);
     void initialize_args(std::vector<Argument> &arguments) override;
-    std::string node_name() override { return "WarpAffineNode"; }
+    std::string node_name() const override { return "WarpAffineNode"; }
 
    protected:
     void create_node() override;

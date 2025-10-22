@@ -35,7 +35,7 @@ class RotateNode : public Node {
     unsigned int get_dst_width() { return _outputs[0]->info().max_shape()[0]; }
     unsigned int get_dst_height() { return _outputs[0]->info().max_shape()[1]; }
     vx_array get_angle() { return _angle.default_array(); }
-    std::string node_name() override { return "rotate"; }
+    std::string node_name() const override { return "rotate"; }
 
    protected:
     void create_node() override;

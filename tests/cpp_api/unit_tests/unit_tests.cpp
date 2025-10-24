@@ -915,6 +915,16 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             unsigned translate_y = 0;
             output = rocalGridMask(handle, input, true, tile_width, grid_ratio, grid_angle, translate_x, translate_y, output_tensor_layout, output_tensor_dtype);
         } break;
+        case 69: {
+            std::cout << "Running rocalThreshold" << std::endl;
+            RocalFloatParam min_param = rocalCreateFloatParameter(64.0f);
+            RocalFloatParam max_param = rocalCreateFloatParameter(192.0f);
+            output = rocalThreshold(handle, input, true, min_param, max_param, output_tensor_layout, output_tensor_dtype);
+        } break;
+        case 70: {
+            std::cout << "Running rocalThresholdFixed" << std::endl;
+            output = rocalThresholdFixed(handle, input, 64.0f, 192.0f, true, output_tensor_layout, output_tensor_dtype);
+        } break;
         default:
             std::cout << "Not a valid option! Exiting!\n";
             return -1;

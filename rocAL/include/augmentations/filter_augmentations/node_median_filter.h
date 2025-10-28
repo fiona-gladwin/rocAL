@@ -32,6 +32,6 @@ protected:
     void update_node() override;
 
 private:
-    int _kernel_size = 3;
+    unsigned _kernel_size = 3;
     int _border_type = 0;
 };

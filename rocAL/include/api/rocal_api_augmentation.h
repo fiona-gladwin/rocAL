@@ -1592,7 +1592,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalErase(RocalContext context, RocalTens
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalDilate(RocalContext context, RocalTensor input,
                                                   bool is_output,
-                                                  int kernel_size = 3,
+                                                  unsigned kernel_size = 3,
                                                   RocalTensorLayout output_layout = ROCAL_NONE,
                                                   RocalTensorOutputType output_datatype = ROCAL_UINT8);
 
@@ -1608,7 +1608,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalDilate(RocalContext context, RocalTen
  */
 extern "C" RocalTensor ROCAL_API_CALL rocalErode(RocalContext context, RocalTensor input,
                                                  bool is_output,
-                                                 int kernel_size = 3,
+                                                 unsigned kernel_size = 3,
                                                  RocalTensorLayout output_layout = ROCAL_NONE,
                                                  RocalTensorOutputType output_datatype = ROCAL_UINT8);
 

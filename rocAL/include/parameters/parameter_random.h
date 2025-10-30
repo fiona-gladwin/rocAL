@@ -104,7 +104,8 @@ class UniformRand : public Parameter<T> {
     bool single_value() const override {
         return (_start == _end);
     }
-    std::pair<int, int> get_start_and_end() {
+
+    std::pair<T, T> get_start_and_end() {
         return std::make_pair(_start, _end);
     }
 
@@ -228,8 +229,11 @@ struct CustomRand : public Parameter<T> {
     bool single_value() const override {
         return (_values.size() == 1);
     }
-    std::vector<T>& get_values() { return _values; }
-    std::vector<double>& get_frequencies() { return _frequencies; }
+
+    const std::vector<T>& get_values() const { return _values; }
+
+    const std::vector<double>& get_frequencies() const { return _frequencies; }
+
     unsigned size() { return _size; }
 
    private:
@@ -241,5 +245,5 @@ struct CustomRand : public Parameter<T> {
     std::vector<T> _param_values;  //!< The values will be used in parameter_vx.h file after renewing
     std::mt19937 _generator;
     std::mutex _lock;
-    unsigned _size;
+    unsigned _size = 0;
 };

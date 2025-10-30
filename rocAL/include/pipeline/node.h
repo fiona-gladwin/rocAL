@@ -55,7 +55,7 @@ class Node {
     void set_graph_id(int id) { _graph_id = id; }
     int get_graph_id() { return _graph_id; }
     virtual std::string node_name() const { return ""; }
-    std::vector<Argument>& get_args_list() { return _args; }
+    const std::vector<Argument>& get_args_list() const { return _args; }
     virtual std::shared_ptr<LoaderModule> get_loader_module() { THROW("Not Implemented") }
     virtual void initialize_args(std::vector<Argument> &arguments, std::shared_ptr<MetaDataReader> meta_data_reader) { THROW("Not Implemented") }
     virtual void initialize_args(std::vector<Argument> &arguments) { THROW("Not Implemented") }

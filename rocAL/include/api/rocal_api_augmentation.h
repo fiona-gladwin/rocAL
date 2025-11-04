@@ -1682,4 +1682,23 @@ extern "C" RocalTensor ROCAL_API_CALL rocalPhase(RocalContext context, RocalTens
                                                  RocalTensorLayout output_layout = ROCAL_NONE,
                                                  RocalTensorOutputType output_datatype = ROCAL_UINT8);
 
+/*! \brief Random Image Cropping And Patching (RICAP).
+ * \ingroup group_rocal_augmentations
+ * \param [in] context Rocal context
+ * \param [in] input Input Rocal tensor
+ * \param [in] is_output Is the output tensor part of the graph output
+ * \param [in] permutation vector length 4 or batch*4, with 4 source indices per output sample quadrants
+ * \param [in] crop_rois vector length 16 or batch*16, per-sample 4 ROIs of [x,y,w,h] or [l,t,r,b] based on roiType
+ * \param [in] output_layout the layout of the output tensor
+ * \param [in] output_datatype the data type of the output tensor
+ * \return RocalTensor
+ */
+extern "C" RocalTensor ROCAL_API_CALL rocalRicap(RocalContext context,
+                                                 RocalTensor input,
+                                                 bool is_output,
+                                                 std::vector<unsigned> &permutation,
+                                                 std::vector<int> &crop_rois,
+                                                 RocalTensorLayout output_layout = ROCAL_NONE,
+                                                 RocalTensorOutputType output_datatype = ROCAL_UINT8);
+
 #endif  // MIVISIONX_ROCAL_API_AUGMENTATION_H

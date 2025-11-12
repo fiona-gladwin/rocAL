@@ -39,12 +39,12 @@ void PipelineSerializer::serialize_to_file(const std::string& file_path) {
 }
 
 void PipelineSerializer::serialize_pipeline_config(size_t num_threads, size_t batch_size, int device_id, RocalMemType device_type, size_t prefetch_queue_depth) {
-    _pipeline.set_num_threads(num_threads);
-    _pipeline.set_batch_size(batch_size);
-    _pipeline.set_device_id(device_id);
+    _pipeline_proto.set_num_threads(num_threads);
+    _pipeline_proto.set_batch_size(batch_size);
+    _pipeline_proto.set_device_id(device_id);
     // _pipeline.set_seed(seed);
-    _pipeline.set_rocal_cpu(device_type == RocalMemType::HOST ? true : false);
-    _pipeline.set_prefetch_queue_depth(prefetch_queue_depth);
+    _pipeline_proto.set_rocal_cpu(device_type == RocalMemType::HOST ? true : false);
+    _pipeline_proto.set_prefetch_queue_depth(prefetch_queue_depth);
 }
 
 void set_tensor_proto(rocal_proto::InputOutput *in_out_proto, Tensor *tensor, bool is_input) {

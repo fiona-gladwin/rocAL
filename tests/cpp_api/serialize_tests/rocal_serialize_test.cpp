@@ -170,10 +170,10 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
 
     /*>>>>>>>>>>>>>> Serialize the pipeline <<<<<<<<<<<<<<<<<<*/
     size_t str_size;
-    rocalSerialize(handle, str_size);
+    rocalSerialize(handle, &str_size);
     std::cerr << "String size : ------------------------------>>>>>>>>>>>>> " << str_size << "\n";
     std::string serialized_pipe_string(str_size, '\0');
-    rocalGetSerializedString(handle, serialized_pipe_string.c_str());
+    rocalGetSerializedString(handle, serialized_pipe_string.data());
     std::cerr << "==================================================================\n";
     std::cerr << serialized_pipe_string << "\n";
     std::cerr << "==================================================================\n";

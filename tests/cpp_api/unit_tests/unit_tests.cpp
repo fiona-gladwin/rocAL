@@ -948,7 +948,7 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
 
             if (erase_ready) {
                 // Use existing uniform_int_param created earlier for per-sample number of boxes
-                output = rocalErase(handle, input, true, anchor, colors, uniform_int_param, output_tensor_layout, output_tensor_dtype);
+                output = rocalEraseTensor(handle, input, true, anchor, colors, uniform_int_param, output_tensor_layout, output_tensor_dtype);
             } else {
                 // Fallback path to keep pipeline valid when aux tensors are unavailable
                 output = rocalCopy(handle, input, true);
@@ -1083,6 +1083,37 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             output = rocalBitwiseOps(handle, input, input, true,
                                      RocalBitwiseOp::ROCAL_BITWISE_NOT,
                                      output_tensor_layout, output_tensor_dtype);
+        } break;
+        case 87: {
+            std::cout << "Running rocalErase (vector inputs, single fill value)" << std::endl;
+            // Use vector-based API: provide anchor [x1,y1], shape [w,h], num_boxes, and a single fill value
+            // Replicate num_boxes across batch with a single entry
+            std::vector<unsigned> num_boxes = {1};
+
+            // Derive two boxes using input width/height; keep within image bounds
+            unsigned W = static_cast<unsigned>(width);
+            unsigned H = static_cast<unsigned>(height);
+            unsigned bw = std::max(1u, W / 4);
+            unsigned bh = std::max(1u, H / 4);
+
+            // Two anchors (x1, y1) and matching shapes (w, h) for a single-sample pattern
+            // Pattern will be replicated across the batch since num_boxes.size()==1
+            std::vector<float> anchor = {0.125f * W, 0.125f * H};
+                // static_cast<float>(W / 8), static_cast<float>(H / 8),
+                // static_cast<float>(W / 2), static_cast<float>(H / 2)
+            // };
+            std::vector<float> shape = {0.372f * W, 0.375f * H};
+                // static_cast<float>(bw), static_cast<float>(bh),
+                // static_cast<float>(bw), static_cast<float>(bh)
+            // };
+
+            // Single fill value replicated for all boxes and channels
+            std::vector<float> fill_value = {0.0f};
+
+            // Execute vector-based erase
+            output = rocalErase(handle, input, true,
+                                anchor, shape, num_boxes, fill_value,
+                                output_tensor_layout, output_tensor_dtype);
         } break;
         default:
             std::cout << "Not a valid option! Exiting!\n";

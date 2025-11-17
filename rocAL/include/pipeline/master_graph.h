@@ -258,6 +258,7 @@ public:
     // Stores the serialized binary string representation of the pipeline
     std::string _serialized_pipeline;
     int _tensor_idx = 0; // Index/counter used to uniquely name Tensor instances created in the pipeline
+    bool _set_device_id = false;
 };
 
 template <typename T>

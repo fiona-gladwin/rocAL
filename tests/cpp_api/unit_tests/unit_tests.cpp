@@ -921,6 +921,10 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             std::vector<float> max_threshold = {100.0f, 100.0f, 100.0f};
             output = rocalThreshold(handle, input, min_threshold, max_threshold, true, output_tensor_layout, output_tensor_dtype);
         } break;
+        case 70: {
+            std::cout << "Running rocalThresholdFixed" << std::endl;
+            output = rocalThresholdFixed(handle, input, 64.0f, 192.0f, true, output_tensor_layout, output_tensor_dtype);
+        }
         case 71: {
             std::cout << "Running rocalErase (vector inputs, single fill value)" << std::endl;
             // Use vector-based API: provide anchor [x1,y1], shape [w,h], num_boxes, and a single fill value
@@ -952,6 +956,21 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
                                 anchor, shape, num_boxes, fill_value,
                                 output_tensor_layout, output_tensor_dtype);
         } break;
+        case 76: {
+            std::cout << "Running rocalMedianFilter" << std::endl;
+            int kernel = 3;
+            int border_type = 0;
+            output = rocalMedianFilter(handle, input, true, kernel, border_type, output_tensor_layout, output_tensor_dtype);
+        } break;
+        case 77: {
+            std::cout << "Running rocalGaussianFilter" << std::endl;
+            // Use existing float_param defined earlier as per-sample stddev
+            output = rocalGaussianFilter(handle, input, true, float_param, 3, output_tensor_layout, output_tensor_dtype);
+        } break;
+        case 78: {
+            std::cout << "Running rocalGaussianFilterFixed" << std::endl;
+            output = rocalGaussianFilterFixed(handle, input, 0.5, 3, true, output_tensor_layout, output_tensor_dtype);
+        } break;
         case 72: {
             std::cout << "Running rocalDilate" << std::endl;
             output = rocalDilate(handle, input, true, 3, output_tensor_layout, output_tensor_dtype);
@@ -971,21 +990,6 @@ int test(int test_case, int reader_type, const char *path, const char *outName, 
             // Create a second tensor by rotating the input; use as second input to phase
             RocalTensor input2 = rocalRotate(handle, input, false);
             output = rocalPhase(handle, input, input2, true, output_tensor_layout, output_tensor_dtype);
-        } break;
-        case 76: {
-            std::cout << "Running rocalMedianFilter" << std::endl;
-            int kernel = 3;
-            int border_type = 0;
-            output = rocalMedianFilter(handle, input, true, kernel, border_type, output_tensor_layout, output_tensor_dtype);
-        } break;
-        case 77: {
-            std::cout << "Running rocalGaussianFilter" << std::endl;
-            // Use existing float_param defined earlier as per-sample stddev
-            output = rocalGaussianFilter(handle, input, true, float_param, 3, output_tensor_layout, output_tensor_dtype);
-        } break;
-        case 78: {
-            std::cout << "Running rocalGaussianFilterFixed" << std::endl;
-            output = rocalGaussianFilterFixed(handle, input, 0.5, 3, true, output_tensor_layout, output_tensor_dtype);
         } break;
         case 79: {
             std::cout << "Running rocalWarpPerspective" << std::endl;

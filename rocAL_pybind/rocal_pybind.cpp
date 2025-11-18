@@ -1122,7 +1122,7 @@ py::class_<rocalListOfTensorList>(m, "rocalListOfTensorList")
           py::return_value_policy::reference);
     m.def("threshold", &rocalThreshold,
           py::return_value_policy::reference);
-    m.def("erase", &rocalErase,
+    m.def("thresholdFixed", &rocalThresholdFixed,
           py::return_value_policy::reference);
     m.def("contrast", &rocalContrast,
           py::return_value_policy::reference);

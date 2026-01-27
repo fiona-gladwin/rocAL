@@ -449,7 +449,7 @@ __device__ __forceinline__ void rpp_hip_pack_float24_pkd3_and_store24_pkd3(uchar
 template <typename T>
 __global__ void resize_bilinear_pkd_hip_tensor(T *src_ptr,
                                                uint2 src_strides,
-                                               T *dst_ptr,
+                                               T **dst_ptr_arr,
                                                uint2 dst_strides,
                                                size_t *src_width,
                                                size_t *src_height,
@@ -470,8 +470,9 @@ __global__ void resize_bilinear_pkd_hip_tensor(T *src_ptr,
         return;
     }
 
+    T *dst_ptr = static_cast<T*>(dst_ptr_arr[id_z]);
     uint src_idx = src_img_offset[id_z];
-    uint dst_idx = (id_z * dst_strides.x) + (id_y * dst_strides.y) + id_x * 3;
+    uint dst_idx = (id_y * dst_strides.y) + id_x * 3;
 
     int4 src_roi_i4;
     src_roi_i4.x = 0;
@@ -517,7 +518,7 @@ __device__ void rpp_hip_compute_interpolation_scale_and_radius(float *scale, flo
 template <typename T>
 __global__ void resize_generic_pln1_hip_tensor(T *src_ptr,
                                                uint3 src_strides,
-                                               T *dst_ptr,
+                                               T **dst_ptr_arr,
                                                uint3 dst_strides,
                                                size_t *src_width,
                                                size_t *src_height,
@@ -537,6 +538,7 @@ __global__ void resize_generic_pln1_hip_tensor(T *src_ptr,
         return;
     }
 
+    T *dst_ptr = static_cast<T*>(dst_ptr_arr[id_z]);
     int4 src_roi_i4;
     src_roi_i4.x = 0;
     src_roi_i4.y = 0;
@@ -587,13 +589,13 @@ __global__ void resize_generic_pln1_hip_tensor(T *src_ptr,
     col_coeff_sum = (col_coeff_sum == 0.0f) ? 1.0f : col_coeff_sum;
     inv_coeff_sum = 1 / (row_coeff_sum * col_coeff_sum);
     out_pixel *= inv_coeff_sum;
-    uint dst_idx = (id_z * dst_strides.x) + (id_y * dst_strides.z) + id_x;
+    uint dst_idx = (id_y * dst_strides.z) + id_x;
     rpp_hip_pixel_check_and_store(out_pixel, &dst_ptr[dst_idx]);
 }
 
 void HipExecResizeTensor(hipStream_t stream,
-                         void *src_ptr,
-                         void *dst_ptr,
+                         unsigned char *src_ptr,
+                         unsigned char **dst_ptr,
                          unsigned batch_size,
                          size_t *src_width,
                          size_t *src_height,
@@ -619,7 +621,7 @@ void HipExecResizeTensor(hipStream_t stream,
                             stream,
                             static_cast<unsigned char *>(src_ptr),
                             make_uint2(max_src_width * max_src_height * channels, max_src_width * channels),
-                            static_cast<unsigned char *>(dst_ptr),
+                            reinterpret_cast<unsigned char **>(dst_ptr),
                             make_uint2(max_dst_width * max_dst_height * channels, max_dst_width * channels),
                             src_width,
                             src_height,
@@ -635,7 +637,7 @@ void HipExecResizeTensor(hipStream_t stream,
                     stream,
                     static_cast<unsigned char *>(src_ptr),
                     make_uint3(max_src_width * max_src_height * channels, max_src_width * max_src_height, max_src_width),
-                    static_cast<unsigned char *>(dst_ptr),
+                    reinterpret_cast<unsigned char **>(dst_ptr),
                     make_uint3(max_dst_width * max_dst_height * channels, max_src_width * max_src_height, max_dst_width),
                     src_width,
                     src_height,

@@ -230,7 +230,7 @@ class HWRocJpegDecoder : public Decoder {
     RocJpegHandle _rocjpeg_handle;
     std::vector<RocJpegStreamHandle> _rocjpeg_streams;
     unsigned _batch_size;
-    void * _rocjpeg_image_buff = nullptr;
+    unsigned char* _rocjpeg_image_buff = nullptr;
     unsigned _rocjpeg_image_buff_size = 0, _prev_image_buff_size = 0;
     size_t *_dev_src_width = nullptr;
     size_t *_dev_src_height = nullptr;
@@ -245,6 +245,7 @@ class HWRocJpegDecoder : public Decoder {
     bool _resize_batch = false;
     int _device_id = 0;
     hipStream_t _hip_stream;
+    unsigned char** _img_input_buffers = nullptr;
 
     // Using the Scaling factors from TurboJpeg decoder
     unsigned _num_scaling_factors = 16;

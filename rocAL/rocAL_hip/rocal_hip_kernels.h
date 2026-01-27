@@ -64,8 +64,8 @@ int HipExecCopyInt8ToNCHW(
 
 void HipExecResizeTensor(
     hipStream_t stream,
-    void *src_ptr,
-    void *dst_ptr,
+    unsigned char *src_ptr,
+    unsigned char **dst_ptr,
     unsigned batch_size,
     size_t *src_width,
     size_t *src_height,

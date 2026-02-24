@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <mutex>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,12 @@ inline std::string SerializeRNGToString(const std::mt19937 &rng) {
     std::stringstream stream;
     stream << rng;
     return stream.str();
+}
+
+/*! \brief Deserialize an mt19937 RNG state from a checkpoint string. */
+inline void DeserializeRNGFromString(const std::string &data, std::mt19937 &rng) {
+    std::stringstream stream(data);
+    stream >> rng;
 }
 
 /*! \brief Holds per-operator checkpoint state during serialization. */
@@ -82,7 +89,11 @@ class Checkpoint {
 
     /*! \brief Return the checkpoint entry for a given operator name. */
     const std::shared_ptr<OperatorCheckpoint> &GetOperatorCheckpoint(const std::string &op_name) {
-        return _op_cpts[_name_to_id[op_name]];
+        auto it = _name_to_id.find(op_name);
+        if (it == _name_to_id.end() || it->second >= _op_cpts.size()) {
+            throw std::out_of_range("Operator checkpoint not found: " + op_name);
+        }
+        return _op_cpts[it->second];
     }
 
    private:

@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/message.h>
 
+#include <cstring>
 #include <exception>
 #include <string>
 
@@ -142,18 +143,19 @@ rocalDeserialize(const char* serialized_pipeline, size_t serialized_string_size,
         rocal_proto::PipelineDef pipe;
         google::protobuf::io::CodedInputStream coded_input(
             reinterpret_cast<const uint8_t *>(serialized_pipeline), serialized_string_size);
+        // Protobuf < 3.18.0 has a second parameter (warning_threshold) for SetTotalBytesLimit
+#if GOOGLE_PROTOBUF_VERSION < 3018000
+        coded_input.SetTotalBytesLimit(static_cast<int>(serialized_string_size), static_cast<int>(serialized_string_size * 0.75));
+#else
         coded_input.SetTotalBytesLimit(static_cast<int>(serialized_string_size));
+#endif
         if (!pipe.ParseFromCodedStream(&coded_input)) {
             THROW("Failed to parse serialized pipeline protobuf");
         }
 
         // Get the pipeline related info
-        if (!pipe_params->batch_size.has_value()) {
-            if (pipe.has_batch_size())
-                pipe_params->batch_size = pipe.batch_size();
-            else
-                THROW("Serialized pipeline missing required batch size");
-        }
+        if (!pipe_params->batch_size.has_value())
+            pipe_params->batch_size = pipe.has_batch_size() ? pipe.batch_size() : 1;
 
         if (!pipe_params->device_id.has_value() && pipe.has_device_id())
             pipe_params->device_id = pipe.device_id();
@@ -250,6 +252,24 @@ rocalGetSerializedCheckpointString(RocalContext rocal_context, char* serialized_
             THROW("Serialized string is empty, Invoke rocalCheckpoint before obtaining the string")
         std::memcpy(serialized_ckpt_string, pipe_ckpt_string.data(), pipe_ckpt_string.size());
 
+    } catch (const std::exception& e) {
+        context->capture_error(e.what());
+        ERR(e.what())
+        return ROCAL_RUNTIME_ERROR;
+    }
+    return ROCAL_OK;
+}
+
+// Restore pipeline state from a serialized checkpoint blob.
+RocalStatus ROCAL_API_CALL
+rocalRestoreFromSerializedCheckpoint(RocalContext rocal_context, const char* serialized_ckpt_string, size_t serialized_ckpt_size) {
+    auto context = static_cast<Context*>(rocal_context);
+    try {
+        if (!serialized_ckpt_string || serialized_ckpt_size == 0) {
+            THROW("Invalid serialized checkpoint buffer or size")
+        }
+        std::string ckpt(serialized_ckpt_string, serialized_ckpt_size);  // Copy checkpoint blob into a string.
+        context->master_graph->restore_from_serialized_checkpoint(ckpt);
     } catch (const std::exception& e) {
         context->capture_error(e.what());
         ERR(e.what())

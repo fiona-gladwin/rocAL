@@ -24,6 +24,8 @@ THE SOFTWARE.
 
 #include <fstream>
 
+#include "parameters/parameter_factory.h"
+
 void PipelineSerializer::serialize_to_string(std::string& serialized_string) {
     if (!_pipeline_proto.SerializeToString(&serialized_string)) {
         THROW("Failed to serialize pipeline to string.");
@@ -136,6 +138,16 @@ void serialize_parameter_by_type(rocal_proto::Parameter *parameter, const Argume
 
 // Main function with improved structure and error handling
 void serialize_parameter_to_protobuf(rocal_proto::Parameter *parameter, const Argument &op_arg) {
+    if (op_arg.sub_type_name == "SimpleParameter") {
+        parameter->set_param_type(static_cast<int>(RocalParameterType::DETERMINISTIC));
+    } else if (op_arg.sub_type_name == "UniformRand") {
+        parameter->set_param_type(static_cast<int>(RocalParameterType::RANDOM_UNIFORM));
+    } else if (op_arg.sub_type_name == "CustomRand") {
+        parameter->set_param_type(static_cast<int>(RocalParameterType::RANDOM_CUSTOM));
+    } else {
+        THROW("Unknown parameter type '" + op_arg.sub_type_name + "' for argument '" + op_arg.arg_name + "'");
+    }
+
     if (op_arg.type_name == "int") {
         serialize_parameter_by_type<int>(parameter, op_arg);
     } else if (op_arg.type_name == "float") {
@@ -193,9 +205,11 @@ void PipelineSerializer::serialize_pipeop_arguments(const ArgumentSet& arguments
                 if (op_arg.values.empty()) {
                     // Represent empty vector by adding an empty vector message of the right type
                     if (op_arg.type_name == "int" || op_arg.type_name == "shared_ptr"
-                        || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t") {
+                        || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t"
+                        || op_arg.type_name == "uint8_t") {
                         static_cast<void>(arg->add_int_vectors());
-                    } else if (op_arg.type_name == "float") {
+                    } else if (op_arg.type_name == "float" || op_arg.type_name == "CameraMatrix"
+                                || op_arg.type_name == "DistortionCoeffs") {
                         static_cast<void>(arg->add_float_vectors());
                     } else if (op_arg.type_name == "char_str" || op_arg.type_name == "string"
                                || op_arg.type_name == "map_string") {
@@ -204,7 +218,8 @@ void PipelineSerializer::serialize_pipeop_arguments(const ArgumentSet& arguments
                         THROW("Vector type not supported for Argument " + op_arg.arg_name + " with type " + op_arg.type_name + ".");
                     }
                 } else {
-                    if (op_arg.type_name == "int" || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t") {
+                    if (op_arg.type_name == "int" || op_arg.type_name == "unsigned" || op_arg.type_name == "size_t"
+                        || op_arg.type_name == "uint8_t") {
                         auto *vec = arg->add_int_vectors();
                         for (auto &v : op_arg.values) {
                             // Map unsigned/size_t to int64 for IntVector as per spec (only Int/Float/String vectors permitted)
@@ -212,11 +227,15 @@ void PipelineSerializer::serialize_pipeop_arguments(const ArgumentSet& arguments
                                 vec->add_values(static_cast<int64_t>(std::any_cast<unsigned>(v)));
                             } else if (op_arg.type_name == "size_t") {
                                 vec->add_values(static_cast<int64_t>(std::any_cast<size_t>(v)));
+                            } else if (op_arg.type_name == "uint8_t") {
+                                vec->add_values(static_cast<int64_t>(std::any_cast<uint8_t>(v)));
                             } else {
                                 vec->add_values(static_cast<int64_t>(std::any_cast<int>(v)));
                             }
                         }
-                    } else if (op_arg.type_name == "float") {
+                    } else if (op_arg.type_name == "float" || op_arg.type_name == "CameraMatrix"
+                                || op_arg.type_name == "DistortionCoeffs") {
+                        // CameraMatrix and DistortionCoeffs are stored as flattened float arrays
                         auto *vec = arg->add_float_vectors();
                         for (auto &v : op_arg.values) {
                             vec->add_values(std::any_cast<float>(v));
@@ -249,6 +268,8 @@ void PipelineSerializer::serialize_pipeop_arguments(const ArgumentSet& arguments
                         arg->add_uints(std::any_cast<unsigned>(v));
                     } else if (op_arg.type_name == "size_t") {
                         arg->add_uints(std::any_cast<size_t>(v));
+                    } else if (op_arg.type_name == "uint8_t") {
+                        arg->add_uints(std::any_cast<uint8_t>(v));
                     } else {
                         THROW("Invalid type specified for the Argument " + op_arg.arg_name + ".");
                     }
@@ -265,6 +286,22 @@ void PipelineSerializer::serialize_operators(std::vector<std::shared_ptr<Pipelin
         op->set_name(pipe_op->operator_name);
         op->set_module_name(pipe_op->module_name);
         serialize_pipeop_arguments(pipe_op->get_arguments(), op);
+
+        // Check if sequence_length argument exists for this operator and set it in the protobuf if present
+        const ArgumentSet& args = pipe_op->get_arguments();
+        if (args.size() > 0) {
+            try {
+                auto seq_len_arg = args.get<unsigned>("sequence_length");
+                if (seq_len_arg > 0) {
+                    op->set_is_sequence_operator(true);
+                } else {
+                    op->set_is_sequence_operator(false);
+                }
+            } catch (const std::exception& e) {
+                // Argument 'sequence_length' does not exist, do nothing
+                op->set_is_sequence_operator(false);
+            }
+        }
 
         if (pipe_op->module_name == "reader")
             continue;  // Readers do not have tensor outputs, hence return
@@ -375,10 +412,12 @@ RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto
                         arg.values.emplace_back(static_cast<size_t>(val));
                     } else if (arg.type_name == "shared_ptr" || arg.type_name == "int") {
                         arg.values.emplace_back(static_cast<int>(val));
+                    } else if (arg.type_name == "uint8_t") {
+                        arg.values.emplace_back(static_cast<uint8_t>(val));
                     }
                 }
-            } else if (arg.type_name == "float") {
-                // Deserialize float vectors - expect exactly one vector
+            } else if (arg.type_name == "float" || arg.type_name == "CameraMatrix" || arg.type_name == "DistortionCoeffs") {
+                // Deserialize float vectors (including CameraMatrix and DistortionCoeffs which are flattened float arrays)
                 if (proto_arg.float_vectors_size() > 1) {
                     THROW("Expected at most one float vector for argument " + arg.arg_name + ", but found " + std::to_string(proto_arg.float_vectors_size()));
                 }
@@ -420,6 +459,10 @@ RocalStatus PipelineSerializer::deserialize_args_from_protobuf(const rocal_proto
         } else if (arg.type_name == "unsigned") {
             for (auto u : proto_arg.uints()) {
                 arg.values.emplace_back(static_cast<unsigned>(u));
+            }
+        } else if (arg.type_name == "uint8_t") {
+            for (auto u : proto_arg.uints()) {
+                arg.values.emplace_back(static_cast<uint8_t>(u));
             }
         } else if (arg.type_name == "size_t") {
             for (auto u : proto_arg.uints()) {
